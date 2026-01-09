@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { JetBrains_Mono, Space_Grotesk } from 'next/font/google'
 import '@/styles/globals.css'
 import { Providers } from '@/components/Providers'
-import Header from '@/components/Layout/Header'
+import Sidebar from '@/components/Layout/Sidebar'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 
 // Primary font for UI
 const spaceGrotesk = Space_Grotesk({
@@ -94,17 +95,34 @@ export default function RootLayout({
             Skip to main content
           </a>
           
-          {/* Full-screen flex layout matching Claude */}
-          <div className="flex flex-col h-screen w-full bg-[#0a0a0a] text-white">
-            <Header />
-            <main 
-              id="main-content"
-              className="flex-1 overflow-y-auto bg-[#0a0a0a]"
-              role="main"
+          {/* Full-screen resizable split layout - two halves like Claude Code */}
+          <ResizablePanelGroup 
+            direction="horizontal" 
+            className="h-screen w-full bg-[#0a0a0a]"
+            autoSaveId="nexteleven-layout"
+          >
+            {/* Left Panel - Sidebar */}
+            <ResizablePanel 
+              defaultSize={50}
+              minSize={10}
             >
-              {children}
-            </main>
-          </div>
+              <Sidebar />
+            </ResizablePanel>
+            
+            {/* Resizable Handle */}
+            <ResizableHandle withHandle />
+            
+            {/* Right Panel - Chat Content (no header, just chat) */}
+            <ResizablePanel defaultSize={50} minSize={10}>
+              <main 
+                id="main-content"
+                className="h-full w-full overflow-hidden bg-[#0a0a0a] text-white"
+                role="main"
+              >
+                {children}
+              </main>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </Providers>
         
         {/* Noscript fallback */}

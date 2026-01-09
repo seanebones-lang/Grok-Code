@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { ChatPane } from '@/components/ChatPane'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Loader2 } from 'lucide-react'
@@ -36,18 +36,40 @@ function ErrorFallback() {
 }
 
 export default function Home() {
+  const [repository, setRepository] = useState<{ owner: string; repo: string; branch: string } | null>(null)
+  const [newSessionMessage, setNewSessionMessage] = useState<string | null>(null)
+
+  // Listen for new session events from sidebar
+  useEffect(() => {
+    const handleNewSession = (e: Event) => {
+      const customEvent = e as CustomEvent<{ message: string }>
+      setNewSessionMessage(customEvent.detail.message)
+    }
+    window.addEventListener('newSession', handleNewSession)
+    return () => window.removeEventListener('newSession', handleNewSession)
+  }, [])
+
+  // Listen for repo connect events from sidebar
+  useEffect(() => {
+    const handleRepoConnect = (e: Event) => {
+      const customEvent = e as CustomEvent<{ repo: { owner: string; repo: string; branch: string } }>
+      setRepository(customEvent.detail.repo)
+    }
+    window.addEventListener('repoConnect', handleRepoConnect)
+    return () => window.removeEventListener('repoConnect', handleRepoConnect)
+  }, [])
+
   return (
-    <div className="flex flex-col h-full w-full bg-[#0a0a0a]">
-      {/* Scrollable chat main area matching Claude */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8">
-          <ErrorBoundary fallback={<ErrorFallback />}>
-            <Suspense fallback={<ChatPaneLoading />}>
-              <ChatPane />
-            </Suspense>
-          </ErrorBoundary>
-        </div>
-      </div>
+    <div className="h-full w-full">
+      <ErrorBoundary fallback={<ErrorFallback />}>
+        <Suspense fallback={<ChatPaneLoading />}>
+          <ChatPane 
+            repository={repository || undefined}
+            newSessionMessage={newSessionMessage}
+            onNewSessionHandled={() => setNewSessionMessage(null)}
+          />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   )
 }

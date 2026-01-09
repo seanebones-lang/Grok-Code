@@ -12,14 +12,29 @@ import {
   RefreshCw,
   AlertCircle,
   X,
-  Search
+  Search,
+  Send,
+  Sparkles,
+  Image,
+  MoreVertical
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
 import type { FileNode } from '@/types'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { GROK_MODELS, MODEL_PRIORITY } from '@/lib/grok-models'
+import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'nexteleven_fileTree'
 const REPO_KEY = 'nexteleven_connectedRepo'
+const MODEL_KEY = 'nexteleven_selectedModel'
 
 interface Repository {
   id: number
@@ -36,9 +51,10 @@ interface SidebarProps {
   onFileSelect?: (path: string) => void
   selectedPath?: string
   onRepoConnect?: (repo: { owner: string; repo: string; branch: string }) => void
+  onNewSession?: (message: string) => void
 }
 
-export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: SidebarProps) {
+export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: SidebarProps) {
   const { data: session } = useSession()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [files, setFiles] = useState<FileNode[]>([])
@@ -49,8 +65,11 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
   const [repoSearch, setRepoSearch] = useState('')
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [connectedRepo, setConnectedRepo] = useState<{ owner: string; repo: string; branch: string } | null>(null)
+  const [newSessionInput, setNewSessionInput] = useState('')
+  const [selectedModel, setSelectedModel] = useState<string>('grok-4.1-fast')
+  const [showModelMenu, setShowModelMenu] = useState(false)
 
-  // Load saved repo from localStorage
+  // Load saved repo and model from localStorage
   useEffect(() => {
     try {
       const savedRepo = localStorage.getItem(REPO_KEY)
@@ -59,8 +78,12 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
         setConnectedRepo(parsed)
         onRepoConnect?.(parsed)
       }
+      const savedModel = localStorage.getItem(MODEL_KEY)
+      if (savedModel && savedModel in GROK_MODELS) {
+        setSelectedModel(savedModel)
+      }
     } catch (e) {
-      console.error('Failed to load saved repo:', e)
+      console.error('Failed to load saved data:', e)
     }
   }, [onRepoConnect])
 
@@ -228,6 +251,11 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
     setConnectedRepo(repoInfo)
     localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
     onRepoConnect?.(repoInfo)
+    
+    // Dispatch event for page component
+    const event = new CustomEvent('repoConnect', { detail: { repo: repoInfo } })
+    window.dispatchEvent(event)
+    
     setShowRepoModal(false)
     
     // Fetch the file tree
@@ -256,6 +284,43 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
 
   const toggleCollapse = useCallback(() => {
     setIsCollapsed(prev => !prev)
+  }, [])
+
+  const handleNewSessionSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault()
+    if (newSessionInput.trim()) {
+      // Dispatch event for page component with model
+      const event = new CustomEvent('newSession', { 
+        detail: { 
+          message: newSessionInput.trim(),
+          model: selectedModel
+        } 
+      })
+      window.dispatchEvent(event)
+      onNewSession?.(newSessionInput.trim())
+      setNewSessionInput('')
+    }
+  }, [newSessionInput, onNewSession, selectedModel])
+
+  const handleModelSelect = useCallback((modelId: string) => {
+    setSelectedModel(modelId)
+    localStorage.setItem(MODEL_KEY, modelId)
+    setShowModelMenu(false)
+  }, [])
+
+  const handleFileSelect = useCallback(() => {
+    // TODO: Implement file selection
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*,.pdf,.txt,.md,.js,.ts,.tsx,.jsx,.json,.py,.java,.cpp,.c,.h,.hpp,.css,.html,.xml,.yaml,.yml'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        // TODO: Handle file upload
+        console.log('File selected:', file.name)
+      }
+    }
+    input.click()
   }, [])
 
   return (
@@ -332,47 +397,97 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
       <motion.aside
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className={`bg-[#1a1a2e] border-r border-[#404050] transition-all duration-300 text-white ${
-          isCollapsed ? 'w-0 overflow-hidden hidden' : 'w-[240px] min-w-[240px] max-w-[320px]'
-        } flex flex-col h-full hidden md:flex`}
+        className={`h-full w-full flex flex-col bg-[#1a1a2e] border-r border-[#404050] transition-all duration-300 text-white ${
+          isCollapsed ? 'hidden' : ''
+        }`}
         role="complementary"
         aria-label="File explorer"
       >
+        {/* Brand Header */}
         <div className="p-4 border-b border-[#404050]">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-white" id="sidebar-title">Files</h2>
-            <div className="flex items-center gap-1">
-              {files.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-white hover:bg-[#2a2a3e]"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  aria-label="Refresh files"
-                >
-                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-white hover:bg-[#2a2a3e]"
-                onClick={toggleCollapse}
-                aria-expanded={!isCollapsed}
-                aria-controls="file-tree"
-                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+          <div className="mb-4">
+            <h1 className="text-lg font-semibold text-white mb-1">NextEleven Code</h1>
+            <span className="text-xs text-[#9ca3af] bg-[#2a2a3e] px-2 py-0.5 rounded">Research preview</span>
           </div>
           
-          {/* Connected repo info or connect button */}
+          {/* New Session Input Box - Taller with icons */}
+          <form onSubmit={handleNewSessionSubmit} className="mb-4">
+            <div className="relative">
+              {/* Left icons: File selector and Model menu */}
+              <div className="absolute left-2 top-2 flex items-center gap-1 z-10">
+                <button
+                  type="button"
+                  onClick={handleFileSelect}
+                  className="p-1.5 text-[#9ca3af] hover:text-white hover:bg-[#2a2a3e] rounded transition-colors"
+                  aria-label="Select files or photos"
+                >
+                  <Image className="h-4 w-4" />
+                </button>
+                <DropdownMenu open={showModelMenu} onOpenChange={setShowModelMenu}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-1.5 text-[#9ca3af] hover:text-white hover:bg-[#2a2a3e] rounded transition-colors"
+                      aria-label="Select model"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent 
+                    align="start" 
+                    className="w-56 bg-[#1a1a2e] text-white border-[#404050]"
+                  >
+                    <DropdownMenuLabel className="text-[#9ca3af]">Select Model</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-[#404050]" />
+                    {/* Models ordered from most expensive to least */}
+                    {MODEL_PRIORITY.map((modelId) => {
+                      const model = GROK_MODELS[modelId]
+                      if (!model) return null
+                      return (
+                        <DropdownMenuItem
+                          key={modelId}
+                          onClick={() => handleModelSelect(modelId)}
+                          className={cn(
+                            "text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer",
+                            selectedModel === modelId && "bg-[#2a2a3e]"
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{model.name}</span>
+                            {selectedModel === modelId && (
+                              <span className="text-primary text-xs">✓</span>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              
+              {/* Textarea - double height (2 lines) */}
+              <textarea
+                value={newSessionInput}
+                onChange={(e) => setNewSessionInput(e.target.value)}
+                placeholder="Find a small todo in the codebase and do it"
+                className="w-full px-3 py-2 pl-20 pr-10 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white text-sm placeholder-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                rows={2}
+              />
+              
+              {/* Submit button */}
+              {newSessionInput.trim() && (
+                <button
+                  type="submit"
+                  className="absolute right-2 bottom-2 p-1.5 text-primary hover:text-primary/80 transition-colors"
+                  aria-label="Start new session"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </form>
+          
+          {/* Repo Selector */}
           {connectedRepo ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 bg-[#2a2a3e] rounded-lg">
@@ -382,24 +497,14 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
                   <p className="text-[10px] text-[#9ca3af] truncate">{connectedRepo.owner}/{connectedRepo.branch}</p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-white hover:text-white border-[#404050] bg-[#1a1a2e] hover:bg-[#2a2a3e] text-xs"
-                  onClick={handleConnectRepo}
-                >
-                  Switch
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-400 hover:text-red-300 border-[#404050] bg-[#1a1a2e] hover:bg-red-500/10 text-xs"
-                  onClick={handleDisconnectRepo}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-white hover:text-white border-[#404050] bg-[#1a1a2e] hover:bg-[#2a2a3e] text-xs"
+                onClick={handleConnectRepo}
+              >
+                Switch
+              </Button>
             </div>
           ) : (
             <Button
@@ -418,40 +523,19 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect }: S
               <span className="text-white">Connect Repo</span>
             </Button>
           )}
+          
+          {/* Recent Sessions - directly under Connect Repo */}
+          <div className="mt-4 pt-4 border-t border-[#404050]">
+            <h3 className="text-xs font-semibold text-[#9ca3af] mb-2">Sessions</h3>
+            <div className="space-y-1 text-xs text-[#9ca3af]">
+              {/* TODO: Load sessions from localStorage or API */}
+              <div className="p-2 hover:bg-[#2a2a3e] rounded cursor-pointer">
+                <p className="text-white truncate">No sessions yet</p>
+                <p className="text-[10px] text-[#9ca3af]">Start a session to see history</p>
+              </div>
+            </div>
+          </div>
         </div>
-
-      <div 
-        id="file-tree"
-        className="flex-1 overflow-y-auto p-2"
-        role="tree"
-        aria-labelledby="sidebar-title"
-      >
-        {error && (
-          <div className="flex items-center gap-2 p-2 mb-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-        
-        {loading ? (
-          <div className="flex items-center justify-center py-8" role="status" aria-label="Loading files">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            <span className="sr-only">Loading files...</span>
-          </div>
-        ) : files.length === 0 ? (
-          <div className="text-center py-8 text-[#9ca3af] text-sm">
-            <FileText className="h-8 w-8 mx-auto mb-2 opacity-50 text-[#9ca3af]" aria-hidden="true" />
-            <p className="text-[#9ca3af]">No files loaded</p>
-            <p className="text-xs mt-1 text-[#9ca3af]">Connect a GitHub repo to get started</p>
-          </div>
-        ) : (
-          <FileTree 
-            files={files} 
-            onFileSelect={onFileSelect}
-            selectedPath={selectedPath}
-          />
-        )}
-      </div>
       </motion.aside>
     </>
   )
