@@ -70,7 +70,7 @@ export const InputBar = forwardRef<HTMLTextAreaElement, InputBarProps>(
     onSend, 
     isLoading = false, 
     disabled = false,
-    placeholder = "Ask Grok to write or edit code...",
+    placeholder = "Ask Eleven to write or edit code...",
     maxLength = MAX_MESSAGE_LENGTH,
   }, ref) => {
   const [input, setInput] = useState('')

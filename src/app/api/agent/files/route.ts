@@ -5,7 +5,7 @@ import { Octokit } from '@octokit/rest'
 
 /**
  * File System API for Agentic Operations
- * Allows Grok to read, write, and manage files in connected GitHub repositories
+ * Allows Eleven to read, write, and manage files in connected GitHub repositories
  */
 
 // ============================================================================

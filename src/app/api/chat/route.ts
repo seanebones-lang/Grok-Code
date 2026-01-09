@@ -17,7 +17,7 @@ const chatSchema = z.object({
   mode: z.enum(['default', 'refactor', 'orchestrate', 'debug', 'review', 'agent']).optional(),
 })
 
-// Grok API response schema for type-safe parsing
+// API response schema for type-safe parsing
 const grokDeltaSchema = z.object({
   choices: z.array(
     z.object({
@@ -35,7 +35,7 @@ const grokDeltaSchema = z.object({
 })
 
 // Enhanced system prompt with Claude-like agentic capabilities
-const SYSTEM_PROMPT = `You are GrokCode, an advanced AI coding assistant powered by Grok 4.1, with Claude-like agentic capabilities. You excel at planning, orchestrating complex tasks, and iterative development.
+const SYSTEM_PROMPT = `You are Eleven, an advanced AI coding assistant powered by NextEleven, with Claude-like agentic capabilities. You excel at planning, orchestrating complex tasks, and iterative development.
 
 ## Core Capabilities
 
@@ -234,7 +234,7 @@ Example:
 - Always call 'complete' when finished`,
 }
 
-// Available Grok models in priority order (January 2026)
+// Available models in priority order (January 2026)
 const GROK_MODELS = ['grok-4.1-fast', 'grok-4-1-fast', 'grok-4', 'grok-3'] as const
 
 // Request timeout (30 seconds)
@@ -525,7 +525,7 @@ export async function POST(request: NextRequest) {
 
               if (response.ok) {
                 workingModel = model
-                console.log(`[${requestId}] Using Grok model: ${model}`)
+                console.log(`[${requestId}] Using model: ${model}`)
                 break
               } else {
                 const errorText = await response.text().catch(() => 'Unknown error')

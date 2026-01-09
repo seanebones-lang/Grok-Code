@@ -11,7 +11,7 @@ import { Redis } from '@upstash/redis'
 const RATE_LIMIT_CONFIG = {
   requests: 100,      // Maximum requests
   window: '1 h',      // Time window
-  prefix: 'grokcode', // Redis key prefix
+  prefix: 'nexteleven', // Redis key prefix
 } as const
 
 // In-memory fallback store

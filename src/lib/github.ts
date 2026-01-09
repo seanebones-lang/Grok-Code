@@ -83,7 +83,7 @@ export class GitHubAPIError extends Error {
 function createOctokit(token: string): Octokit {
   return new Octokit({
     auth: token,
-    userAgent: 'GrokCode/1.0',
+    userAgent: 'NextEleven-Code/1.0',
     timeoutMs: 30000,
   })
 }
@@ -305,7 +305,7 @@ export async function pushToGitHub(
     repo, 
     branch = 'main', 
     files, 
-    message = 'Update files via GrokCode' 
+    message = 'Update files via NextEleven Code' 
   } = options
 
   try {

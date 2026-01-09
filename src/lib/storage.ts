@@ -3,7 +3,7 @@
  * Handles SSR, quota exceeded, and JSON parsing errors
  */
 
-const STORAGE_PREFIX = 'grokcode_'
+const STORAGE_PREFIX = 'nexteleven_'
 
 /**
  * Check if localStorage is available
@@ -88,7 +88,7 @@ export function removeStorageItem(key: string): boolean {
 }
 
 /**
- * Clear all GrokCode items from localStorage
+ * Clear all NextEleven Code items from localStorage
  */
 export function clearStorage(): boolean {
   if (!isLocalStorageAvailable()) return false

@@ -305,8 +305,8 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
       ? lastRequestRef.current.content 
       : undefined
 
-    return (
-      <div className="flex flex-col h-full bg-[#1a1a2e] text-white">
+  return (
+    <div className="flex flex-col h-full bg-[#0a0a0a] text-white">
         {/* Back button */}
         <div className="flex items-center gap-2 p-2 border-b border-[#404050]">
           <Button
@@ -346,7 +346,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
 
   return (
     <div 
-      className="flex flex-col h-full bg-[#1a1a2e] text-white"
+      className="flex flex-col h-full bg-[#0a0a0a] text-white"
       role="main"
       aria-label="Chat interface"
     >
@@ -382,7 +382,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
 
       {/* Messages area */}
       <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto py-6 space-y-6"
         role="log"
         aria-live="polite"
         aria-label="Chat messages"
@@ -396,7 +396,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
               className="flex flex-col items-center justify-center h-full text-center text-[#9ca3af]"
             >
               <h2 className="text-xl font-semibold mb-2 text-white">
-                Welcome to GrokCode
+                Welcome to NextEleven Code
               </h2>
               <p className="text-sm max-w-md text-[#9ca3af]">
                 Ask me to help you write, edit, or understand code. I can work with files in your repository and help you build amazing things.
@@ -406,14 +406,14 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
               <div className="mt-6 w-full max-w-md">
                 <button
                   onClick={() => setShowAgentMode(true)}
-                  className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500/20 to-[#6841e7]/20 rounded-lg border border-emerald-500/30 hover:border-emerald-500/50 transition-all group"
+                  className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500/20 to-primary/20 rounded-lg border border-emerald-500/30 hover:border-emerald-500/50 transition-all group"
                 >
                   <div className="p-3 rounded-full bg-emerald-500/20 group-hover:scale-110 transition-transform">
                     <Bot className="h-6 w-6 text-emerald-400" />
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-white">Agent Mode</h3>
-                    <p className="text-xs text-[#9ca3af]">Autonomous building - Let Grok write, test, and fix code automatically</p>
+                    <p className="text-xs text-[#9ca3af]">Autonomous building - Let Eleven write, test, and fix code automatically</p>
                   </div>
                 </button>
               </div>
@@ -422,7 +422,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <button
                   onClick={() => inputRef.current?.focus()}
-                  className="flex flex-col items-center gap-2 p-3 bg-[#2a2a3e] rounded-lg border border-[#404050] hover:border-purple-500/50 transition-colors group"
+                  className="flex flex-col items-center gap-2 p-3 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a] hover:border-primary/50 transition-colors group"
                 >
                   <Wand2 className="h-5 w-5 text-purple-400 group-hover:scale-110 transition-transform" />
                   <span className="text-xs text-white">Refactor</span>
@@ -456,20 +456,20 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
 
               {/* Keyboard shortcuts */}
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="px-3 py-2 bg-[#2a2a3e] rounded-lg border border-[#404050]">
-                  <kbd className="font-mono text-[#6841e7]">⌘+Enter</kbd>
+                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
+                  <kbd className="font-mono text-primary">⌘+Enter</kbd>
                   <span className="ml-2">Send message</span>
                 </div>
-                <div className="px-3 py-2 bg-[#2a2a3e] rounded-lg border border-[#404050]">
-                  <kbd className="font-mono text-[#6841e7]">⌘+K</kbd>
+                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
+                  <kbd className="font-mono text-primary">⌘+K</kbd>
                   <span className="ml-2">Focus input</span>
                 </div>
-                <div className="px-3 py-2 bg-[#2a2a3e] rounded-lg border border-[#404050]">
-                  <kbd className="font-mono text-[#6841e7]">Esc</kbd>
+                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
+                  <kbd className="font-mono text-primary">Esc</kbd>
                   <span className="ml-2">Cancel request</span>
                 </div>
-                <div className="px-3 py-2 bg-[#2a2a3e] rounded-lg border border-[#404050]">
-                  <kbd className="font-mono text-[#6841e7]">⌘+⇧+L</kbd>
+                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
+                  <kbd className="font-mono text-primary">⌘+⇧+L</kbd>
                   <span className="ml-2">Clear chat</span>
                 </div>
               </div>
@@ -492,9 +492,9 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
             animate={{ opacity: 1 }}
             className="flex items-center gap-2 text-[#9ca3af]"
             role="status"
-            aria-label="Grok is generating a response"
+            aria-label="Eleven is generating a response"
           >
-            <Loader2 className="h-4 w-4 animate-spin text-[#6841e7]" aria-hidden="true" />
+            <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
             <span className="text-sm text-[#9ca3af]">
               {currentMode !== 'default' ? (
                 <>
@@ -505,7 +505,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
                   {currentMode === 'review' && 'Reviewing code...'}
                 </>
               ) : (
-                'Grok is thinking...'
+                'Eleven is thinking...'
               )}
             </span>
             <button

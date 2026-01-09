@@ -56,7 +56,7 @@ const pushSchema = z.object({
     .string()
     .min(1, 'Commit message cannot be empty')
     .max(500, 'Commit message too long')
-    .default('Update files via GrokCode'),
+    .default('Update files via NextEleven Code'),
 })
 
 // GitHub API error types
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
     const octokit = new Octokit({
       auth: githubToken,
-      userAgent: 'GrokCode/1.0',
+      userAgent: 'NextEleven-Code/1.0',
       timeoutMs: 30000,
     })
 

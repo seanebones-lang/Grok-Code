@@ -87,7 +87,7 @@ export function useGit(): UseGitReturn {
             content: file.content,
             mode: file.mode || '100644',
           })),
-          message: options.message || 'Update files via GrokCode',
+          message: options.message || 'Update files via NextEleven Code',
         }),
         signal: abortControllerRef.current.signal,
       })

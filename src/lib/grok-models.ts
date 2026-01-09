@@ -1,5 +1,5 @@
 /**
- * Grok Model Configuration
+ * Model Configuration
  * Defines available models and their capabilities
  */
 
@@ -12,25 +12,25 @@ import type { GrokModelInfo } from '@/types'
 export const GROK_MODELS: Record<string, GrokModelInfo> = {
   'grok-4.1-fast': {
     id: 'grok-4.1-fast',
-    name: 'Grok 4.1 Fast',
+    name: 'Eleven (Fast)',
     maxTokens: 8192,
     contextWindow: 131072,
   },
   'grok-4-1-fast': {
     id: 'grok-4-1-fast',
-    name: 'Grok 4.1 Fast (Alt)',
+    name: 'Eleven (Fast Alt)',
     maxTokens: 8192,
     contextWindow: 131072,
   },
   'grok-4': {
     id: 'grok-4',
-    name: 'Grok 4',
+    name: 'Eleven',
     maxTokens: 8192,
     contextWindow: 131072,
   },
   'grok-3': {
     id: 'grok-3',
-    name: 'Grok 3',
+    name: 'Eleven (Legacy)',
     maxTokens: 4096,
     contextWindow: 65536,
   },
@@ -75,7 +75,7 @@ export function isValidModel(modelId: string): boolean {
 // ============================================================================
 
 export const SYSTEM_PROMPTS = {
-  default: `You are Grok Code, an AI assistant powered by Grok 4.1 Fast. You help developers write, edit, and understand code. You can:
+  default: `You are Eleven, an AI assistant powered by NextEleven. You help developers write, edit, and understand code. You can:
 - Generate code in any programming language
 - Explain code and concepts
 - Debug and fix errors
