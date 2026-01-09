@@ -3,7 +3,6 @@ import { JetBrains_Mono, Space_Grotesk } from 'next/font/google'
 import '@/styles/globals.css'
 import { Providers } from '@/components/Providers'
 import Header from '@/components/Layout/Header'
-import Sidebar from '@/components/Layout/Sidebar'
 
 // Primary font for UI
 const spaceGrotesk = Space_Grotesk({
@@ -21,14 +20,14 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'GrokCode - AI-Powered Development',
-    template: '%s | GrokCode',
+    default: 'NextEleven Code - AI-Powered Development',
+    template: '%s | NextEleven Code',
   },
-  description: 'AI-powered code editor and assistant powered by Grok 4.1. Write, edit, and understand code with intelligent assistance.',
-  keywords: ['AI', 'code editor', 'Grok', 'development', 'programming', 'assistant'],
-  authors: [{ name: 'GrokCode Team' }],
-  creator: 'GrokCode',
-  publisher: 'GrokCode',
+  description: 'AI-powered code editor and assistant powered by NextEleven. Write, edit, and understand code with intelligent assistance.',
+  keywords: ['AI', 'code editor', 'NextEleven', 'development', 'programming', 'assistant'],
+  authors: [{ name: 'NextEleven Team' }],
+  creator: 'NextEleven',
+  publisher: 'NextEleven',
   robots: {
     index: true,
     follow: true,
@@ -36,14 +35,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    siteName: 'GrokCode',
-    title: 'GrokCode - AI-Powered Development',
-    description: 'AI-powered code editor and assistant powered by Grok 4.1',
+    siteName: 'NextEleven Code',
+    title: 'NextEleven Code - AI-Powered Development',
+    description: 'AI-powered code editor and assistant powered by NextEleven',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'GrokCode - AI-Powered Development',
-    description: 'AI-powered code editor and assistant powered by Grok 4.1',
+    title: 'NextEleven Code - AI-Powered Development',
+    description: 'AI-powered code editor and assistant powered by NextEleven',
   },
   manifest: '/manifest.json',
   icons: {
@@ -83,7 +82,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://api.github.com" />
       </head>
       <body 
-        className="font-sans bg-[#0a0a0a] text-white antialiased"
+        className="font-sans bg-[#0a0a0a] text-white antialiased h-screen overflow-hidden"
         suppressHydrationWarning
       >
         <Providers>
@@ -95,21 +94,16 @@ export default function RootLayout({
             Skip to main content
           </a>
           
-          <div className="flex h-screen overflow-hidden bg-[#0a0a0a] text-white">
-            {/* Sidebar */}
-            <Sidebar />
-            
-            {/* Main Content */}
-            <div className="flex flex-col flex-1 min-w-0">
-              <Header />
-              <main 
-                id="main-content"
-                className="flex-1 overflow-hidden bg-[#0a0a0a] text-white"
-                role="main"
-              >
-                {children}
-              </main>
-            </div>
+          {/* Full-screen flex layout matching Claude */}
+          <div className="flex flex-col h-screen w-full bg-[#0a0a0a] text-white">
+            <Header />
+            <main 
+              id="main-content"
+              className="flex-1 overflow-y-auto bg-[#0a0a0a]"
+              role="main"
+            >
+              {children}
+            </main>
           </div>
         </Providers>
         
@@ -119,7 +113,7 @@ export default function RootLayout({
             <div>
               <h1 className="text-2xl font-bold mb-4">JavaScript Required</h1>
               <p className="text-[#9ca3af]">
-                GrokCode requires JavaScript to function. Please enable JavaScript in your browser settings.
+                NextEleven Code requires JavaScript to function. Please enable JavaScript in your browser settings.
               </p>
             </div>
           </div>

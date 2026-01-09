@@ -158,7 +158,7 @@ export const ChatMessage = memo(function ChatMessage({ message, onRetry }: ChatM
             : "bg-[#2a2a3e] border-[#404050]"
         )}
         role="article"
-        aria-label={`Grok's response at ${formatTimestamp(message.timestamp)}${isError ? ' (error)' : ''}`}
+        aria-label={`Eleven's response at ${formatTimestamp(message.timestamp)}${isError ? ' (error)' : ''}`}
       >
         {/* Orchestrated content indicator */}
         {parsedContent?.hasOrchestratedContent && (

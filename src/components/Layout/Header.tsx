@@ -59,7 +59,7 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
   const handleClearHistory = useCallback(() => {
     if (confirm('Are you sure you want to clear all chat history?')) {
       onClearHistory?.()
-      localStorage.removeItem('grokcode_chatHistory')
+      localStorage.removeItem('nexteleven_chatHistory')
       window.location.reload()
     }
   }, [onClearHistory])
@@ -74,22 +74,22 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="h-[60px] border-b border-[#404050] bg-[#1a1a2e] flex items-center justify-between px-4 text-white flex-shrink-0"
+        className="h-14 border-b border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-between px-4 sm:px-6 lg:px-8 text-white flex-shrink-0"
         role="banner"
       >
-        {/* Logo */}
-        <div className="flex items-center gap-4">
+        {/* Logo with purple accent */}
+        <div className="flex items-center gap-3">
           <a 
             href="/" 
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-            aria-label="GrokCode Home"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity group"
+            aria-label="NextEleven Code Home"
           >
-            <Code2 className="h-6 w-6 text-[#6841e7]" aria-hidden="true" />
-            <span className="text-lg font-semibold text-white hidden sm:inline">GrokCode</span>
+            <div className="relative">
+              <Code2 className="h-6 w-6 text-primary group-hover:text-primary/80 transition-colors" aria-hidden="true" />
+              <div className="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <span className="text-base font-semibold text-white hidden sm:inline">NextEleven Code</span>
           </a>
-          <span className="text-xs text-[#9ca3af] hidden md:inline px-2 py-0.5 bg-[#2a2a3e] rounded">
-            Powered by Grok 4.1
-          </span>
         </div>
 
         {/* Actions */}
@@ -99,12 +99,12 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
             <Button
               variant="default"
               size="sm"
-              className="bg-[#6841e7] hover:bg-[#7c5cff] text-white"
+              className="bg-primary hover:bg-primary/90 text-white h-9 px-3 sm:px-4"
               onClick={handleNewChat}
               aria-label="Start new chat"
             >
-              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-              <span className="hidden sm:inline">New Chat</span>
+              <Plus className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline text-sm">New Chat</span>
             </Button>
           </motion.div>
 
@@ -113,10 +113,10 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
             variant="ghost"
             size="icon"
             title="Chat History"
-            className="text-white hover:bg-[#2a2a3e] hover:text-white"
+            className="text-white hover:bg-[#1a1a1a] hover:text-white h-9 w-9"
             aria-label="View chat history"
           >
-            <History className="h-5 w-5" aria-hidden="true" />
+            <History className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           {/* Settings Dropdown */}
@@ -125,22 +125,22 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-white hover:bg-[#2a2a3e] hover:text-white"
+                className="text-white hover:bg-[#1a1a1a] hover:text-white h-9 w-9"
                 aria-label="Settings menu"
               >
-                <Settings className="h-5 w-5" aria-hidden="true" />
+                <Settings className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               align="end" 
-              className="w-56 bg-[#1a1a2e] text-white border-[#404050]"
+              className="w-56 bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-lg"
             >
               <DropdownMenuLabel className="text-[#9ca3af]">Settings</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-[#404050]" />
+              <DropdownMenuSeparator className="bg-[#1a1a1a]" />
               
               <DropdownMenuItem 
                 onClick={() => setShowShortcuts(true)}
-                className="text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer"
+                className="text-white hover:bg-[#1a1a1a] hover:text-white cursor-pointer focus:bg-[#1a1a1a]"
               >
                 <Keyboard className="h-4 w-4 mr-2" aria-hidden="true" />
                 Keyboard Shortcuts
@@ -148,35 +148,35 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
               
               <DropdownMenuItem 
                 onClick={handleExportChat}
-                className="text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer"
+                className="text-white hover:bg-[#1a1a1a] hover:text-white cursor-pointer focus:bg-[#1a1a1a]"
               >
                 <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                 Export Chat
               </DropdownMenuItem>
               
-              <DropdownMenuSeparator className="bg-[#404050]" />
+              <DropdownMenuSeparator className="bg-[#1a1a1a]" />
               
               <DropdownMenuItem 
                 onClick={handleClearHistory}
-                className="text-red-400 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                className="text-red-400 hover:bg-red-500/10 hover:text-red-400 cursor-pointer focus:bg-red-500/10"
               >
                 <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                 Clear All History
               </DropdownMenuItem>
               
-              <DropdownMenuSeparator className="bg-[#404050]" />
+              <DropdownMenuSeparator className="bg-[#1a1a1a]" />
               
               <DropdownMenuItem 
                 onClick={() => setShowAbout(true)}
-                className="text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer"
+                className="text-white hover:bg-[#1a1a1a] hover:text-white cursor-pointer focus:bg-[#1a1a1a]"
               >
                 <Info className="h-4 w-4 mr-2" aria-hidden="true" />
-                About GrokCode
+                About NextEleven Code
               </DropdownMenuItem>
               
               <DropdownMenuItem 
                 asChild
-                className="text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer"
+                className="text-white hover:bg-[#1a1a1a] hover:text-white cursor-pointer focus:bg-[#1a1a1a]"
               >
                 <a 
                   href="https://github.com" 
@@ -196,10 +196,10 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
 
       {/* Keyboard Shortcuts Dialog */}
       <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
-        <DialogContent className="bg-[#1a1a2e] text-white border-[#404050] max-w-md">
+        <DialogContent className="bg-[#1a1a1a] text-white border-[#1a1a1a] max-w-md shadow-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Keyboard className="h-5 w-5 text-[#6841e7]" />
+              <Keyboard className="h-5 w-5 text-primary" />
               Keyboard Shortcuts
             </DialogTitle>
             <DialogDescription className="text-[#9ca3af]">
@@ -210,10 +210,10 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
             {KEYBOARD_SHORTCUTS.map((shortcut, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-between py-2 px-3 rounded bg-[#2a2a3e]"
+                className="flex items-center justify-between py-2 px-3 rounded bg-[#0a0a0a] border border-[#1a1a1a]"
               >
                 <span className="text-sm text-white">{shortcut.description}</span>
-                <kbd className="px-2 py-1 text-xs font-mono bg-[#0f0f23] rounded border border-[#404050] text-[#6841e7]">
+                <kbd className="px-2 py-1 text-xs font-mono bg-[#0a0a0a] rounded border border-[#1a1a1a] text-primary">
                   {formatShortcut(shortcut as any)}
                 </kbd>
               </div>
@@ -224,38 +224,38 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
 
       {/* About Dialog */}
       <Dialog open={showAbout} onOpenChange={setShowAbout}>
-        <DialogContent className="bg-[#1a1a2e] text-white border-[#404050] max-w-md">
+        <DialogContent className="bg-[#1a1a1a] text-white border-[#1a1a1a] max-w-md shadow-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Code2 className="h-5 w-5 text-[#6841e7]" />
-              About GrokCode
+              <Code2 className="h-5 w-5 text-primary" />
+              About NextEleven Code
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <p className="text-sm text-[#9ca3af]">
-              GrokCode is an AI-powered development interface that helps you write, 
+              NextEleven Code is an AI-powered development interface that helps you write, 
               edit, and understand code with intelligent assistance.
             </p>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-[#404050]">
+              <div className="flex justify-between py-2 border-b border-[#1a1a1a]">
                 <span className="text-[#9ca3af]">Version</span>
                 <span className="text-white">1.0.0</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-[#404050]">
+              <div className="flex justify-between py-2 border-b border-[#1a1a1a]">
                 <span className="text-[#9ca3af]">AI Model</span>
-                <span className="text-white">Grok 4.1 Fast</span>
+                <span className="text-white">Eleven (powered by NextEleven)</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-[#404050]">
+              <div className="flex justify-between py-2 border-b border-[#1a1a1a]">
                 <span className="text-[#9ca3af]">Framework</span>
-                <span className="text-white">Next.js 16</span>
+                <span className="text-white">Next.js 15.0.1</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-[#9ca3af]">Built with</span>
                 <span className="text-white">TypeScript, Tailwind CSS</span>
               </div>
             </div>
-            <p className="text-xs text-[#9ca3af] text-center pt-4 border-t border-[#404050]">
-              © 2026 GrokCode. All rights reserved.
+            <p className="text-xs text-[#9ca3af] text-center pt-4 border-t border-[#1a1a1a]">
+              © 2026 NextEleven Code. All rights reserved.
             </p>
           </div>
         </DialogContent>

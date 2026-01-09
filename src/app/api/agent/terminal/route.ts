@@ -5,7 +5,7 @@ import { spawn } from 'child_process'
 
 /**
  * Terminal Execution API for Agentic Operations
- * Allows Grok to execute commands in a sandboxed environment
+ * Allows Eleven to execute commands in a sandboxed environment
  * 
  * SECURITY: This is a powerful API that should be used with caution.
  * Only whitelisted commands are allowed to prevent arbitrary code execution.

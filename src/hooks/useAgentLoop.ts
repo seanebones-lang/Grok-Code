@@ -417,7 +417,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
   }, [])
 
   /**
-   * Call Grok API for next step
+   * Call Eleven API for next step
    */
   const callGrok = useCallback(async (
     messages: Array<{ role: string; content: string }>,
@@ -435,7 +435,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
     })
 
     if (!response.ok) {
-      throw new Error('Failed to get response from Grok')
+      throw new Error('Failed to get response from Eleven')
     }
 
     // Read SSE stream
@@ -500,7 +500,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
       iteration++
 
       try {
-        // Get Grok's response
+        // Get Eleven's response
         const response = await callGrok(messages, abortController.signal)
 
         // Parse thought
@@ -522,7 +522,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
             break
           }
           
-          // Ask Grok to provide a tool call
+          // Ask Eleven to provide a tool call
           messages.push({ role: 'assistant', content: response })
           messages.push({ role: 'user', content: 'Please provide a tool call in JSON format to continue, or call the "complete" tool if the task is finished.' })
           continue

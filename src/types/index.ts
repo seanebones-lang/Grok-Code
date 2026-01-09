@@ -1,5 +1,5 @@
 /**
- * Core type definitions for GrokCode
+ * Core type definitions for NextEleven Code
  * @module types
  */
 
@@ -232,7 +232,7 @@ export interface DiffResult {
 }
 
 // ============================================================================
-// Grok API Types
+// API Types
 // ============================================================================
 
 export interface GrokMessage {

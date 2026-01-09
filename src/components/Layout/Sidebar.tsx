@@ -18,8 +18,8 @@ import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
 import type { FileNode } from '@/types'
 
-const STORAGE_KEY = 'grokcode_fileTree'
-const REPO_KEY = 'grokcode_connectedRepo'
+const STORAGE_KEY = 'nexteleven_fileTree'
+const REPO_KEY = 'nexteleven_connectedRepo'
 
 interface Repository {
   id: number

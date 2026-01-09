@@ -165,7 +165,7 @@ interface PageLoadingProps {
 }
 
 export const PageLoading = memo(function PageLoading({ 
-  message = 'Loading GrokCode...' 
+  message = 'Loading NextEleven Code...' 
 }: PageLoadingProps) {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f0f23]">

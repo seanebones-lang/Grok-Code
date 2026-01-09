@@ -1,6 +1,6 @@
 /**
  * Agent Loop System
- * Enables Grok to autonomously execute multi-step tasks with tool calling
+ * Enables Eleven to autonomously execute multi-step tasks with tool calling
  * 
  * This implements a ReAct-style agent loop:
  * 1. Reason about the current state
@@ -80,7 +80,7 @@ export interface AgentContext {
 }
 
 // ============================================================================
-// Tool Definitions (for Grok's system prompt)
+// Tool Definitions (for Eleven's system prompt)
 // ============================================================================
 
 export const TOOL_DEFINITIONS = `
@@ -217,7 +217,7 @@ Example:
 // ============================================================================
 
 export function buildAgentSystemPrompt(config: AgentConfig): string {
-  return `You are GrokCode Agent, an autonomous AI coding assistant that can read, write, and execute code to complete tasks.
+  return `You are Eleven Agent, an autonomous AI coding assistant powered by NextEleven that can read, write, and execute code to complete tasks.
 
 ## Your Capabilities
 - Read and analyze code files

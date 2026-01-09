@@ -10,7 +10,7 @@ const FEATURES = [
   {
     icon: Zap,
     title: 'AI-Powered Coding',
-    description: 'Get intelligent code suggestions powered by Grok 4.1',
+    description: 'Get intelligent code suggestions powered by NextEleven',
   },
   {
     icon: GitBranch,
@@ -61,7 +61,7 @@ export default function LoginPage() {
               <Code2 className="h-10 w-10 text-[#6841e7]" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">GrokCode</h1>
+              <h1 className="text-3xl font-bold text-white">NextEleven Code</h1>
               <p className="text-[#9ca3af]">AI-Powered Development</p>
             </div>
           </div>
@@ -105,14 +105,14 @@ export default function LoginPage() {
             {/* Mobile logo */}
             <div className="flex items-center justify-center gap-2 mb-8 lg:hidden">
               <Code2 className="h-8 w-8 text-[#6841e7]" />
-              <span className="text-2xl font-bold text-white">GrokCode</span>
+              <span className="text-2xl font-bold text-white">NextEleven Code</span>
             </div>
             
             <h2 className="text-2xl font-bold text-white text-center mb-2">
               Welcome Back
             </h2>
             <p className="text-[#9ca3af] text-center mb-8">
-              Sign in to continue to GrokCode
+              Sign in to continue to NextEleven Code
             </p>
             
             {/* Error message */}

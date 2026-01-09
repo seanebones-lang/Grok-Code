@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 /**
- * Grok API Client
- * Type-safe wrapper for xAI's Grok API
+ * API Client
+ * Type-safe wrapper for NextEleven API
  */
 
 // ============================================================================
@@ -157,7 +157,7 @@ function parseSSELine(line: string): { content?: string; done?: boolean; error?:
 // ============================================================================
 
 /**
- * Stream a response from the Grok API
+ * Stream a response from the API
  * 
  * @param messages - Array of messages in the conversation
  * @param onChunk - Callback for each content chunk
@@ -212,7 +212,7 @@ export async function streamGrokResponse(
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
       throw new GrokAPIError(
-        `Grok API error: ${response.status} - ${errorText}`,
+        `API error: ${response.status} - ${errorText}`,
         response.status,
         'API_ERROR',
         response.status >= 500
@@ -302,7 +302,7 @@ export async function streamGrokResponseWithFallback(
 }
 
 /**
- * Get a non-streaming response from Grok
+ * Get a non-streaming response from the API
  * Useful for simple queries where streaming isn't needed
  */
 export async function getGrokResponse(
@@ -322,7 +322,7 @@ export async function getGrokResponse(
 }
 
 /**
- * Check if the Grok API is available
+ * Check if the API is available
  */
 export async function checkGrokHealth(): Promise<boolean> {
   try {
