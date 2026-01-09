@@ -29,6 +29,15 @@ yarn-error.log*
 .env*.local
 .env
 
+# Credential files (keep locally, don't push)
+RAILWAY_ENV_VARS.txt
+scripts/set-env*.sh
+scripts/set-env*.js
+scripts/*-env*.js
+scripts/*-env*.sh
+set-env*.sh
+QUICK_DEPLOY.sh
+
 # vercel
 .vercel
 
