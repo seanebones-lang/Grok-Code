@@ -101,7 +101,8 @@ const nextConfig: NextConfig = {
   },
   
   // Output configuration for deployment
-  output: 'standalone',
+  // Note: Vercel doesn't need 'standalone' output, it handles Next.js automatically
+  // output: 'standalone', // Commented for Vercel deployment
   
   // Powered by header (disable for security)
   poweredByHeader: false,
