@@ -34,13 +34,15 @@ const ResizableHandle = ({
   return (
     <Separator
       className={cn(
-        "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
+        "relative flex w-1 items-center justify-center bg-[#1a1a1a] hover:bg-primary/50 transition-colors cursor-col-resize group",
+        "after:absolute after:inset-y-0 after:left-1/2 after:w-full after:-translate-x-1/2 after:cursor-col-resize",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
         className
       )}
       {...props}
     >
       {withHandle && (
-        <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
+        <div className="z-10 flex h-8 w-6 items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#1a1a1a] group-hover:bg-primary/20 group-hover:border-primary/50">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -49,7 +51,7 @@ const ResizableHandle = ({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-2.5 w-2.5"
+            className="h-3 w-3 text-[#9ca3af] group-hover:text-primary"
           >
             <path d="M9 5v14M15 5v14" />
           </svg>

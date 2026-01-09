@@ -43,9 +43,11 @@ interface ChatPaneProps {
     repo: string
     branch?: string
   }
+  newSessionMessage?: string | null
+  onNewSessionHandled?: () => void
 }
 
-export function ChatPane({ repository }: ChatPaneProps = {}) {
+export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }: ChatPaneProps = {}) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +55,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
   const [currentMode, setCurrentMode] = useState<ChatMode>('default')
   const [showAgentMode, setShowAgentMode] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const lastRequestRef = useRef<{ content: string; mode: ChatMode } | null>(null)
 
@@ -298,6 +300,18 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
     }
   }, [handleSendMessage])
 
+  // Handle new session message from sidebar (⭐️ = new session)
+  useEffect(() => {
+    if (newSessionMessage) {
+      // Clear existing messages for new session
+      setMessages([])
+      setError(null)
+      // Send the new session message
+      handleSendMessage(newSessionMessage, 'default')
+      onNewSessionHandled?.()
+    }
+  }, [newSessionMessage, handleSendMessage, onNewSessionHandled])
+
   // If in agent mode, show the AgentRunner
   if (showAgentMode) {
     // Get the initial task from the last user message or lastRequestRef
@@ -346,7 +360,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
 
   return (
     <div 
-      className="flex flex-col h-full bg-[#0a0a0a] text-white"
+      className="flex flex-col h-full w-full bg-[#0a0a0a] text-white"
       role="main"
       aria-label="Chat interface"
     >
@@ -388,93 +402,7 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
         aria-label="Chat messages"
       >
         <AnimatePresence mode="popLayout">
-          {messages.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col items-center justify-center h-full text-center text-[#9ca3af]"
-            >
-              <h2 className="text-xl font-semibold mb-2 text-white">
-                Welcome to NextEleven Code
-              </h2>
-              <p className="text-sm max-w-md text-[#9ca3af]">
-                Ask me to help you write, edit, or understand code. I can work with files in your repository and help you build amazing things.
-              </p>
-              
-              {/* Agent Mode - Featured */}
-              <div className="mt-6 w-full max-w-md">
-                <button
-                  onClick={() => setShowAgentMode(true)}
-                  className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500/20 to-primary/20 rounded-lg border border-emerald-500/30 hover:border-emerald-500/50 transition-all group"
-                >
-                  <div className="p-3 rounded-full bg-emerald-500/20 group-hover:scale-110 transition-transform">
-                    <Bot className="h-6 w-6 text-emerald-400" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-white">Agent Mode</h3>
-                    <p className="text-xs text-[#9ca3af]">Autonomous building - Let Eleven write, test, and fix code automatically</p>
-                  </div>
-                </button>
-              </div>
-
-              {/* Mode quick actions */}
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <button
-                  onClick={() => inputRef.current?.focus()}
-                  className="flex flex-col items-center gap-2 p-3 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a] hover:border-primary/50 transition-colors group"
-                >
-                  <Wand2 className="h-5 w-5 text-purple-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs text-white">Refactor</span>
-                  <span className="text-[10px] text-[#9ca3af]">/refactor</span>
-                </button>
-                <button
-                  onClick={() => inputRef.current?.focus()}
-                  className="flex flex-col items-center gap-2 p-3 bg-[#2a2a3e] rounded-lg border border-[#404050] hover:border-blue-500/50 transition-colors group"
-                >
-                  <GitBranch className="h-5 w-5 text-blue-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs text-white">Orchestrate</span>
-                  <span className="text-[10px] text-[#9ca3af]">/orchestrate</span>
-                </button>
-                <button
-                  onClick={() => inputRef.current?.focus()}
-                  className="flex flex-col items-center gap-2 p-3 bg-[#2a2a3e] rounded-lg border border-[#404050] hover:border-red-500/50 transition-colors group"
-                >
-                  <Bug className="h-5 w-5 text-red-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs text-white">Debug</span>
-                  <span className="text-[10px] text-[#9ca3af]">/debug</span>
-                </button>
-                <button
-                  onClick={() => inputRef.current?.focus()}
-                  className="flex flex-col items-center gap-2 p-3 bg-[#2a2a3e] rounded-lg border border-[#404050] hover:border-green-500/50 transition-colors group"
-                >
-                  <FileSearch className="h-5 w-5 text-green-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs text-white">Review</span>
-                  <span className="text-[10px] text-[#9ca3af]">/review</span>
-                </button>
-              </div>
-
-              {/* Keyboard shortcuts */}
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
-                  <kbd className="font-mono text-primary">⌘+Enter</kbd>
-                  <span className="ml-2">Send message</span>
-                </div>
-                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
-                  <kbd className="font-mono text-primary">⌘+K</kbd>
-                  <span className="ml-2">Focus input</span>
-                </div>
-                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
-                  <kbd className="font-mono text-primary">Esc</kbd>
-                  <span className="ml-2">Cancel request</span>
-                </div>
-                <div className="px-3 py-2 bg-[#1a1a1a] rounded-lg border border-[#1a1a1a]">
-                  <kbd className="font-mono text-primary">⌘+⇧+L</kbd>
-                  <span className="ml-2">Clear chat</span>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
+          {messages.length === 0 ? null : (
             messages.map((message) => (
               <ChatMessage 
                 key={message.id} 
@@ -521,12 +449,28 @@ export function ChatPane({ repository }: ChatPaneProps = {}) {
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>
       
-      <InputBar 
-        ref={inputRef} 
-        onSend={handleSendMessage} 
-        isLoading={isLoading}
-        disabled={!isOnline}
-      />
+      {/* Bottom reply input - simple like Claude Code */}
+      <div className="border-t border-[#1a1a1a] bg-[#0a0a0a] px-4 py-3">
+        <div className="relative">
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="text"
+            placeholder="Reply..."
+            className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#1a1a1a] rounded-lg text-white text-sm placeholder:text-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                const value = (e.target as HTMLInputElement).value.trim()
+                if (value && !isLoading) {
+                  handleSendMessage(value, 'default')
+                  ;(e.target as HTMLInputElement).value = ''
+                }
+              }
+            }}
+            disabled={isLoading || !isOnline}
+          />
+        </div>
+      </div>
     </div>
   )
 }
