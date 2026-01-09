@@ -152,6 +152,14 @@ Execute a terminal command.
 \`\`\`
 Allowed commands: npm, npx, yarn, node, git, tsc, eslint, prettier, jest, python, pip, cargo, go
 
+**Python Libraries Available** (import directly in code_execution):
+- Data: pandas, numpy, json, csv, PyMuPDF (fitz), Pillow, PyYAML
+- Web: requests, httpx, aiohttp, BeautifulSoup, playwright, websockets
+- APIs: openai, anthropic, boto3, stripe (requires env vars)
+- Science: sympy, scipy, scikit-learn, torch, networkx
+- Utility: asyncio, concurrent.futures, pathlib, logging, hashlib, secrets
+- See full catalog: src/lib/agent-tools-catalog.ts
+
 ### 6. move_file
 Move or rename a file. **Automatically commits to GitHub** when a repository is connected.
 \`\`\`json
