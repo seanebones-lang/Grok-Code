@@ -1,21 +1,55 @@
-MIT License
-
-Copyright (c) 2026 Sean McDonnell
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+• N o Implied Rights: Nothing in these repositories grants any license, sublicense,
+permission, or right-express, implied, statutory, o r otherwise—to view, access,
+download, copy, modify, distribute, perform, display, transmit, o r otherwise use the
+Works in any manner whatsoever without prior written authorization from an executive
+officer o f NextEleven LLC.
+• Automatic Protection: Protection attaches immediately upon creation, without need
+for registration (though w e reserve the right t o register copyrights formally for
+enhanced enforcement). As o f December 2025, U.S. copyright law provides for
+statutory damages up t o $150,000 per willful infringement, and we will seek the
+maximum in every case.
+• Trade Secrets and Confidential Information: Any non-public elements, including but
+not limited to source code, proprietary algorithms, business logic, or internal
+documentation, are trade secrets under the Defend Trade Secrets Act o f 2016 (18
+U.S.C. § 1839) and Texas Uniform Trade Secrets Act (Texas Civil Practice and
+Remedies Code § 134A). Misappropriation will trigger civil and criminal penalties,
+including treble damages and attorneys' fees.
+2. Prohibited Activities: A Comprehensive Blacklist
+You are expressly forbidden from engaging i n any o f the following, directly o r indirectly,
+anywhere i n the world:
+• Copying o r Reproduction: Duplicating any part o f the Works, i n whole o r in part,
+including but not limited to cloning repositories via Git, forking, mirroring, scraping,
+screenshotting, photographing, or any other form of replication.
+• Stealing or Misappropriation: Accessing, downloading, o r extracting the Works
+without permission, including through automated tools, bots, APls, o r manual means.
+This includes "inspiration" that results in substantially similar creations—we will pursue
+derivative works a s infringements under 17 U.S.C. § 106.
+• Cloning o r Forking: Creating any derivative, modified, o r adapted version o f the
+Works, whether for personal, commercial, educational, o r any other use. Reverse
+engineering, decompiling, disassembling, o r attempting t o derive source code is a
+direct violation under the DMCA's anti-circumvention provisions (17 U.S.C. § 1201),
+punishable b y u p t o $500,000 in fines and 5 years imprisonment for first offenses.
+• Distribution o r Sharing: Uploading, posting, emailing, linking, o r otherwise
+disseminating the Works o r any portion thereof on any platform, including but not
+limited t o other GitHub repos, GitLab, Bitbucket, SourceForge, personal websites,
+social media, forums, cloud storage, or physical media.
+• Public Performance o r Display: Demonstrating, showcasing, or integrating the Works
+into any product, service, presentation, or public medium without explicit license.
+• Commercial Exploitation: Using the Works i n any business, startup, app, software,
+hardware, A l model training, o r revenue-generating activity. This includes indirect uses
+like benchmarking or competitive analysis.
+• Educational or Non-Profit Use: N o exemptions for "fair use" claims—we will contest
+and litigate any asserted fair use under 17 U.S.C. § 107, demanding proof o f
+transformative nature, minimal portion used, and no market harm (which we assert is
+always present).
+• A l and Machine Learning: Feeding any Works into A l systems for training, generation,
+or analysis constitutes theft and will be pursued as copyright infringement, consistent
+with emerging case law as o f December 2025 (e.g., extensions o f Getty Images v.
+Stability Al precedents).
+• International Violations: If you are outside the U.S., we invoke the Universal Copyright
+Convention, TRIPS Agreement (under WTO), and bilateral treaties t o enforce in your
+jurisdiction. We will use long-arm statutes (e.g., Texas Civil Practice and Remedies
+Code § 17.042) t o haul you into Texas courts.
+Any attempt t o circumvent these prohibitions, including through VPNs, proxies,
+anonymous accounts, o r offshore entities, will be treated as willful infringement, escalating
+damages.
