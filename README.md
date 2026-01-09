@@ -1,4 +1,4 @@
-# GrokCode - AI-Powered Development Interface
+#NextEleven Code - AI-Powered Development Interface
 
 <div align="center">
 
