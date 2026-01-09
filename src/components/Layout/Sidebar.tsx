@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils'
 const STORAGE_KEY = 'nexteleven_fileTree'
 const REPO_KEY = 'nexteleven_connectedRepo'
 const MODEL_KEY = 'nexteleven_selectedModel'
+const ENVIRONMENT_KEY = 'nexteleven_environment'
 
 interface Repository {
   id: number
@@ -68,6 +69,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [newSessionInput, setNewSessionInput] = useState('')
   const [selectedModel, setSelectedModel] = useState<string>('grok-4.1-fast')
   const [showModelMenu, setShowModelMenu] = useState(false)
+  const [environment, setEnvironment] = useState<'cloud' | 'other'>('cloud')
 
   // Load saved repo and model from localStorage
   useEffect(() => {
@@ -81,6 +83,10 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       const savedModel = localStorage.getItem(MODEL_KEY)
       if (savedModel && savedModel in GROK_MODELS) {
         setSelectedModel(savedModel)
+      }
+      const savedEnv = localStorage.getItem(ENVIRONMENT_KEY)
+      if (savedEnv === 'other' || savedEnv === 'cloud') {
+        setEnvironment(savedEnv)
       }
     } catch (e) {
       console.error('Failed to load saved data:', e)
@@ -289,11 +295,12 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const handleNewSessionSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
     if (newSessionInput.trim()) {
-      // Dispatch event for page component with model
+      // Dispatch event for page component with model and environment
       const event = new CustomEvent('newSession', { 
         detail: { 
           message: newSessionInput.trim(),
-          model: selectedModel
+          model: selectedModel,
+          environment: environment
         } 
       })
       window.dispatchEvent(event)
@@ -306,6 +313,14 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     setSelectedModel(modelId)
     localStorage.setItem(MODEL_KEY, modelId)
     setShowModelMenu(false)
+  }, [])
+
+  const handleEnvironmentChange = useCallback((env: 'cloud' | 'other') => {
+    setEnvironment(env)
+    localStorage.setItem(ENVIRONMENT_KEY, env)
+    // Dispatch event for other components
+    const event = new CustomEvent('environmentChange', { detail: { environment: env } })
+    window.dispatchEvent(event)
   }, [])
 
   const handleFileSelect = useCallback(() => {
@@ -413,8 +428,28 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
           {/* New Session Input Box - Taller with icons */}
           <form onSubmit={handleNewSessionSubmit} className="mb-4">
             <div className="relative">
-              {/* Left icons: File selector and Model menu */}
-              <div className="absolute left-2 top-2 flex items-center gap-1 z-10">
+              {/* Textarea - double height (2 lines) with proper padding for icons */}
+              <textarea
+                value={newSessionInput}
+                onChange={(e) => setNewSessionInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    if (newSessionInput.trim()) {
+                      const form = e.currentTarget.closest('form')
+                      if (form) {
+                        form.requestSubmit()
+                      }
+                    }
+                  }
+                }}
+                placeholder="Find a small todo in the codebase and do it"
+                className="w-full px-3 py-2 pl-20 pr-32 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white text-sm placeholder-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                rows={2}
+              />
+              
+              {/* Left icons: File selector and Model menu - positioned inside but above text */}
+              <div className="absolute left-2 top-2 flex items-center gap-1 z-10 pointer-events-auto">
                 <button
                   type="button"
                   onClick={handleFileSelect}
@@ -465,25 +500,64 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                 </DropdownMenu>
               </div>
               
-              {/* Textarea - double height (2 lines) */}
-              <textarea
-                value={newSessionInput}
-                onChange={(e) => setNewSessionInput(e.target.value)}
-                placeholder="Find a small todo in the codebase and do it"
-                className="w-full px-3 py-2 pl-20 pr-10 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white text-sm placeholder-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
-                rows={2}
-              />
-              
-              {/* Submit button */}
-              {newSessionInput.trim() && (
+              {/* Right side: Environment selector and Send button */}
+              <div className="absolute right-2 top-2 flex items-center gap-2 z-10">
+                {/* Environment selector - clean like Claude */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs text-[#9ca3af] hover:text-white hover:bg-[#2a2a3e] rounded transition-colors"
+                      aria-label="Select environment"
+                    >
+                      {environment === 'cloud' ? 'Cloud' : 'Other'}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent 
+                    align="end" 
+                    className="w-32 bg-[#1a1a2e] text-white border-[#404050]"
+                  >
+                    <DropdownMenuItem
+                      onClick={() => handleEnvironmentChange('cloud')}
+                      className={cn(
+                        "text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer text-sm",
+                        environment === 'cloud' && "bg-[#2a2a3e]"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>Cloud</span>
+                        {environment === 'cloud' && (
+                          <span className="text-primary text-xs">✓</span>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleEnvironmentChange('other')}
+                      className={cn(
+                        "text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer text-sm",
+                        environment === 'other' && "bg-[#2a2a3e]"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>Other</span>
+                        {environment === 'other' && (
+                          <span className="text-primary text-xs">✓</span>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {/* Send arrow button */}
                 <button
                   type="submit"
-                  className="absolute right-2 bottom-2 p-1.5 text-primary hover:text-primary/80 transition-colors"
+                  disabled={!newSessionInput.trim()}
+                  className="p-1.5 text-[#9ca3af] hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   aria-label="Start new session"
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <Send className="h-4 w-4" />
                 </button>
-              )}
+              </div>
             </div>
           </form>
           

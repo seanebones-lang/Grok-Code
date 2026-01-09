@@ -116,7 +116,7 @@ export default function RootLayout({
             <ResizablePanel defaultSize={50} minSize={10}>
               <main 
                 id="main-content"
-                className="h-full w-full overflow-hidden bg-[#0a0a0a] text-white"
+                className="h-full w-full overflow-hidden bg-[#0f0f23] text-white"
                 role="main"
               >
                 {children}
