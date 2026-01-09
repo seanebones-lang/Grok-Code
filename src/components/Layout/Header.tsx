@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, memo } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { 
   Code2, 
@@ -79,7 +80,7 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
       >
         {/* Logo with purple accent */}
         <div className="flex items-center gap-3">
-          <a 
+          <Link 
             href="/" 
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity group"
             aria-label="NextEleven Code Home"
@@ -89,7 +90,7 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
               <div className="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <span className="text-base font-semibold text-white hidden sm:inline">NextEleven Code</span>
-          </a>
+          </Link>
         </div>
 
         {/* Actions */}
