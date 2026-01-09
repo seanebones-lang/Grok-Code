@@ -1,5 +1,10 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "prisma generate && next build",
   "outputDirectory": ".next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "regions": ["iad1"],
+  "env": {
+    "PRISMA_GENERATE_DATAPROXY": "true"
+  }
 }
