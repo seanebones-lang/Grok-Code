@@ -245,12 +245,38 @@ async function executeListFiles(
   }
 }
 
-async function executeRunCommand(args: Record<string, unknown>): Promise<ToolResult> {
+async function executeRunCommand(
+  args: Record<string, unknown>,
+  environment: 'cloud' | 'other' = 'cloud'
+): Promise<ToolResult> {
   const command = args.command as string
   const cwd = args.cwd as string | undefined
   const startTime = Date.now()
 
+  // Get environment from localStorage if not provided
+  let env: 'cloud' | 'other' = environment
+  if (typeof window !== 'undefined') {
+    const savedEnv = localStorage.getItem('nexteleven_environment')
+    if (savedEnv === 'other' || savedEnv === 'cloud') {
+      env = savedEnv
+    }
+  }
+
   try {
+    if (env === 'other') {
+      // Other execution using WebContainers (to be implemented)
+      // For now, fall back to cloud
+      return {
+        id: crypto.randomUUID(),
+        name: 'run_command',
+        success: false,
+        output: '',
+        error: 'Other execution (WebContainers) is not yet implemented. Please use Cloud environment.',
+        duration: Date.now() - startTime,
+      }
+    }
+
+    // Cloud execution - use server-side API
     const response = await fetch('/api/agent/terminal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -358,7 +384,8 @@ function executeComplete(args: Record<string, unknown>): ToolResult {
 
 async function executeTool(
   toolCall: ToolCall,
-  repository?: { owner: string; repo: string; branch?: string }
+  repository?: { owner: string; repo: string; branch?: string },
+  environment: 'cloud' | 'other' = 'cloud'
 ): Promise<ToolResult> {
   switch (toolCall.name) {
     case 'read_file':
@@ -377,7 +404,7 @@ async function executeTool(
         error: 'Delete file not yet implemented',
       }
     case 'run_command':
-      return executeRunCommand(toolCall.arguments)
+      return executeRunCommand(toolCall.arguments, environment)
     case 'search_code':
       return executeSearchCode(toolCall.arguments, repository)
     case 'think':
@@ -534,8 +561,17 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
         setCurrentStep(actionStep)
         onStepComplete?.(actionStep)
 
+        // Get environment setting
+        let environment: 'cloud' | 'other' = 'cloud'
+        if (typeof window !== 'undefined') {
+          const savedEnv = localStorage.getItem('nexteleven_environment')
+          if (savedEnv === 'other' || savedEnv === 'cloud') {
+            environment = savedEnv
+          }
+        }
+
         // Execute tool
-        const result = await executeTool(toolCall, config.repository)
+        const result = await executeTool(toolCall, config.repository, environment)
 
         // Create observation step
         const observationStep = createStep(

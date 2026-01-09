@@ -320,7 +320,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       : undefined
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] text-white">
+      <div className="flex flex-col h-full bg-[#0f0f23] text-white">
         {/* Back button */}
         <div className="flex items-center gap-2 p-2 border-b border-[#404050]">
           <Button
@@ -360,7 +360,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
 
   return (
     <div 
-      className="flex flex-col h-full w-full bg-[#0a0a0a] text-white"
+      className="flex flex-col h-full w-full bg-[#0f0f23] text-white"
       role="main"
       aria-label="Chat interface"
     >
@@ -450,7 +450,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       </div>
       
       {/* Bottom reply input - simple like Claude Code */}
-      <div className="border-t border-[#1a1a1a] bg-[#0a0a0a] px-4 py-3">
+      <div className="border-t border-[#1a1a1a] bg-[#0f0f23] px-4 py-3">
         <div className="relative">
           <input
             ref={inputRef as React.RefObject<HTMLInputElement>}
