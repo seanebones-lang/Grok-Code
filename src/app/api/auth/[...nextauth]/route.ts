@@ -90,6 +90,20 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
         }
         return true
       },
+      async redirect({ url, baseUrl }) {
+        // Ensure redirects always use the correct base URL
+        const base = process.env.NEXTAUTH_URL || baseUrl
+        // If url is relative, make it absolute
+        if (url.startsWith('/')) {
+          return `${base}${url}`
+        }
+        // If url is on the same origin, allow it
+        if (new URL(url).origin === new URL(base).origin) {
+          return url
+        }
+        // Default to home page
+        return base
+      },
     },
     pages: {
       signIn: '/login',
