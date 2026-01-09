@@ -1,8 +1,8 @@
 {
-  "buildCommand": "prisma generate && next build",
+  "buildCommand": "rm -f ~/.npmrc && npm install --legacy-peer-deps --ignore-scripts && prisma generate && next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "installCommand": "npm config delete //registry.npmjs.org/:_authToken && npm install --legacy-peer-deps",
+  "installCommand": "rm -f ~/.npmrc .npmrc && npm install --legacy-peer-deps --ignore-scripts",
   "regions": ["iad1"],
   "env": {
     "PRISMA_GENERATE_DATAPROXY": "true"
