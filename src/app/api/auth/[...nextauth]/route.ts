@@ -82,14 +82,13 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
           accessToken: token?.accessToken as string,
         }
       },
-      async signIn({ user, account }) {
-        // Additional security: validate GitHub account
-        if (account?.provider === 'github' && !user.email) {
-          console.warn('[Auth] GitHub sign-in attempted without email')
-          return false
-        }
-        return true
-      },
+    async signIn({ user, account }) {
+      // Log GitHub sign-ins (email may be private, which is OK)
+      if (account?.provider === 'github') {
+        console.log('[Auth] GitHub sign-in:', user.name || user.id || 'unknown user')
+      }
+      return true
+    },
       async redirect({ url, baseUrl }) {
         // Ensure redirects always use the correct base URL
         const base = process.env.NEXTAUTH_URL || baseUrl || 'https://code.mothership-ai.com'
