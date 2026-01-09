@@ -129,11 +129,33 @@ async function getHandler() {
 }
 
 export async function GET(req: NextRequest) {
-  const handler = await getHandler()
-  return handler.handlers.GET(req)
+  try {
+    const handler = await getHandler()
+    return handler.handlers.GET(req)
+  } catch (error) {
+    console.error('[Auth] GET handler error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Authentication error', message: error instanceof Error ? error.message : 'Unknown error' }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const handler = await getHandler()
-  return handler.handlers.POST(req)
+  try {
+    const handler = await getHandler()
+    return handler.handlers.POST(req)
+  } catch (error) {
+    console.error('[Auth] POST handler error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Authentication error', message: error instanceof Error ? error.message : 'Unknown error' }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
+  }
 }
