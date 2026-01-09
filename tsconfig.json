@@ -8,6 +8,7 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
+    "exclude": ["src/__tests__/**/*"],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
