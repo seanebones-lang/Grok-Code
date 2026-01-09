@@ -1157,6 +1157,615 @@ with zipfile.ZipFile('archive.zip', 'w') as zf:
     preInstalled: true,
     riskLevel: 'safe',
   },
+
+  // ============================================================================
+  // ROUND 3 ADDITIONS: LLM APIs, Database, Embeddings, Stdlib, Web Frameworks
+  // ============================================================================
+
+  // Additional LLM APIs
+  {
+    name: 'google-generativeai',
+    version: '0.8.x',
+    category: 'cloud_apis',
+    description: 'Google Gemini AI API client',
+    integration: 'import google.generativeai as genai',
+    requirements: ['google-generativeai >= 0.7'],
+    envVars: ['GOOGLE_API_KEY'],
+    example: `import google.generativeai as genai
+import os
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+model = genai.GenerativeModel('gemini-pro')
+response = model.generate_content("Hello!")`,
+    preInstalled: false,
+    stars: 5000,
+    riskLevel: 'low',
+  },
+  {
+    name: 'groq',
+    version: '0.11.x',
+    category: 'cloud_apis',
+    description: 'Groq API client - ultra-fast LLM inference',
+    integration: 'from groq import Groq',
+    requirements: ['groq >= 0.9'],
+    envVars: ['GROQ_API_KEY'],
+    example: `from groq import Groq
+import os
+client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+response = client.chat.completions.create(
+    model="llama-3.1-70b-versatile",
+    messages=[{"role": "user", "content": "Hello!"}]
+)`,
+    preInstalled: false,
+    stars: 3000,
+    riskLevel: 'low',
+  },
+  {
+    name: 'mistralai',
+    version: '1.2.x',
+    category: 'cloud_apis',
+    description: 'Mistral AI API client',
+    integration: 'from mistralai import Mistral',
+    requirements: ['mistralai >= 1.0'],
+    envVars: ['MISTRAL_API_KEY'],
+    example: `from mistralai import Mistral
+import os
+client = Mistral(api_key=os.getenv('MISTRAL_API_KEY'))
+response = client.chat.complete(
+    model="mistral-large-latest",
+    messages=[{"role": "user", "content": "Hello!"}]
+)`,
+    preInstalled: false,
+    stars: 1000,
+    riskLevel: 'low',
+  },
+  {
+    name: 'cohere',
+    version: '5.11.x',
+    category: 'cloud_apis',
+    description: 'Cohere API client for embeddings and generation',
+    integration: 'import cohere',
+    requirements: ['cohere >= 5.0'],
+    envVars: ['COHERE_API_KEY'],
+    example: `import cohere
+import os
+co = cohere.ClientV2(api_key=os.getenv('COHERE_API_KEY'))
+response = co.chat(model="command-r-plus", messages=[{"role": "user", "content": "Hello!"}])`,
+    preInstalled: false,
+    stars: 1000,
+    riskLevel: 'low',
+  },
+
+  // Embeddings & Transformers
+  {
+    name: 'sentence-transformers',
+    version: '3.3.x',
+    category: 'specialized',
+    description: 'State-of-the-art text embeddings for semantic search',
+    integration: 'from sentence_transformers import SentenceTransformer',
+    requirements: ['sentence-transformers >= 2.5', 'torch'],
+    example: `from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('all-MiniLM-L6-v2')
+embeddings = model.encode(['Hello world', 'How are you'])
+print(embeddings.shape)`,
+    preInstalled: false,
+    stars: 15000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'tiktoken',
+    version: '0.8.x',
+    category: 'specialized',
+    description: 'OpenAI tokenizer for counting tokens',
+    integration: 'import tiktoken',
+    requirements: ['tiktoken >= 0.7'],
+    example: `import tiktoken
+enc = tiktoken.encoding_for_model("gpt-4")
+tokens = enc.encode("Hello, world!")
+print(f"Token count: {len(tokens)}")`,
+    preInstalled: false,
+    stars: 12000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'transformers',
+    version: '4.46.x',
+    category: 'specialized',
+    description: 'HuggingFace transformers for NLP models',
+    integration: 'from transformers import pipeline',
+    requirements: ['transformers >= 4.40', 'torch'],
+    example: `from transformers import pipeline
+classifier = pipeline("sentiment-analysis")
+result = classifier("I love this product!")
+print(result)`,
+    preInstalled: false,
+    stars: 135000,
+    riskLevel: 'safe',
+  },
+
+  // Database
+  {
+    name: 'sqlite3',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'SQLite database interface',
+    integration: 'import sqlite3',
+    requirements: ['Python >= 3.10'],
+    example: `import sqlite3
+conn = sqlite3.connect(':memory:')
+cursor = conn.cursor()
+cursor.execute('CREATE TABLE test (id INTEGER, name TEXT)')
+cursor.execute('INSERT INTO test VALUES (1, "Alice")')
+print(cursor.execute('SELECT * FROM test').fetchall())`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'sqlalchemy',
+    version: '2.0.x',
+    category: 'data_manipulation',
+    description: 'Python SQL toolkit and ORM',
+    integration: 'from sqlalchemy import create_engine',
+    requirements: ['sqlalchemy >= 2.0'],
+    example: `from sqlalchemy import create_engine, text
+engine = create_engine('sqlite:///:memory:')
+with engine.connect() as conn:
+    result = conn.execute(text("SELECT 1"))
+    print(result.fetchone())`,
+    preInstalled: false,
+    stars: 10000,
+    riskLevel: 'safe',
+  },
+
+  // Web Frameworks
+  {
+    name: 'fastapi',
+    version: '0.115.x',
+    category: 'web_network',
+    description: 'Modern, fast web framework for building APIs',
+    integration: 'from fastapi import FastAPI',
+    requirements: ['fastapi >= 0.110', 'uvicorn'],
+    example: `from fastapi import FastAPI
+app = FastAPI()
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+# Run with: uvicorn main:app --reload`,
+    preInstalled: false,
+    stars: 78000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'flask',
+    version: '3.1.x',
+    category: 'web_network',
+    description: 'Lightweight WSGI web application framework',
+    integration: 'from flask import Flask',
+    requirements: ['flask >= 3.0'],
+    example: `from flask import Flask
+app = Flask(__name__)
+@app.route("/")
+def hello():
+    return "Hello, World!"`,
+    preInstalled: false,
+    stars: 68000,
+    riskLevel: 'safe',
+  },
+
+  // Templating
+  {
+    name: 'jinja2',
+    version: '3.1.x',
+    category: 'utility',
+    description: 'Template engine for Python',
+    integration: 'from jinja2 import Template',
+    requirements: ['jinja2 >= 3.1'],
+    example: `from jinja2 import Template
+template = Template("Hello {{ name }}!")
+result = template.render(name="World")
+print(result)`,
+    preInstalled: false,
+    stars: 10000,
+    riskLevel: 'safe',
+  },
+
+  // Retry/Resilience
+  {
+    name: 'tenacity',
+    version: '9.0.x',
+    category: 'utility',
+    description: 'Retry library with exponential backoff',
+    integration: 'from tenacity import retry',
+    requirements: ['tenacity >= 8.2'],
+    example: `from tenacity import retry, stop_after_attempt, wait_exponential
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
+def fetch_data():
+    # Will retry 3 times with exponential backoff
+    pass`,
+    preInstalled: false,
+    stars: 6500,
+    riskLevel: 'safe',
+  },
+
+  // Fast JSON
+  {
+    name: 'orjson',
+    version: '3.10.x',
+    category: 'data_manipulation',
+    description: 'Fast JSON library (10x faster than stdlib)',
+    integration: 'import orjson',
+    requirements: ['orjson >= 3.9'],
+    example: `import orjson
+data = {"key": "value", "numbers": [1, 2, 3]}
+json_bytes = orjson.dumps(data)
+parsed = orjson.loads(json_bytes)
+print(parsed)`,
+    preInstalled: false,
+    stars: 6000,
+    riskLevel: 'safe',
+  },
+
+  // Better Logging
+  {
+    name: 'loguru',
+    version: '0.7.x',
+    category: 'utility',
+    description: 'Better logging with colors and rotation',
+    integration: 'from loguru import logger',
+    requirements: ['loguru >= 0.7'],
+    example: `from loguru import logger
+logger.info("This is an info message")
+logger.error("This is an error")
+logger.debug("Debug with {}", "formatting")`,
+    preInstalled: false,
+    stars: 20000,
+    riskLevel: 'safe',
+  },
+
+  // Scheduling
+  {
+    name: 'schedule',
+    version: '1.2.x',
+    category: 'utility',
+    description: 'Job scheduling for humans',
+    integration: 'import schedule',
+    requirements: ['schedule >= 1.2'],
+    example: `import schedule
+import time
+def job():
+    print("Running task...")
+schedule.every(10).seconds.do(job)
+# while True: schedule.run_pending(); time.sleep(1)`,
+    preInstalled: false,
+    stars: 12000,
+    riskLevel: 'safe',
+  },
+
+  // Essential stdlib additions
+  {
+    name: 'math',
+    version: 'stdlib',
+    category: 'specialized',
+    description: 'Mathematical functions (sin, cos, sqrt, etc.)',
+    integration: 'import math',
+    requirements: ['Python >= 3.10'],
+    example: `import math
+print(f"Pi: {math.pi}")
+print(f"sqrt(16): {math.sqrt(16)}")
+print(f"sin(0): {math.sin(0)}")`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'random',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Random number generation',
+    integration: 'import random',
+    requirements: ['Python >= 3.10'],
+    example: `import random
+print(random.randint(1, 100))
+print(random.choice(['a', 'b', 'c']))
+print(random.random())`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'collections',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'Specialized container datatypes (Counter, deque, defaultdict)',
+    integration: 'from collections import Counter, deque, defaultdict',
+    requirements: ['Python >= 3.10'],
+    example: `from collections import Counter, defaultdict
+words = ['a', 'b', 'a', 'c', 'a']
+print(Counter(words))  # Counter({'a': 3, 'b': 1, 'c': 1})
+d = defaultdict(list)
+d['key'].append(1)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'itertools',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Iterator building blocks (chain, cycle, combinations)',
+    integration: 'import itertools',
+    requirements: ['Python >= 3.10'],
+    example: `import itertools
+# Combinations
+print(list(itertools.combinations([1,2,3], 2)))
+# Chain iterables
+print(list(itertools.chain([1,2], [3,4])))`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'functools',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Higher-order functions (lru_cache, partial, reduce)',
+    integration: 'from functools import lru_cache, partial',
+    requirements: ['Python >= 3.10'],
+    example: `from functools import lru_cache
+@lru_cache(maxsize=128)
+def expensive_func(n):
+    return sum(range(n))
+print(expensive_func(1000))`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'copy',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Shallow and deep copy operations',
+    integration: 'import copy',
+    requirements: ['Python >= 3.10'],
+    example: `import copy
+original = {'a': [1, 2, 3]}
+shallow = copy.copy(original)
+deep = copy.deepcopy(original)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'pickle',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'Python object serialization',
+    integration: 'import pickle',
+    requirements: ['Python >= 3.10'],
+    example: `import pickle
+data = {'key': 'value', 'list': [1, 2, 3]}
+serialized = pickle.dumps(data)
+restored = pickle.loads(serialized)`,
+    preInstalled: true,
+    riskLevel: 'medium',
+    dualUseWarning: 'Never unpickle untrusted data - security risk',
+  },
+  {
+    name: 'urllib.parse',
+    version: 'stdlib',
+    category: 'web_network',
+    description: 'URL parsing and manipulation',
+    integration: 'from urllib.parse import urlparse, urlencode',
+    requirements: ['Python >= 3.10'],
+    example: `from urllib.parse import urlparse, urlencode, quote
+url = urlparse('https://example.com/path?q=test')
+print(url.netloc, url.path)
+print(urlencode({'key': 'value with spaces'}))`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'xml.etree.ElementTree',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'XML parsing and generation',
+    integration: 'import xml.etree.ElementTree as ET',
+    requirements: ['Python >= 3.10'],
+    example: `import xml.etree.ElementTree as ET
+root = ET.Element("root")
+child = ET.SubElement(root, "child")
+child.text = "Hello"
+print(ET.tostring(root, encoding='unicode'))`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'difflib',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Text comparison and diff generation',
+    integration: 'import difflib',
+    requirements: ['Python >= 3.10'],
+    example: `import difflib
+text1 = "Hello World"
+text2 = "Hello Python"
+diff = difflib.unified_diff(text1.split(), text2.split())
+print('\\n'.join(diff))`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'threading',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Thread-based parallelism',
+    integration: 'import threading',
+    requirements: ['Python >= 3.10'],
+    example: `import threading
+def worker():
+    print(f"Thread {threading.current_thread().name}")
+thread = threading.Thread(target=worker)
+thread.start()
+thread.join()`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'queue',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Thread-safe queue implementations',
+    integration: 'from queue import Queue, PriorityQueue',
+    requirements: ['Python >= 3.10'],
+    example: `from queue import Queue
+q = Queue()
+q.put("item1")
+q.put("item2")
+print(q.get())  # item1`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'glob',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Unix-style pathname pattern expansion',
+    integration: 'import glob',
+    requirements: ['Python >= 3.10'],
+    example: `import glob
+# Find all Python files
+py_files = glob.glob('**/*.py', recursive=True)
+print(py_files[:5])`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'shutil',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'High-level file operations (copy, move, archive)',
+    integration: 'import shutil',
+    requirements: ['Python >= 3.10'],
+    example: `import shutil
+shutil.copy('source.txt', 'dest.txt')
+shutil.rmtree('dir_to_remove')
+shutil.make_archive('backup', 'zip', 'folder')`,
+    preInstalled: true,
+    riskLevel: 'medium',
+  },
+  {
+    name: 'tempfile',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Generate temporary files and directories',
+    integration: 'import tempfile',
+    requirements: ['Python >= 3.10'],
+    example: `import tempfile
+with tempfile.NamedTemporaryFile(delete=False) as f:
+    f.write(b"temp data")
+    print(f.name)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'io',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Core I/O functionality (StringIO, BytesIO)',
+    integration: 'from io import StringIO, BytesIO',
+    requirements: ['Python >= 3.10'],
+    example: `from io import StringIO, BytesIO
+buffer = StringIO()
+buffer.write("Hello")
+buffer.seek(0)
+print(buffer.read())`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'contextlib',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Context manager utilities',
+    integration: 'from contextlib import contextmanager',
+    requirements: ['Python >= 3.10'],
+    example: `from contextlib import contextmanager
+@contextmanager
+def timer():
+    import time
+    start = time.time()
+    yield
+    print(f"Elapsed: {time.time() - start:.2f}s")`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'typing',
+    version: 'stdlib',
+    category: 'core_execution',
+    description: 'Type hints support',
+    integration: 'from typing import List, Dict, Optional, Union',
+    requirements: ['Python >= 3.10'],
+    example: `from typing import List, Dict, Optional
+def process(items: List[str]) -> Dict[str, int]:
+    return {item: len(item) for item in items}`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'dataclasses',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'Data class decorator for automatic __init__, __repr__, etc.',
+    integration: 'from dataclasses import dataclass',
+    requirements: ['Python >= 3.10'],
+    example: `from dataclasses import dataclass
+@dataclass
+class Point:
+    x: float
+    y: float
+p = Point(1.0, 2.0)
+print(p)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'enum',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'Support for enumerations',
+    integration: 'from enum import Enum, auto',
+    requirements: ['Python >= 3.10'],
+    example: `from enum import Enum, auto
+class Status(Enum):
+    PENDING = auto()
+    RUNNING = auto()
+    DONE = auto()
+print(Status.PENDING)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'struct',
+    version: 'stdlib',
+    category: 'data_manipulation',
+    description: 'Pack/unpack binary data',
+    integration: 'import struct',
+    requirements: ['Python >= 3.10'],
+    example: `import struct
+packed = struct.pack('ihb', 1, 2, 3)
+unpacked = struct.unpack('ihb', packed)
+print(unpacked)  # (1, 2, 3)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'time',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Time access and conversions',
+    integration: 'import time',
+    requirements: ['Python >= 3.10'],
+    example: `import time
+start = time.time()
+time.sleep(0.1)
+print(f"Elapsed: {time.time() - start:.3f}s")`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
 ]
 
 // ============================================================================
@@ -1284,5 +1893,5 @@ export const CATALOG_STATS = {
   requiresApiKey: TOOLS_CATALOG.filter(t => t.envVars && t.envVars.length > 0).length,
   categories: 10,
   lastUpdated: '2026-01-09',
-  version: '2.0', // Round 2 additions
+  version: '3.0', // Round 3 - comprehensive coverage
 }
