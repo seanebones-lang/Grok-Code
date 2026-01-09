@@ -1,0 +1,8 @@
+# Railway Environment Variables Template
+# Replace these placeholder values with your actual credentials
+
+GROK_API_KEY=your_grok_api_key
+GITHUB_ID=your_github_oauth_client_id
+GITHUB_SECRET=your_github_oauth_client_secret
+NEXTAUTH_SECRET=your_nextauth_secret
+DATABASE_URL=your_database_url
