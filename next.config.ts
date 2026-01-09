@@ -100,11 +100,6 @@ const nextConfig: NextConfig = {
     ],
   },
   
-  // Turbopack configuration (Next.js 16+)
-  turbopack: {
-    // Empty config to acknowledge Turbopack usage
-  },
-  
   // Output configuration for deployment
   output: 'standalone',
   
