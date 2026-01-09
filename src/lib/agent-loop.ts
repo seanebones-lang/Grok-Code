@@ -19,8 +19,13 @@ export type ToolName =
   | 'write_file'
   | 'list_files'
   | 'delete_file'
+  | 'move_file'
   | 'run_command'
   | 'search_code'
+  | 'create_branch'
+  | 'create_pull_request'
+  | 'get_diff'
+  | 'get_commit_history'
   | 'think'
   | 'complete'
 
@@ -100,7 +105,7 @@ Read the contents of a file.
 \`\`\`
 
 ### 2. write_file
-Create or update a file with new content.
+Create or update a file with new content. **Automatically commits to GitHub** when a repository is connected.
 \`\`\`json
 {
   "name": "write_file",
@@ -110,6 +115,7 @@ Create or update a file with new content.
   }
 }
 \`\`\`
+**Note**: Each write_file call creates a commit. To make multiple changes in one commit, write all files first, then the changes will be batched.
 
 ### 3. list_files
 List files in a directory.
@@ -123,12 +129,12 @@ List files in a directory.
 \`\`\`
 
 ### 4. delete_file
-Delete a file.
+Delete a file from the repository. **Automatically commits to GitHub** when a repository is connected.
 \`\`\`json
 {
   "name": "delete_file",
   "arguments": {
-    "path": "string (required) - Path to the file"
+    "path": "string (required) - Path to the file to delete"
   }
 }
 \`\`\`
@@ -146,19 +152,84 @@ Execute a terminal command.
 \`\`\`
 Allowed commands: npm, npx, yarn, node, git, tsc, eslint, prettier, jest, python, pip, cargo, go
 
-### 6. search_code
-Search for patterns in the codebase.
+### 6. move_file
+Move or rename a file. **Automatically commits to GitHub** when a repository is connected.
 \`\`\`json
 {
-  "name": "search_code",
+  "name": "move_file",
   "arguments": {
-    "pattern": "string (required) - Search pattern (regex supported)",
-    "path": "string (optional) - Directory to search in"
+    "old_path": "string (required) - Current file path",
+    "new_path": "string (required) - New file path"
   }
 }
 \`\`\`
 
-### 7. think
+### 7. search_code
+Advanced code search using GitHub Code Search API (more powerful than regex).
+\`\`\`json
+{
+  "name": "search_code",
+  "arguments": {
+    "query": "string (required) - Search query (supports GitHub search syntax)",
+    "language": "string (optional) - Filter by language (e.g., 'typescript', 'javascript')",
+    "path": "string (optional) - Filter by path"
+  }
+}
+\`\`\`
+
+### 8. create_branch
+Create a new Git branch.
+\`\`\`json
+{
+  "name": "create_branch",
+  "arguments": {
+    "branch": "string (required) - Branch name",
+    "from_branch": "string (optional) - Source branch (defaults to main)"
+  }
+}
+\`\`\`
+
+### 9. create_pull_request
+Create a pull request.
+\`\`\`json
+{
+  "name": "create_pull_request",
+  "arguments": {
+    "title": "string (required) - PR title",
+    "body": "string (optional) - PR description",
+    "head": "string (required) - Source branch",
+    "base": "string (required) - Target branch (usually 'main')"
+  }
+}
+\`\`\`
+
+### 10. get_diff
+Get differences between commits or branches.
+\`\`\`json
+{
+  "name": "get_diff",
+  "arguments": {
+    "base": "string (optional) - Base branch/commit (defaults to main)",
+    "head": "string (optional) - Head branch/commit (defaults to current branch)",
+    "path": "string (optional) - Filter by file path"
+  }
+}
+\`\`\`
+
+### 11. get_commit_history
+Get commit history for a branch or specific file.
+\`\`\`json
+{
+  "name": "get_commit_history",
+  "arguments": {
+    "branch": "string (optional) - Branch name (defaults to main)",
+    "path": "string (optional) - File path to get history for",
+    "limit": "number (optional) - Number of commits (default: 10, max: 100)"
+  }
+}
+\`\`\`
+
+### 12. think
 Record your reasoning process (doesn't execute anything).
 \`\`\`json
 {
@@ -169,7 +240,7 @@ Record your reasoning process (doesn't execute anything).
 }
 \`\`\`
 
-### 8. complete
+### 13. complete
 Mark the task as complete.
 \`\`\`json
 {
