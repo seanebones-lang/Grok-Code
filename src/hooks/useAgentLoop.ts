@@ -592,7 +592,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
     const abortController = new AbortController()
     abortControllerRef.current = abortController
 
-    let currentTask = { ...initialTask }
+    const currentTask = { ...initialTask }
     const messages: Array<{ role: string; content: string }> = [
       { role: 'system', content: buildAgentSystemPrompt(config) },
       { role: 'user', content: `Task: ${currentTask.description}\n\nBegin by analyzing what needs to be done, then use the available tools to complete the task.` },
