@@ -51,6 +51,7 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
   adapter = await initializeAdapter()
   
   return {
+    trustHost: true, // Required for custom domains and Vercel
     adapter,
     providers: [
       GitHubProvider({
