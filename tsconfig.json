@@ -8,7 +8,6 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
-    "exclude": ["src/__tests__/**/*"],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -37,6 +36,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/__tests__/**/*"
   ]
 }
