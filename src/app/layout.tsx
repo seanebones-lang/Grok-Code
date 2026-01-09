@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { JetBrains_Mono, Space_Grotesk } from 'next/font/google'
 import '@/styles/globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
+import { Providers } from '@/components/Providers'
 import Header from '@/components/Layout/Header'
 import Sidebar from '@/components/Layout/Sidebar'
 
@@ -86,13 +86,7 @@ export default function RootLayout({
         className="font-sans bg-[#0f0f23] text-white antialiased"
         suppressHydrationWarning
       >
-        <ThemeProvider 
-          attribute="class" 
-          defaultTheme="dark" 
-          forcedTheme="dark" 
-          enableSystem={false}
-          disableTransitionOnChange
-        >
+        <Providers>
           {/* Skip to main content link for accessibility */}
           <a 
             href="#main-content" 
@@ -117,7 +111,7 @@ export default function RootLayout({
               </main>
             </div>
           </div>
-        </ThemeProvider>
+        </Providers>
         
         {/* Noscript fallback */}
         <noscript>

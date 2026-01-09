@@ -37,11 +37,12 @@ function validateEnvVars(): void {
   }
 }
 
-// Extended session type with user ID
+// Extended session type with user ID and access token
 interface ExtendedSession extends Session {
   user: Session['user'] & {
     id?: string
   }
+  accessToken?: string
 }
 
 // Build auth configuration
@@ -63,16 +64,24 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
       }),
     ],
     callbacks: {
-      async session({ session, user }): Promise<ExtendedSession> {
+      async jwt({ token, account }) {
+        // Persist the OAuth access_token to the token right after signin
+        if (account) {
+          token.accessToken = account.access_token
+        }
+        return token
+      },
+      async session({ session, token, user }): Promise<ExtendedSession> {
         return {
           ...session,
           user: {
             ...session.user,
-            id: user?.id,
+            id: user?.id || (token?.sub as string),
           },
+          accessToken: token?.accessToken as string,
         }
       },
-      async signIn({ user, account, profile }) {
+      async signIn({ user, account }) {
         // Additional security: validate GitHub account
         if (account?.provider === 'github' && !user.email) {
           console.warn('[Auth] GitHub sign-in attempted without email')

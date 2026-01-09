@@ -36,7 +36,7 @@ export interface ChatState {
 
 export interface FileNode {
   name: string
-  type: 'file' | 'folder'
+  type: 'file' | 'folder' | 'directory'
   path: string
   children?: FileNode[]
   size?: number
