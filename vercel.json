@@ -2,7 +2,7 @@
   "buildCommand": "prisma generate && next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "installCommand": "unset NPM_TOKEN NPM_AUTH_TOKEN NPM_CONFIG_TOKEN; npm config delete //registry.npmjs.org/:_authToken 2>/dev/null; npm install --legacy-peer-deps",
+  "installCommand": "npm install --legacy-peer-deps",
   "regions": ["iad1"],
   "env": {
     "PRISMA_GENERATE_DATAPROXY": "true"
