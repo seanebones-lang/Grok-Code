@@ -771,6 +771,392 @@ print(f"Token: {token[:20]}...")`,
     preInstalled: true,
     riskLevel: 'safe',
   },
+
+  // ============================================================================
+  // ROUND 2 ADDITIONS: Vector Databases, Search APIs, CLI, Validation, Testing
+  // ============================================================================
+  
+  // Vector Databases & Embeddings
+  {
+    name: 'chromadb',
+    version: '0.5.x',
+    category: 'orchestration',
+    description: 'Open-source vector database for AI/ML embeddings and semantic search',
+    integration: 'import chromadb',
+    requirements: ['chromadb >= 0.4'],
+    example: `import chromadb
+client = chromadb.Client()
+collection = client.create_collection("my_collection")
+collection.add(documents=["doc1", "doc2"], ids=["id1", "id2"])
+results = collection.query(query_texts=["search"], n_results=2)`,
+    preInstalled: false,
+    stars: 15000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'faiss-cpu',
+    version: '1.8.x',
+    category: 'orchestration',
+    description: 'Facebook AI Similarity Search for efficient vector similarity',
+    integration: 'import faiss',
+    requirements: ['faiss-cpu >= 1.7'],
+    example: `import faiss
+import numpy as np
+d = 64  # dimension
+index = faiss.IndexFlatL2(d)
+vectors = np.random.random((100, d)).astype('float32')
+index.add(vectors)
+D, I = index.search(vectors[:5], k=4)`,
+    preInstalled: false,
+    stars: 30000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'qdrant-client',
+    version: '1.11.x',
+    category: 'orchestration',
+    description: 'Vector database client for semantic search and recommendations',
+    integration: 'from qdrant_client import QdrantClient',
+    requirements: ['qdrant-client >= 1.9'],
+    example: `from qdrant_client import QdrantClient
+client = QdrantClient(":memory:")
+# client.create_collection("test", vectors_config={"size": 384, "distance": "Cosine"})`,
+    preInstalled: false,
+    stars: 20000,
+    riskLevel: 'safe',
+  },
+
+  // Web Search APIs
+  {
+    name: 'tavily-python',
+    version: '0.4.x',
+    category: 'web_network',
+    description: 'AI-optimized search API for agents and RAG applications',
+    integration: 'from tavily import TavilyClient',
+    requirements: ['tavily-python >= 0.3'],
+    envVars: ['TAVILY_API_KEY'],
+    example: `from tavily import TavilyClient
+import os
+client = TavilyClient(api_key=os.getenv('TAVILY_API_KEY'))
+response = client.search("latest AI news")`,
+    preInstalled: false,
+    stars: 2000,
+    riskLevel: 'low',
+  },
+  {
+    name: 'duckduckgo-search',
+    version: '6.3.x',
+    category: 'web_network',
+    description: 'DuckDuckGo search API - no API key required',
+    integration: 'from duckduckgo_search import DDGS',
+    requirements: ['duckduckgo-search >= 6.0'],
+    example: `from duckduckgo_search import DDGS
+with DDGS() as ddgs:
+    results = list(ddgs.text("python programming", max_results=5))
+    for r in results:
+        print(r['title'], r['href'])`,
+    preInstalled: false,
+    stars: 3000,
+    riskLevel: 'safe',
+  },
+
+  // CLI & Terminal Tools
+  {
+    name: 'rich',
+    version: '13.9.x',
+    category: 'utility',
+    description: 'Beautiful terminal formatting, tables, progress bars, syntax highlighting',
+    integration: 'from rich import print',
+    requirements: ['rich >= 13.0'],
+    example: `from rich.console import Console
+from rich.table import Table
+console = Console()
+table = Table(title="Data")
+table.add_column("Name")
+table.add_row("Example")
+console.print(table)`,
+    preInstalled: false,
+    stars: 50000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'typer',
+    version: '0.12.x',
+    category: 'utility',
+    description: 'Build CLI applications with type hints',
+    integration: 'import typer',
+    requirements: ['typer >= 0.9'],
+    example: `import typer
+app = typer.Typer()
+@app.command()
+def hello(name: str):
+    print(f"Hello {name}")
+# if __name__ == "__main__": app()`,
+    preInstalled: false,
+    stars: 16000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'click',
+    version: '8.1.x',
+    category: 'utility',
+    description: 'Command line interface creation kit',
+    integration: 'import click',
+    requirements: ['click >= 8.0'],
+    example: `import click
+@click.command()
+@click.option('--name', default='World')
+def hello(name):
+    click.echo(f'Hello {name}!')`,
+    preInstalled: false,
+    stars: 15000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'tqdm',
+    version: '4.66.x',
+    category: 'utility',
+    description: 'Fast, extensible progress bar for loops and CLI',
+    integration: 'from tqdm import tqdm',
+    requirements: ['tqdm >= 4.65'],
+    example: `from tqdm import tqdm
+import time
+for i in tqdm(range(100)):
+    time.sleep(0.01)`,
+    preInstalled: false,
+    stars: 28000,
+    riskLevel: 'safe',
+  },
+
+  // Data Validation
+  {
+    name: 'pydantic',
+    version: '2.9.x',
+    category: 'data_manipulation',
+    description: 'Data validation using Python type annotations',
+    integration: 'from pydantic import BaseModel',
+    requirements: ['pydantic >= 2.0'],
+    example: `from pydantic import BaseModel
+class User(BaseModel):
+    name: str
+    age: int
+user = User(name="John", age=30)
+print(user.model_dump())`,
+    preInstalled: false,
+    stars: 21000,
+    riskLevel: 'safe',
+  },
+
+  // Testing
+  {
+    name: 'pytest',
+    version: '8.3.x',
+    category: 'utility',
+    description: 'Full-featured Python testing framework',
+    integration: 'import pytest',
+    requirements: ['pytest >= 8.0'],
+    example: `import pytest
+def test_example():
+    assert 1 + 1 == 2
+# Run with: pytest test_file.py`,
+    preInstalled: false,
+    stars: 12000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'faker',
+    version: '30.x',
+    category: 'utility',
+    description: 'Generate fake data for testing (names, addresses, etc.)',
+    integration: 'from faker import Faker',
+    requirements: ['faker >= 25.0'],
+    example: `from faker import Faker
+fake = Faker()
+print(fake.name())
+print(fake.email())
+print(fake.address())`,
+    preInstalled: false,
+    stars: 18000,
+    riskLevel: 'safe',
+  },
+
+  // Document Processing
+  {
+    name: 'python-docx',
+    version: '1.1.x',
+    category: 'data_manipulation',
+    description: 'Create and modify Microsoft Word documents',
+    integration: 'from docx import Document',
+    requirements: ['python-docx >= 1.0'],
+    example: `from docx import Document
+doc = Document()
+doc.add_heading('Title', 0)
+doc.add_paragraph('Content here')
+doc.save('output.docx')`,
+    preInstalled: false,
+    stars: 5000,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'markdown',
+    version: '3.7.x',
+    category: 'data_manipulation',
+    description: 'Markdown to HTML converter',
+    integration: 'import markdown',
+    requirements: ['markdown >= 3.5'],
+    example: `import markdown
+html = markdown.markdown("# Hello\\n**Bold** text")
+print(html)`,
+    preInstalled: false,
+    stars: 4000,
+    riskLevel: 'safe',
+  },
+
+  // Date/Time
+  {
+    name: 'datetime',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Date and time manipulation',
+    integration: 'from datetime import datetime, timedelta',
+    requirements: ['Python >= 3.10'],
+    example: `from datetime import datetime, timedelta
+now = datetime.now()
+tomorrow = now + timedelta(days=1)
+print(f"Now: {now}, Tomorrow: {tomorrow}")`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'python-dateutil',
+    version: '2.9.x',
+    category: 'utility',
+    description: 'Powerful extensions to datetime (parsing, timezones)',
+    integration: 'from dateutil import parser, tz',
+    requirements: ['python-dateutil >= 2.8'],
+    example: `from dateutil import parser
+dt = parser.parse("January 9, 2026 3:30 PM")
+print(dt)`,
+    preInstalled: false,
+    stars: 2000,
+    riskLevel: 'safe',
+  },
+
+  // Email (stdlib)
+  {
+    name: 'smtplib',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'SMTP email sending',
+    integration: 'import smtplib',
+    requirements: ['Python >= 3.10'],
+    example: `import smtplib
+from email.mime.text import MIMEText
+# server = smtplib.SMTP('smtp.gmail.com', 587)
+# server.starttls()
+# server.login(user, password)`,
+    preInstalled: true,
+    riskLevel: 'low',
+  },
+
+  // Core stdlib additions
+  {
+    name: 're',
+    version: 'stdlib',
+    category: 'core_execution',
+    description: 'Regular expression operations',
+    integration: 'import re',
+    requirements: ['Python >= 3.10'],
+    example: `import re
+pattern = r'\\d+'
+text = "There are 123 numbers"
+matches = re.findall(pattern, text)
+print(matches)  # ['123']`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'os',
+    version: 'stdlib',
+    category: 'core_execution',
+    description: 'Operating system interfaces (files, env vars, paths)',
+    integration: 'import os',
+    requirements: ['Python >= 3.10'],
+    example: `import os
+print(os.getcwd())
+print(os.environ.get('HOME'))
+os.makedirs('new_dir', exist_ok=True)`,
+    preInstalled: true,
+    riskLevel: 'medium',
+  },
+  {
+    name: 'sys',
+    version: 'stdlib',
+    category: 'core_execution',
+    description: 'System-specific parameters and functions',
+    integration: 'import sys',
+    requirements: ['Python >= 3.10'],
+    example: `import sys
+print(sys.version)
+print(sys.platform)
+print(sys.argv)`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'uuid',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Generate universally unique identifiers',
+    integration: 'import uuid',
+    requirements: ['Python >= 3.10'],
+    example: `import uuid
+new_id = uuid.uuid4()
+print(f"UUID: {new_id}")`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'base64',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Base64 encoding and decoding',
+    integration: 'import base64',
+    requirements: ['Python >= 3.10'],
+    example: `import base64
+encoded = base64.b64encode(b"Hello World")
+decoded = base64.b64decode(encoded)
+print(decoded.decode())`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'gzip',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Gzip compression and decompression',
+    integration: 'import gzip',
+    requirements: ['Python >= 3.10'],
+    example: `import gzip
+data = b"Hello World" * 100
+compressed = gzip.compress(data)
+print(f"Original: {len(data)}, Compressed: {len(compressed)}")`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
+  {
+    name: 'zipfile',
+    version: 'stdlib',
+    category: 'utility',
+    description: 'Read and write ZIP archives',
+    integration: 'import zipfile',
+    requirements: ['Python >= 3.10'],
+    example: `import zipfile
+with zipfile.ZipFile('archive.zip', 'w') as zf:
+    zf.writestr('file.txt', 'Hello World')`,
+    preInstalled: true,
+    riskLevel: 'safe',
+  },
 ]
 
 // ============================================================================
@@ -898,4 +1284,5 @@ export const CATALOG_STATS = {
   requiresApiKey: TOOLS_CATALOG.filter(t => t.envVars && t.envVars.length > 0).length,
   categories: 10,
   lastUpdated: '2026-01-09',
+  version: '2.0', // Round 2 additions
 }
