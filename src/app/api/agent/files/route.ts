@@ -56,6 +56,15 @@ const batchWriteSchema = z.object({
   branch: z.string().optional(),
 })
 
+const moveFileSchema = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  oldPath: z.string().min(1),
+  newPath: z.string().min(1),
+  message: z.string().min(1),
+  branch: z.string().optional(),
+})
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -388,6 +397,150 @@ export async function POST(request: NextRequest) {
       { 
         error: 'Failed to write file',
         details: error instanceof Error ? error.message : 'Unknown error',
+        requestId,
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// ============================================================================
+// PATCH - Move/Rename file
+// ============================================================================
+
+export async function PATCH(request: NextRequest) {
+  const requestId = crypto.randomUUID()
+  
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', requestId },
+        { status: 401 }
+      )
+    }
+    
+    const accessToken = (session as { accessToken?: string }).accessToken
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'No GitHub access token', requestId },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const parsed = moveFileSchema.safeParse(body)
+    
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid parameters', details: parsed.error.issues, requestId },
+        { status: 400 }
+      )
+    }
+
+    const { owner, repo, oldPath, newPath, message, branch } = parsed.data
+    const octokit = await getOctokit(accessToken)
+    const ref = branch || await getDefaultBranch(octokit, owner, repo)
+
+    // Get current commit SHA
+    const { data: refData } = await octokit.git.getRef({
+      owner,
+      repo,
+      ref: `heads/${ref}`,
+    })
+    const currentCommitSha = refData.object.sha
+
+    // Get the current tree
+    const { data: commitData } = await octokit.git.getCommit({
+      owner,
+      repo,
+      commit_sha: currentCommitSha,
+    })
+    const currentTreeSha = commitData.tree.sha
+
+    // Get the file content from old path
+    const { data: oldFileData } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: oldPath,
+      ref,
+    })
+
+    if (Array.isArray(oldFileData) || !('content' in oldFileData)) {
+      return NextResponse.json(
+        { error: 'Old path is not a file', requestId },
+        { status: 400 }
+      )
+    }
+
+    const fileContent = Buffer.from(oldFileData.content, 'base64').toString('utf-8')
+    const oldFileSha = oldFileData.sha
+
+    // Create blob for new path
+    const { data: newBlob } = await octokit.git.createBlob({
+      owner,
+      repo,
+      content: Buffer.from(fileContent).toString('base64'),
+      encoding: 'base64',
+    })
+
+    // Create new tree with moved file (delete old, add new)
+    const { data: newTree } = await octokit.git.createTree({
+      owner,
+      repo,
+      base_tree: currentTreeSha,
+      tree: [
+        {
+          path: newPath,
+          mode: '100644' as const,
+          type: 'blob' as const,
+          sha: newBlob.sha,
+        },
+        {
+          path: oldPath,
+          mode: '100644' as const,
+          type: 'blob' as const,
+          sha: null, // Delete old file
+        },
+      ],
+    })
+
+    // Create commit
+    const { data: newCommit } = await octokit.git.createCommit({
+      owner,
+      repo,
+      message,
+      tree: newTree.sha,
+      parents: [currentCommitSha],
+    })
+
+    // Update reference
+    await octokit.git.updateRef({
+      owner,
+      repo,
+      ref: `heads/${ref}`,
+      sha: newCommit.sha,
+    })
+
+    return NextResponse.json({
+      success: true,
+      commit: {
+        sha: newCommit.sha,
+        message: newCommit.message,
+        url: newCommit.html_url,
+      },
+      moved: {
+        from: oldPath,
+        to: newPath,
+      },
+      requestId,
+    })
+  } catch (error: any) {
+    console.error(`[${requestId}] Move file error:`, error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to move file',
+        details: error.message || 'Unknown error',
         requestId,
       },
       { status: 500 }

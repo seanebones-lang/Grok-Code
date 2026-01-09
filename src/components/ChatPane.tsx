@@ -159,19 +159,24 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     // Create abort controller for this request
     abortControllerRef.current = new AbortController()
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          message: content,
-          mode: mode !== 'default' ? mode : undefined,
-          history,
-        }),
-        signal: abortControllerRef.current.signal,
-      })
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              message: content,
+              mode: mode !== 'default' ? mode : undefined,
+              history,
+              repository: repository ? {
+                owner: repository.owner,
+                repo: repository.repo,
+                branch: repository.branch || 'main',
+              } : undefined,
+            }),
+            signal: abortControllerRef.current.signal,
+          })
 
       // Handle non-streaming error responses
       if (!response.ok) {

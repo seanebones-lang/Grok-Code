@@ -42,8 +42,15 @@ export default function Home() {
   // Listen for new session events from sidebar
   useEffect(() => {
     const handleNewSession = (e: Event) => {
-      const customEvent = e as CustomEvent<{ message: string }>
+      const customEvent = e as CustomEvent<{ 
+        message: string
+        repository?: { owner: string; repo: string; branch: string }
+      }>
       setNewSessionMessage(customEvent.detail.message)
+      // Update repository if provided in the event
+      if (customEvent.detail.repository) {
+        setRepository(customEvent.detail.repository)
+      }
     }
     window.addEventListener('newSession', handleNewSession)
     return () => window.removeEventListener('newSession', handleNewSession)

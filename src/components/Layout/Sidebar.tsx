@@ -29,7 +29,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { GROK_MODELS, MODEL_PRIORITY } from '@/lib/grok-models'
+import { GROK_MODELS, MODEL_PRIORITY, DEFAULT_MODEL } from '@/lib/grok-models'
+import { getAllAgents } from '@/lib/specialized-agents'
 import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'nexteleven_fileTree'
@@ -295,19 +296,20 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const handleNewSessionSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
     if (newSessionInput.trim()) {
-      // Dispatch event for page component with model and environment
+      // Dispatch event for page component with model, environment, and repository
       const event = new CustomEvent('newSession', { 
         detail: { 
           message: newSessionInput.trim(),
           model: selectedModel,
-          environment: environment
+          environment: environment,
+          repository: connectedRepo
         } 
       })
       window.dispatchEvent(event)
       onNewSession?.(newSessionInput.trim())
       setNewSessionInput('')
     }
-  }, [newSessionInput, onNewSession, selectedModel])
+  }, [newSessionInput, onNewSession, selectedModel, environment, connectedRepo])
 
   const handleModelSelect = useCallback((modelId: string) => {
     setSelectedModel(modelId)
@@ -571,14 +573,14 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                   <p className="text-[10px] text-[#9ca3af] truncate">{connectedRepo.owner}/{connectedRepo.branch}</p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
+                <Button
+                  variant="outline"
+                  size="sm"
                 className="w-full text-white hover:text-white border-[#404050] bg-[#1a1a2e] hover:bg-[#2a2a3e] text-xs"
-                onClick={handleConnectRepo}
-              >
-                Switch
-              </Button>
+                  onClick={handleConnectRepo}
+                >
+                  Switch
+                </Button>
             </div>
           ) : (
             <Button
@@ -598,18 +600,60 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
             </Button>
           )}
           
-          {/* Recent Sessions - directly under Connect Repo */}
-          <div className="mt-4 pt-4 border-t border-[#404050]">
+          {/* Specialized Agents */}
+          <div className="mt-4 pt-4 border-t border-[#404050] px-4">
+            <h3 className="text-xs font-semibold text-[#9ca3af] mb-2">Specialized Agents</h3>
+            <div className="space-y-1 text-xs">
+              {getAllAgents().slice(0, 6).map((agent) => (
+                <button
+                  key={agent.id}
+                  onClick={() => {
+                    const event = new CustomEvent('newSession', { 
+                      detail: { 
+                        message: `/agent ${agent.id}`,
+                        model: selectedModel,
+                        environment: environment,
+                        repository: connectedRepo
+                      } 
+                    })
+                    window.dispatchEvent(event)
+                  }}
+                  className="w-full p-2 hover:bg-[#2a2a3e] rounded cursor-pointer text-left transition-colors group"
+                  title={agent.description}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{agent.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white truncate font-medium group-hover:text-primary transition-colors">
+                        {agent.name}
+                      </p>
+                      <p className="text-[10px] text-[#9ca3af] truncate">
+                        {agent.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+              {getAllAgents().length > 6 && (
+                <p className="text-[10px] text-[#9ca3af] pt-2">
+                  +{getAllAgents().length - 6} more agents available
+                </p>
+              )}
+            </div>
+          </div>
+          
+          {/* Recent Sessions - directly under Agents */}
+          <div className="mt-4 pt-4 border-t border-[#404050] px-4">
             <h3 className="text-xs font-semibold text-[#9ca3af] mb-2">Sessions</h3>
             <div className="space-y-1 text-xs text-[#9ca3af]">
               {/* TODO: Load sessions from localStorage or API */}
               <div className="p-2 hover:bg-[#2a2a3e] rounded cursor-pointer">
                 <p className="text-white truncate">No sessions yet</p>
                 <p className="text-[10px] text-[#9ca3af]">Start a session to see history</p>
-              </div>
-            </div>
           </div>
-        </div>
+          </div>
+          </div>
+      </div>
       </motion.aside>
     </>
   )

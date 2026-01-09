@@ -349,6 +349,95 @@ async function executeSearchCode(
   })
 }
 
+async function executeDeleteFile(
+  args: Record<string, unknown>,
+  repository?: { owner: string; repo: string; branch?: string }
+): Promise<ToolResult> {
+  const path = args.path as string
+  const startTime = Date.now()
+
+  try {
+    if (!repository) {
+      return {
+        id: crypto.randomUUID(),
+        name: 'delete_file',
+        success: false,
+        output: '',
+        error: 'File deletion requires a connected repository',
+        duration: Date.now() - startTime,
+      }
+    }
+
+    // First, read the file to get its SHA (required by GitHub API)
+    const readParams = new URLSearchParams({
+      owner: repository.owner,
+      repo: repository.repo,
+      path,
+      ...(repository.branch ? { branch: repository.branch } : {}),
+    })
+
+    const readResponse = await fetch(`/api/agent/files?${readParams}`)
+    const readData = await readResponse.json()
+
+    if (!readResponse.ok || !readData.file?.sha) {
+      return {
+        id: crypto.randomUUID(),
+        name: 'delete_file',
+        success: false,
+        output: '',
+        error: readData.error || 'File not found or cannot be read',
+        duration: Date.now() - startTime,
+      }
+    }
+
+    const fileSha = readData.file.sha
+
+    // Now delete the file
+    const deleteResponse = await fetch('/api/agent/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        owner: repository.owner,
+        repo: repository.repo,
+        path,
+        sha: fileSha,
+        message: `Agent: Delete ${path}`,
+        branch: repository.branch,
+      }),
+    })
+
+    const deleteData = await deleteResponse.json()
+
+    if (!deleteResponse.ok) {
+      return {
+        id: crypto.randomUUID(),
+        name: 'delete_file',
+        success: false,
+        output: '',
+        error: deleteData.error || 'Failed to delete file',
+        duration: Date.now() - startTime,
+      }
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      name: 'delete_file',
+      success: true,
+      output: `File deleted successfully: ${path}\nCommit: ${deleteData.commit?.sha?.slice(0, 7)}`,
+      duration: Date.now() - startTime,
+    }
+  } catch (error) {
+    return {
+      id: crypto.randomUUID(),
+      name: 'delete_file',
+      success: false,
+      output: '',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: Date.now() - startTime,
+    }
+  }
+}
+
 function executeThink(args: Record<string, unknown>): ToolResult {
   const thought = args.thought as string
   return {
@@ -395,14 +484,7 @@ async function executeTool(
     case 'list_files':
       return executeListFiles(toolCall.arguments, repository)
     case 'delete_file':
-      // Implement delete if needed
-      return {
-        id: crypto.randomUUID(),
-        name: 'delete_file',
-        success: false,
-        output: '',
-        error: 'Delete file not yet implemented',
-      }
+      return executeDeleteFile(toolCall.arguments, repository)
     case 'run_command':
       return executeRunCommand(toolCall.arguments, environment)
     case 'search_code':
