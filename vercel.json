@@ -1,5 +1,5 @@
 {
-  "buildCommand": "rm -f ~/.npmrc && npm install --legacy-peer-deps --ignore-scripts && prisma generate && next build",
+  "buildCommand": "prisma generate && next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "unset NPM_TOKEN NPM_AUTH_TOKEN NPM_CONFIG_TOKEN; npm config delete //registry.npmjs.org/:_authToken 2>/dev/null; npm install --legacy-peer-deps",
