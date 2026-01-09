@@ -1,5 +1,13 @@
+# Vercel ignore file
 node_modules
 .next
-.git
-.env.local
+.env*.local
+.env
+.DS_Store
 *.log
+coverage
+.vercel
+*.tsbuildinfo
+RAILWAY_ENV_VARS.txt
+scripts/
+QUICK_DEPLOY.sh

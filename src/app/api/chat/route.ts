@@ -1092,32 +1092,11 @@ The tool will be executed automatically and the results will be provided to you.
 
     // Rate limiting with proper IP extraction
     const forwardedFor = request.headers.get('x-forwarded-for')
-    const ip = forwardedFor?.split(',')[0]?.trim() || 
-               request.headers.get('x-real-ip') || 
-               'anonymous'
-    
-    const rateLimitResult = await checkRateLimit(ip)
-    
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { 
-          error: 'Rate limit exceeded',
-          limit: rateLimitResult.limit,
-          remaining: rateLimitResult.remaining,
-          reset: rateLimitResult.reset,
-          requestId,
-        },
-        { 
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-            'X-RateLimit-Reset': rateLimitResult.reset.toString(),
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
-      )
-    }
+    // Rate limiting disabled - single user app
+    // const ip = forwardedFor?.split(',')[0]?.trim() || 
+    //            request.headers.get('x-real-ip') || 
+    //            'anonymous'
+    // const rateLimitResult = await checkRateLimit(ip)
 
     // Validate API key
     const grokApiKey = process.env.GROK_API_KEY
