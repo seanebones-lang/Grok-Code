@@ -92,16 +92,29 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
       },
       async redirect({ url, baseUrl }) {
         // Ensure redirects always use the correct base URL
-        const base = process.env.NEXTAUTH_URL || baseUrl
+        const base = process.env.NEXTAUTH_URL || baseUrl || 'https://code.mothership-ai.com'
+        
         // If url is relative, make it absolute
         if (url.startsWith('/')) {
-          return `${base}${url}`
+          const fullUrl = `${base}${url}`
+          console.log('[Auth] Redirecting to:', fullUrl)
+          return fullUrl
         }
+        
         // If url is on the same origin, allow it
-        if (new URL(url).origin === new URL(base).origin) {
-          return url
+        try {
+          const urlOrigin = new URL(url).origin
+          const baseOrigin = new URL(base).origin
+          if (urlOrigin === baseOrigin) {
+            console.log('[Auth] Redirecting to same origin:', url)
+            return url
+          }
+        } catch (e) {
+          // Invalid URL, use base
         }
+        
         // Default to home page
+        console.log('[Auth] Default redirect to:', base)
         return base
       },
     },
