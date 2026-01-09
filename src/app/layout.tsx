@@ -57,8 +57,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0f0f23' },
-    { media: '(prefers-color-scheme: light)', color: '#0f0f23' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: light)', color: '#0a0a0a' },
   ],
 }
 
@@ -83,19 +83,19 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://api.github.com" />
       </head>
       <body 
-        className="font-sans bg-[#0f0f23] text-white antialiased"
+        className="font-sans bg-[#0a0a0a] text-white antialiased"
         suppressHydrationWarning
       >
         <Providers>
           {/* Skip to main content link for accessibility */}
           <a 
             href="#main-content" 
-            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#6841e7] focus:text-white focus:rounded-lg"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg"
           >
             Skip to main content
           </a>
           
-          <div className="flex h-screen overflow-hidden bg-[#0f0f23] text-white">
+          <div className="flex h-screen overflow-hidden bg-[#0a0a0a] text-white">
             {/* Sidebar */}
             <Sidebar />
             
@@ -104,7 +104,7 @@ export default function RootLayout({
               <Header />
               <main 
                 id="main-content"
-                className="flex-1 overflow-hidden bg-[#0f0f23] text-white"
+                className="flex-1 overflow-hidden bg-[#0a0a0a] text-white"
                 role="main"
               >
                 {children}
@@ -115,7 +115,7 @@ export default function RootLayout({
         
         {/* Noscript fallback */}
         <noscript>
-          <div className="fixed inset-0 flex items-center justify-center bg-[#0f0f23] text-white p-8 text-center">
+          <div className="fixed inset-0 flex items-center justify-center bg-[#0a0a0a] text-white p-8 text-center">
             <div>
               <h1 className="text-2xl font-bold mb-4">JavaScript Required</h1>
               <p className="text-[#9ca3af]">
