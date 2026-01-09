@@ -131,7 +131,23 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
   }
 }
 
-// Initialize NextAuth and export handlers directly
-const { handlers } = NextAuth(buildAuthConfig())
+// Initialize handler
+let authHandlers: ReturnType<typeof NextAuth> | null = null
 
-export const { GET, POST } = handlers
+async function getHandlers() {
+  if (!authHandlers) {
+    const config = await buildAuthConfig()
+    authHandlers = NextAuth(config)
+  }
+  return authHandlers
+}
+
+export async function GET(req: NextRequest) {
+  const { handlers } = await getHandlers()
+  return handlers.GET(req)
+}
+
+export async function POST(req: NextRequest) {
+  const { handlers } = await getHandlers()
+  return handlers.POST(req)
+}
