@@ -245,8 +245,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Built with ❤️ using Next.js, Grok 4.1, and modern web technologies**
+**Built with 🩸 and ⚡️ using NextEleven Proprietary Tech, Next.js, Eleven, and modern web technologies by CTO Sean F McDonnell**
 
-[⬆ Back to Top](#grokcode---ai-powered-development-interface)
+[⬆ Back to Top](#nexteleven-code---ai-powered-development-interface)
 
 </div>
