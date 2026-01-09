@@ -2,6 +2,7 @@
   "buildCommand": "prisma generate && next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
+  "installCommand": "npm install --legacy-peer-deps --no-audit --no-fund",
   "regions": ["iad1"],
   "env": {
     "PRISMA_GENERATE_DATAPROXY": "true"
