@@ -131,23 +131,16 @@ async function buildAuthConfig(): Promise<NextAuthConfig> {
   }
 }
 
-// Initialize handler
-let authHandlers: ReturnType<typeof NextAuth> | null = null
-
-async function getHandlers() {
-  if (!authHandlers) {
-    const config = await buildAuthConfig()
-    authHandlers = NextAuth(config)
-  }
-  return authHandlers
-}
+// Build and initialize NextAuth
+const authConfigPromise = buildAuthConfig()
+const authPromise = authConfigPromise.then(config => NextAuth(config))
 
 export async function GET(req: NextRequest) {
-  const { handlers } = await getHandlers()
-  return handlers.GET(req)
+  const auth = await authPromise
+  return auth.handlers.GET(req)
 }
 
 export async function POST(req: NextRequest) {
-  const { handlers } = await getHandlers()
-  return handlers.POST(req)
+  const auth = await authPromise
+  return auth.handlers.POST(req)
 }
