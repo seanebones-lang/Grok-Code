@@ -16,7 +16,9 @@ import {
   Send,
   Sparkles,
   Image,
-  MoreVertical
+  MoreVertical,
+  Star,
+  Pin
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -37,6 +39,7 @@ const STORAGE_KEY = 'nexteleven_fileTree'
 const REPO_KEY = 'nexteleven_connectedRepo'
 const MODEL_KEY = 'nexteleven_selectedModel'
 const ENVIRONMENT_KEY = 'nexteleven_environment'
+const PINNED_AGENTS_KEY = 'nexteleven_pinnedAgents'
 
 interface Repository {
   id: number
@@ -72,8 +75,9 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [showModelMenu, setShowModelMenu] = useState(false)
   const [environment, setEnvironment] = useState<'cloud' | 'other'>('cloud')
   const [showAllAgents, setShowAllAgents] = useState(false)
+  const [pinnedAgents, setPinnedAgents] = useState<Set<string>>(new Set())
 
-  // Load saved repo and model from localStorage
+  // Load saved repo, model, and pinned agents from localStorage
   useEffect(() => {
     try {
       const savedRepo = localStorage.getItem(REPO_KEY)
@@ -90,10 +94,36 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       if (savedEnv === 'other' || savedEnv === 'cloud') {
         setEnvironment(savedEnv)
       }
+      const savedPinned = localStorage.getItem(PINNED_AGENTS_KEY)
+      if (savedPinned) {
+        setPinnedAgents(new Set(JSON.parse(savedPinned)))
+      }
     } catch (e) {
       console.error('Failed to load saved data:', e)
     }
   }, [onRepoConnect])
+
+  // Toggle agent pinning
+  const togglePinAgent = useCallback((agentId: string) => {
+    setPinnedAgents(prev => {
+      const newPinned = new Set(prev)
+      if (newPinned.has(agentId)) {
+        newPinned.delete(agentId)
+      } else {
+        newPinned.add(agentId)
+      }
+      localStorage.setItem(PINNED_AGENTS_KEY, JSON.stringify([...newPinned]))
+      return newPinned
+    })
+  }, [])
+
+  // Get sorted agents (pinned first)
+  const getSortedAgents = useCallback(() => {
+    const allAgents = getAllAgents()
+    const pinned = allAgents.filter(a => pinnedAgents.has(a.id))
+    const unpinned = allAgents.filter(a => !pinnedAgents.has(a.id))
+    return [...pinned, ...unpinned]
+  }, [pinnedAgents])
 
   // Load files from localStorage with error handling
   const loadSavedFiles = useCallback(() => {
@@ -604,7 +634,12 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
           {/* Specialized Agents */}
           <div className="mt-4 pt-4 border-t border-[#404050] px-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-[#9ca3af]">Specialized Agents</h3>
+              <h3 className="text-xs font-semibold text-[#9ca3af] flex items-center gap-1">
+                Specialized Agents
+                {pinnedAgents.size > 0 && (
+                  <span className="text-primary">({pinnedAgents.size} pinned)</span>
+                )}
+              </h3>
               {getAllAgents().length > 6 && (
                 <button
                   onClick={() => setShowAllAgents(!showAllAgents)}
@@ -620,25 +655,41 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               )}
             </div>
             <div className="space-y-1 text-xs max-h-[400px] overflow-y-auto">
-              {(showAllAgents ? getAllAgents() : getAllAgents().slice(0, 6)).map((agent) => (
-                <button
+              {(showAllAgents ? getSortedAgents() : getSortedAgents().slice(0, Math.max(6, pinnedAgents.size))).map((agent) => (
+                <div
                   key={agent.id}
-                  onClick={() => {
-                    const event = new CustomEvent('newSession', { 
-                      detail: { 
-                        message: `/agent ${agent.id}`,
-                        model: selectedModel,
-                        environment: environment,
-                        repository: connectedRepo
-                      } 
-                    })
-                    window.dispatchEvent(event)
-                  }}
-                  className="w-full p-2 hover:bg-[#2a2a3e] rounded cursor-pointer text-left transition-colors group"
-                  title={agent.description}
+                  className="w-full p-2 hover:bg-[#2a2a3e] rounded cursor-pointer text-left transition-colors group flex items-center gap-2"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{agent.emoji}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      togglePinAgent(agent.id)
+                    }}
+                    className={cn(
+                      "flex-shrink-0 p-1 rounded transition-colors",
+                      pinnedAgents.has(agent.id) 
+                        ? "text-yellow-400 hover:text-yellow-300" 
+                        : "text-[#404050] hover:text-[#9ca3af] opacity-0 group-hover:opacity-100"
+                    )}
+                    title={pinnedAgents.has(agent.id) ? "Unpin agent" : "Pin agent"}
+                  >
+                    <Star className={cn("h-3 w-3", pinnedAgents.has(agent.id) && "fill-current")} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('newSession', { 
+                        detail: { 
+                          message: `/agent ${agent.id}`,
+                          model: selectedModel,
+                          environment: environment,
+                          repository: connectedRepo
+                        } 
+                      })
+                      window.dispatchEvent(event)
+                    }}
+                    className="flex-1 flex items-center gap-2 min-w-0"
+                  >
+                    <span className="text-base flex-shrink-0">{agent.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-white truncate font-medium group-hover:text-primary transition-colors">
                         {agent.name}
@@ -647,8 +698,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                         {agent.description}
                       </p>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
