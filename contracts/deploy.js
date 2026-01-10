@@ -1,0 +1,1 @@
+const OmniDAO = await ethers.getContractFactory('OmniDAO'); await OmniDAO.deploy(); console.log('Eternal DAO deployed');
