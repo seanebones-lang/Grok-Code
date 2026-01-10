@@ -21,56 +21,112 @@ const MAX_EXECUTION_TIME = 30000
 // Maximum output size (1MB)
 const MAX_OUTPUT_SIZE = 1024 * 1024
 
-// Whitelisted commands - only these can be executed
+// Whitelisted commands - expanded for full local access (single user mode)
 const WHITELISTED_COMMANDS = new Set([
-  'npm',
-  'npx',
-  'yarn',
-  'pnpm',
-  'node',
-  'git',
-  'ls',
-  'cat',
-  'head',
-  'tail',
-  'grep',
-  'find',
-  'echo',
-  'pwd',
-  'cd',
-  'mkdir',
-  'touch',
-  'rm',
-  'cp',
-  'mv',
-  'tsc',
-  'eslint',
-  'prettier',
-  'jest',
-  'vitest',
-  'python',
-  'python3',
-  'pip',
-  'pip3',
-  'cargo',
-  'rustc',
-  'go',
+  // Package managers
+  'npm', 'npx', 'yarn', 'pnpm', 'bun', 'deno',
+  'pip', 'pip3', 'pipx', 'poetry', 'conda',
+  'cargo', 'rustup',
+  'go', 'gofmt',
+  'gem', 'bundle', 'bundler',
+  'composer',
+  'brew', 'mas',
+  
+  // Version managers
+  'nvm', 'fnm', 'pyenv', 'rbenv', 'goenv', 'rustup',
+  
+  // Runtimes & compilers
+  'node', 'python', 'python3', 'ruby', 'perl', 'php',
+  'rustc', 'gcc', 'g++', 'clang', 'clang++',
+  'java', 'javac', 'kotlin', 'kotlinc',
+  'swift', 'swiftc',
+  'zig', 'nim', 'elixir', 'erl',
+  
+  // Dev tools
+  'git', 'gh', 'hub',
+  'tsc', 'tsx', 'ts-node',
+  'eslint', 'prettier', 'biome',
+  'jest', 'vitest', 'mocha', 'pytest', 'cargo-test',
+  'webpack', 'vite', 'esbuild', 'rollup', 'parcel',
+  'docker', 'docker-compose', 'podman',
+  'kubectl', 'helm', 'terraform', 'pulumi',
+  'vercel', 'netlify', 'railway', 'fly',
+  'prisma', 'drizzle-kit',
+  
+  // File operations
+  'ls', 'll', 'la', 'tree',
+  'cat', 'less', 'more', 'head', 'tail',
+  'grep', 'rg', 'ag', 'ack', 'fd', 'fzf',
+  'find', 'locate', 'which', 'whereis', 'type',
+  'wc', 'sort', 'uniq', 'cut', 'tr', 'sed', 'awk',
+  'diff', 'patch', 'comm',
+  'file', 'stat', 'du', 'df',
+  
+  // File management
+  'mkdir', 'touch', 'rm', 'rmdir',
+  'cp', 'mv', 'ln',
+  'chmod', 'chown', 'chgrp',
+  'zip', 'unzip', 'tar', 'gzip', 'gunzip', 'bzip2',
+  
+  // Text editors (non-interactive use)
+  'echo', 'printf', 'tee',
+  'nano', 'vim', 'nvim', 'emacs',
+  
+  // Shell utilities
+  'pwd', 'cd', 'pushd', 'popd',
+  'env', 'export', 'set', 'unset',
+  'source', 'sh', 'bash', 'zsh',
+  'xargs', 'parallel',
+  'time', 'timeout', 'sleep', 'wait',
+  'true', 'false', 'test',
+  
+  // Process management
+  'ps', 'top', 'htop', 'kill', 'pkill', 'killall',
+  'jobs', 'fg', 'bg', 'nohup',
+  'lsof', 'pgrep',
+  
+  // Network
+  'curl', 'wget', 'httpie', 'http',
+  'ping', 'traceroute', 'dig', 'nslookup', 'host',
+  'nc', 'netcat', 'telnet',
+  'ssh', 'scp', 'sftp', 'rsync',
+  'ifconfig', 'ip', 'netstat', 'ss',
+  
+  // System info
+  'uname', 'hostname', 'whoami', 'id',
+  'date', 'cal', 'uptime',
+  'sw_vers', 'system_profiler',
+  
+  // macOS specific
+  'open', 'pbcopy', 'pbpaste', 'say', 'afplay',
+  'osascript', 'defaults', 'launchctl',
+  'xcode-select', 'xcrun', 'xcodebuild',
+  'security', 'codesign',
+  
+  // Database clients
+  'psql', 'mysql', 'sqlite3', 'mongosh', 'redis-cli',
+  
+  // Cloud CLIs
+  'aws', 'gcloud', 'az', 'doctl', 'linode-cli',
+  
+  // Misc tools
+  'jq', 'yq', 'fx',
+  'make', 'cmake', 'ninja',
+  'man', 'info', 'help',
+  'clear', 'reset',
+  'md5', 'shasum', 'openssl',
+  'base64', 'xxd', 'hexdump',
+  'ffmpeg', 'ffprobe', 'imagemagick', 'convert',
+  'pandoc', 'latex', 'pdflatex',
 ])
 
-// Blocked patterns in arguments
+// Blocked patterns - minimal for single-user mode (only truly dangerous operations)
 const BLOCKED_PATTERNS = [
-  /[;&|`$]/,           // Shell operators
-  /\.\.\//,            // Path traversal
-  /\/etc\//,           // System directories
-  /\/var\//,
-  /\/usr\//,
-  /\/root\//,
-  /\/home\/(?!.*\/projects)/,  // Home directories except projects
-  /rm\s+-rf?\s+\//,    // Dangerous rm commands
-  /sudo/,              // Privilege escalation
-  /chmod\s+777/,       // Dangerous permissions
-  /curl.*\|.*sh/,      // Pipe to shell
-  /wget.*\|.*sh/,
+  /rm\s+-rf?\s+\/$/,   // rm -rf / (root only)
+  /rm\s+-rf?\s+\/\s/,  // rm -rf / with space
+  /mkfs/,              // Formatting drives
+  /dd\s+if=.*of=\/dev/, // Writing to raw devices
+  />\s*\/dev\/sd/,     // Redirecting to drives
 ]
 
 // ============================================================================
