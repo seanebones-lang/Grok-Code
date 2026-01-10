@@ -8,6 +8,8 @@ import {
   Bot,
   FileText,
   GitBranch,
+  GitCommit,
+  GitPullRequest,
   Settings,
   Zap,
   Code,
@@ -23,6 +25,7 @@ import {
   X,
   ArrowRight,
   Keyboard,
+  History,
 } from 'lucide-react'
 import { getAllAgents, type SpecializedAgent } from '@/lib/specialized-agents'
 import { WORKFLOWS, formatWorkflowPrompt } from '@/lib/workflows'
@@ -193,6 +196,130 @@ export function CommandPalette({ onSelectAgent, onAction }: CommandPaletteProps)
           setIsOpen(false)
         },
         keywords: ['analyze', 'structure', 'understand', 'architecture'],
+      },
+      {
+        id: 'git-commit',
+        label: 'Generate Commit Message',
+        description: 'Create a semantic commit message for your changes',
+        icon: <GitCommit className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const event = new CustomEvent('newSession', { 
+            detail: { 
+              message: `Help me write a commit message for my recent changes.
+
+Use this format:
+- type(scope): description
+- Types: feat, fix, docs, style, refactor, perf, test, chore
+- Keep it concise but descriptive
+- Include breaking changes if any
+
+Run 'git diff --staged' or describe what changed and I'll generate the message.` 
+            } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['git', 'commit', 'message', 'conventional'],
+      },
+      {
+        id: 'git-pr',
+        label: 'Generate PR Description',
+        description: 'Create a detailed pull request description',
+        icon: <GitPullRequest className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const event = new CustomEvent('newSession', { 
+            detail: { 
+              message: `Help me write a PR description.
+
+Include:
+## Summary
+Brief overview of changes
+
+## Changes Made
+- List of specific changes
+
+## Testing
+How to test the changes
+
+## Screenshots (if applicable)
+
+## Checklist
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] No breaking changes (or documented)
+
+Tell me about your changes and I'll generate the description.` 
+            } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['git', 'pr', 'pull request', 'description', 'merge'],
+      },
+      {
+        id: 'git-changelog',
+        label: 'Generate Changelog',
+        description: 'Create a changelog entry for releases',
+        icon: <History className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const event = new CustomEvent('newSession', { 
+            detail: { 
+              message: `Help me generate a changelog entry.
+
+Format:
+## [Version] - YYYY-MM-DD
+
+### Added
+- New features
+
+### Changed
+- Changes to existing functionality
+
+### Fixed
+- Bug fixes
+
+### Removed
+- Removed features
+
+### Security
+- Security fixes
+
+Tell me about the changes in this release and I'll format the changelog.` 
+            } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['changelog', 'release', 'version', 'history'],
+      },
+      {
+        id: 'git-branch',
+        label: 'Suggest Branch Name',
+        description: 'Generate a branch name following conventions',
+        icon: <GitBranch className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const event = new CustomEvent('newSession', { 
+            detail: { 
+              message: `Help me create a branch name.
+
+Conventions:
+- feature/short-description - for new features
+- fix/issue-description - for bug fixes
+- hotfix/critical-fix - for urgent production fixes
+- refactor/what-refactoring - for refactoring
+- docs/what-documenting - for documentation
+
+What are you working on? I'll suggest branch names.` 
+            } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['git', 'branch', 'name', 'feature', 'fix'],
       },
     ]
 
