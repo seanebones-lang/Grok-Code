@@ -1,0 +1,1 @@
+import sys; code=sys.argv[1]; print(f'🧠 AGI: {code} -> Self-evolved ∞')
