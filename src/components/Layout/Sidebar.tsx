@@ -577,8 +577,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
         role="complementary"
         aria-label="File explorer"
       >
-        {/* Brand Header */}
-        <div className="p-4 border-b border-[#404050]">
+        {/* Brand Header - Fixed */}
+        <div className="flex-shrink-0 p-4 border-b border-[#404050]">
           <div className="mb-4">
             <h1 className="text-lg font-semibold text-white mb-1">NextEleven Code</h1>
             <span className="text-xs text-[#9ca3af] bg-[#2a2a3e] px-2 py-0.5 rounded">Research preview</span>
@@ -756,9 +756,12 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               <span className="text-white">Connect Repo</span>
             </Button>
           )}
+        </div>
           
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Orchestrator Mode Toggle */}
-          <div className="mt-4 pt-4 border-t border-[#404050] px-4">
+          <div className="pt-4 px-4">
             <button
               onClick={handleToggleOrchestratorMode}
               className={cn(
@@ -887,77 +890,83 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
             )}
           </div>
 
-          {/* Specialized Agents */}
-          <div className="mt-4 pt-4 border-t border-[#404050] px-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-[#9ca3af] flex items-center gap-1">
-                Specialized Agents
-                {pinnedAgents.size > 0 && (
-                  <span className="text-primary">({pinnedAgents.size} pinned)</span>
-                )}
-              </h3>
-              {getAllAgents().length > 6 && (
-                <button
-                  onClick={() => setShowAllAgents(!showAllAgents)}
-                  className="text-[10px] text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-                >
-                  {showAllAgents ? 'Show less' : `+${getAllAgents().length - 6} more`}
-                  {showAllAgents ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
+          {/* Specialized Agents - Compact Dropdown */}
+          <div className="mt-3 px-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full p-2 rounded-lg bg-[#1a1a2e] border border-[#404050] hover:bg-[#2a2a3e] transition-all flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-medium text-white flex-1 text-left">
+                    Agents
+                    <span className="text-[#606070] ml-1">({getAllAgents().length})</span>
+                  </span>
+                  {pinnedAgents.size > 0 && (
+                    <span className="text-[10px] text-yellow-400">⭐{pinnedAgents.size}</span>
                   )}
+                  <ChevronDown className="h-3 w-3 text-[#606070]" />
                 </button>
-              )}
-            </div>
-            <div className="space-y-1 text-xs max-h-[400px] overflow-y-auto">
-              {(showAllAgents ? getSortedAgents() : getSortedAgents().slice(0, Math.max(6, pinnedAgents.size))).map((agent) => (
-                <div
-                  key={agent.id}
-                  className="w-full p-2 hover:bg-[#2a2a3e] rounded cursor-pointer text-left transition-colors group flex items-center gap-2"
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      togglePinAgent(agent.id)
-                    }}
-                    className={cn(
-                      "flex-shrink-0 p-1 rounded transition-colors",
-                      pinnedAgents.has(agent.id) 
-                        ? "text-yellow-400 hover:text-yellow-300" 
-                        : "text-[#404050] hover:text-[#9ca3af] opacity-0 group-hover:opacity-100"
-                    )}
-                    title={pinnedAgents.has(agent.id) ? "Unpin agent" : "Pin agent"}
-                  >
-                    <Star className={cn("h-3 w-3", pinnedAgents.has(agent.id) && "fill-current")} />
-                  </button>
-                  <button
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                className="w-72 max-h-[400px] overflow-y-auto bg-[#1a1a2e] border-[#404050]"
+                align="start"
+              >
+                {pinnedAgents.size > 0 && (
+                  <>
+                    <DropdownMenuLabel className="text-[10px] text-yellow-400">⭐ Pinned</DropdownMenuLabel>
+                    {getSortedAgents().filter(a => pinnedAgents.has(a.id)).map((agent) => (
+                      <DropdownMenuItem
+                        key={agent.id}
+                        className="flex items-center gap-2 cursor-pointer hover:bg-[#2a2a3e] focus:bg-[#2a2a3e]"
+                        onClick={() => {
+                          const event = new CustomEvent('newSession', { 
+                            detail: { message: `/agent ${agent.id}` } 
+                          })
+                          window.dispatchEvent(event)
+                        }}
+                      >
+                        <span className="text-base">{agent.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{agent.name}</p>
+                          <p className="text-[10px] text-[#9ca3af] truncate">{agent.description}</p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePinAgent(agent.id) }}
+                          className="text-yellow-400 hover:text-yellow-300 p-1"
+                        >
+                          <Star className="h-3 w-3 fill-current" />
+                        </button>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator className="bg-[#404050]" />
+                  </>
+                )}
+                <DropdownMenuLabel className="text-[10px] text-[#9ca3af]">All Agents</DropdownMenuLabel>
+                {getSortedAgents().filter(a => !pinnedAgents.has(a.id)).map((agent) => (
+                  <DropdownMenuItem
+                    key={agent.id}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-[#2a2a3e] focus:bg-[#2a2a3e] group"
                     onClick={() => {
                       const event = new CustomEvent('newSession', { 
-                        detail: { 
-                          message: `/agent ${agent.id}`,
-                          model: selectedModel,
-                          environment: environment,
-                          repository: connectedRepo
-                        } 
+                        detail: { message: `/agent ${agent.id}` } 
                       })
                       window.dispatchEvent(event)
                     }}
-                    className="flex-1 flex items-center gap-2 min-w-0"
                   >
-                    <span className="text-base flex-shrink-0">{agent.emoji}</span>
+                    <span className="text-base">{agent.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white truncate font-medium group-hover:text-primary transition-colors">
-                        {agent.name}
-                      </p>
-                      <p className="text-[10px] text-[#9ca3af] truncate">
-                        {agent.description}
-                      </p>
+                      <p className="text-white text-sm truncate">{agent.name}</p>
+                      <p className="text-[10px] text-[#9ca3af] truncate">{agent.description}</p>
                     </div>
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); togglePinAgent(agent.id) }}
+                      className="text-[#404050] hover:text-yellow-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Star className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           {/* Recent Sessions - directly under Agents */}
@@ -1035,7 +1044,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               )}
             </div>
           </div>
-      </div>
+        </div>
       </motion.aside>
     </>
   )
