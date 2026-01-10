@@ -25,6 +25,7 @@ import {
   Keyboard,
 } from 'lucide-react'
 import { getAllAgents, type SpecializedAgent } from '@/lib/specialized-agents'
+import { WORKFLOWS, formatWorkflowPrompt } from '@/lib/workflows'
 import { cn } from '@/lib/utils'
 
 interface CommandItem {
@@ -159,83 +160,28 @@ export function CommandPalette({ onSelectAgent, onAction }: CommandPaletteProps)
       },
     ]
 
-    const workflowCommands: CommandItem[] = [
-      {
-        id: 'workflow-feature',
-        label: '🆕 New Feature Workflow',
-        description: 'Full Stack → Testing → Documentation',
-        icon: <Layers className="h-4 w-4" />,
-        category: 'workflows',
-        action: () => {
-          const event = new CustomEvent('newSession', { 
-            detail: { message: '/agent fullstack I need to build a new feature. Help me plan and implement it end-to-end.' } 
-          })
-          window.dispatchEvent(event)
-          setIsOpen(false)
-        },
-        keywords: ['feature', 'new', 'build', 'create'],
+    // Generate workflow commands from WORKFLOWS constant
+    const workflowCommands: CommandItem[] = WORKFLOWS.map(workflow => ({
+      id: `workflow-${workflow.id}`,
+      label: `${workflow.emoji} ${workflow.name}`,
+      description: `${workflow.steps.map(s => s.name).slice(0, 3).join(' → ')}${workflow.steps.length > 3 ? '...' : ''} • ${workflow.estimatedTime}`,
+      icon: <Layers className="h-4 w-4" />,
+      category: 'workflows',
+      action: () => {
+        const prompt = formatWorkflowPrompt(workflow)
+        const firstStep = workflow.steps[0]
+        const event = new CustomEvent('newSession', { 
+          detail: { 
+            message: firstStep.agentId 
+              ? `/agent ${firstStep.agentId} ${prompt}`
+              : prompt
+          } 
+        })
+        window.dispatchEvent(event)
+        setIsOpen(false)
       },
-      {
-        id: 'workflow-bugfix',
-        label: '🐛 Bug Fix Workflow',
-        description: 'Bug Hunter → Fix → Test',
-        icon: <Bug className="h-4 w-4" />,
-        category: 'workflows',
-        action: () => {
-          const event = new CustomEvent('newSession', { 
-            detail: { message: '/agent bugHunter I have a bug to fix. Help me identify, fix, and test it.' } 
-          })
-          window.dispatchEvent(event)
-          setIsOpen(false)
-        },
-        keywords: ['bug', 'fix', 'error', 'issue'],
-      },
-      {
-        id: 'workflow-mobile',
-        label: '📱 Mobile App Workflow',
-        description: 'Mobile Agent → UI/UX → Testing',
-        icon: <Smartphone className="h-4 w-4" />,
-        category: 'workflows',
-        action: () => {
-          const event = new CustomEvent('newSession', { 
-            detail: { message: '/agent mobile I need help with mobile app development.' } 
-          })
-          window.dispatchEvent(event)
-          setIsOpen(false)
-        },
-        keywords: ['mobile', 'app', 'ios', 'android', 'react native'],
-      },
-      {
-        id: 'workflow-deploy',
-        label: '🚀 Deploy Workflow',
-        description: 'DevOps → Security → Performance',
-        icon: <Rocket className="h-4 w-4" />,
-        category: 'workflows',
-        action: () => {
-          const event = new CustomEvent('newSession', { 
-            detail: { message: '/agent devops I need help setting up deployment and CI/CD.' } 
-          })
-          window.dispatchEvent(event)
-          setIsOpen(false)
-        },
-        keywords: ['deploy', 'ci', 'cd', 'devops', 'production'],
-      },
-      {
-        id: 'workflow-api',
-        label: '🔌 API Development Workflow',
-        description: 'API Design → Database → Documentation',
-        icon: <Code className="h-4 w-4" />,
-        category: 'workflows',
-        action: () => {
-          const event = new CustomEvent('newSession', { 
-            detail: { message: '/agent api I need help designing and building an API.' } 
-          })
-          window.dispatchEvent(event)
-          setIsOpen(false)
-        },
-        keywords: ['api', 'rest', 'graphql', 'endpoint'],
-      },
-    ]
+      keywords: workflow.tags,
+    }))
 
     return [...workflowCommands, ...actionCommands, ...agentCommands]
   }, [onSelectAgent, onAction])
