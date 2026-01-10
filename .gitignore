@@ -45,3 +45,4 @@ QUICK_DEPLOY.sh
 *.tsbuildinfo
 next-env.d.ts
 .env*
+.venv/
