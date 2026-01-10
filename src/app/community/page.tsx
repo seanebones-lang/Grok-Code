@@ -1,0 +1,1 @@
+'Community agent hub: Upload → /api/review → Auto-PR if PASS'
