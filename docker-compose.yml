@@ -1,9 +1,13 @@
 version: '3.8'
 services:
   swarm:
-    # ... existing
-    depends_on: [redis]
-  redis:
-    image: redis:alpine
-  db:
     # ...
+  prometheus:
+    image: prom/prometheus
+    ports: ['9090:9090']
+    volumes: ['./prometheus.yml:/etc/prometheus/prometheus.yml']
+  grafana:
+    image: grafana/grafana
+    ports: ['3001:3000']
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
