@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { getAllAgents, type SpecializedAgent } from '@/lib/specialized-agents'
 import { WORKFLOWS, formatWorkflowPrompt } from '@/lib/workflows'
+import { DEFAULT_GROKCONTEXT_TEMPLATE } from '@/lib/project-context'
 import { cn } from '@/lib/utils'
 
 interface CommandItem {
@@ -157,6 +158,41 @@ export function CommandPalette({ onSelectAgent, onAction }: CommandPaletteProps)
           setIsOpen(false)
         },
         keywords: ['review', 'quality', 'best practices'],
+      },
+      {
+        id: 'generate-context',
+        label: 'Generate .grokcontext',
+        description: 'Create project context file for agents',
+        icon: <FileText className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          // Copy template to clipboard
+          navigator.clipboard.writeText(DEFAULT_GROKCONTEXT_TEMPLATE)
+          // Show notification
+          const event = new CustomEvent('notification', { 
+            detail: { message: '.grokcontext template copied to clipboard! Paste it in your project root.' } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['context', 'grokcontext', 'project', 'config', 'setup'],
+      },
+      {
+        id: 'analyze-codebase',
+        label: 'Analyze Codebase',
+        description: 'Get AI to understand your project structure',
+        icon: <Code className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const event = new CustomEvent('newSession', { 
+            detail: { 
+              message: '/agent fullstack Analyze this codebase and help me understand its structure, patterns, and architecture. Create a summary that I can use as context for future conversations.' 
+            } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['analyze', 'structure', 'understand', 'architecture'],
       },
     ]
 
