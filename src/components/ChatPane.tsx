@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { sessionManager, type ChatSession } from '@/lib/session-manager'
 import { getAgent } from '@/lib/specialized-agents'
 import { analyzeTask, generateOrchestratorPrompt, isOrchestratorModeEnabled, formatAnalysisForDisplay } from '@/lib/orchestrator'
+import { agentMemory } from '@/lib/agent-memory'
 import type { Message } from '@/types'
 
 // SSE chunk schema for type-safe parsing
@@ -256,6 +257,12 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       content: m.content,
     }))
 
+    // Get relevant memories for context
+    const relevantMemories = agentMemory.getRelevant(content, 5)
+    const criticalMemories = agentMemory.getCritical()
+    const allRelevantMemories = [...new Set([...criticalMemories, ...relevantMemories])]
+    const memoryContext = agentMemory.formatForPrompt(allRelevantMemories)
+
     // Create abort controller for this request
     abortControllerRef.current = new AbortController()
 
@@ -269,6 +276,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
               message: processedContent,
               mode: mode !== 'default' ? mode : undefined,
               history,
+              memoryContext: memoryContext || undefined,
               repository: repository ? {
                 owner: repository.owner,
                 repo: repository.repo,

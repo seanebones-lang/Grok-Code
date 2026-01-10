@@ -34,6 +34,7 @@ import { getAllAgents, type SpecializedAgent } from '@/lib/specialized-agents'
 import { WORKFLOWS, formatWorkflowPrompt } from '@/lib/workflows'
 import { DEFAULT_GROKCONTEXT_TEMPLATE } from '@/lib/project-context'
 import { snippetsLibrary, type CodeSnippet } from '@/lib/snippets'
+import { agentMemory } from '@/lib/agent-memory'
 import { cn } from '@/lib/utils'
 
 interface CommandItem {
@@ -324,6 +325,65 @@ What are you working on? I'll suggest branch names.`
           setIsOpen(false)
         },
         keywords: ['git', 'branch', 'name', 'feature', 'fix'],
+      },
+      {
+        id: 'remember-decision',
+        label: 'Remember Decision',
+        description: 'Save an architecture/design decision for future reference',
+        icon: <Brain className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const decision = prompt('Enter the decision to remember:')
+          if (decision) {
+            const context = prompt('Optional context (press Cancel to skip):')
+            agentMemory.remember.decision(decision, context || undefined, 'high')
+            window.dispatchEvent(new CustomEvent('notification', { 
+              detail: { message: 'Decision saved to agent memory!' } 
+            }))
+          }
+          setIsOpen(false)
+        },
+        keywords: ['remember', 'save', 'decision', 'memory', 'architecture'],
+      },
+      {
+        id: 'remember-preference',
+        label: 'Remember Preference',
+        description: 'Save a coding preference for agents to follow',
+        icon: <Settings className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const preference = prompt('Enter the preference to remember:')
+          if (preference) {
+            agentMemory.remember.preference(preference)
+            window.dispatchEvent(new CustomEvent('notification', { 
+              detail: { message: 'Preference saved to agent memory!' } 
+            }))
+          }
+          setIsOpen(false)
+        },
+        keywords: ['remember', 'save', 'preference', 'memory', 'setting'],
+      },
+      {
+        id: 'view-memories',
+        label: 'View Agent Memories',
+        description: 'See what the agent remembers about your project',
+        icon: <Brain className="h-4 w-4" />,
+        category: 'actions',
+        action: () => {
+          const memories = agentMemory.load()
+          const formatted = memories.length > 0 
+            ? memories.map(m => `• [${m.type}] ${m.content}`).join('\n')
+            : 'No memories saved yet.'
+          
+          const event = new CustomEvent('newSession', { 
+            detail: { 
+              message: `Show me what you remember about my project.\n\nCurrent memories (${memories.length}):\n${formatted}` 
+            } 
+          })
+          window.dispatchEvent(event)
+          setIsOpen(false)
+        },
+        keywords: ['view', 'show', 'memories', 'remember', 'context'],
       },
     ]
 
