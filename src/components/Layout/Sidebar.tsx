@@ -1047,55 +1047,58 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               )}
             </div>
           </div>
-          
-          {/* User Profile & Logout */}
-          <div className="mt-4 pt-4 border-t border-[#404050] px-4 pb-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-full p-2 rounded-lg bg-[#1a1a2e] border border-[#404050] hover:bg-[#2a2a3e] transition-all flex items-center gap-2">
-                  {session?.user?.image ? (
-                    <img 
-                      src={session.user.image} 
-                      alt="Profile" 
-                      className="w-6 h-6 rounded-full"
-                    />
-                  ) : (
-                    <User className="h-4 w-4 text-[#9ca3af]" />
-                  )}
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-xs font-medium text-white truncate">
-                      {session?.user?.name || 'User'}
-                    </p>
-                    <p className="text-[10px] text-[#606070] truncate">
-                      {session?.user?.email || 'Signed in'}
-                    </p>
+        </div>
+        
+        {/* User Profile & Logout - FIXED at bottom */}
+        <div className="flex-shrink-0 p-3 border-t border-[#404050] bg-[#1a1a2e]">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full p-2 rounded-lg hover:bg-[#2a2a3e] transition-all flex items-center gap-2">
+                {session?.user?.image ? (
+                  <img 
+                    src={session.user.image} 
+                    alt="Profile" 
+                    className="w-7 h-7 rounded-full"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
                   </div>
-                  <ChevronDown className="h-3 w-3 text-[#606070]" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                className="w-56 bg-[#1a1a2e] border-[#404050]"
-                align="start"
+                )}
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-xs font-medium text-white truncate">
+                    {session?.user?.name || 'User'}
+                  </p>
+                  <p className="text-[10px] text-[#606070] truncate">
+                    {session?.user?.email || 'Signed in'}
+                  </p>
+                </div>
+                <LogOut className="h-4 w-4 text-[#606070] hover:text-red-400" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              className="w-56 bg-[#1a1a2e] border-[#404050]"
+              align="start"
+              side="top"
+            >
+              <DropdownMenuLabel className="text-xs text-[#9ca3af]">Account</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-[#404050]" />
+              <DropdownMenuItem 
+                className="cursor-pointer hover:bg-[#2a2a3e] focus:bg-[#2a2a3e] text-[#9ca3af]"
+                onClick={() => window.open('https://github.com/settings/applications', '_blank')}
               >
-                <DropdownMenuLabel className="text-xs text-[#9ca3af]">Account</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-[#404050]" />
-                <DropdownMenuItem 
-                  className="cursor-pointer hover:bg-[#2a2a3e] focus:bg-[#2a2a3e] text-[#9ca3af]"
-                  onClick={() => window.open('https://github.com/settings/applications', '_blank')}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  GitHub Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="cursor-pointer hover:bg-red-500/20 focus:bg-red-500/20 text-red-400"
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                <Settings className="h-4 w-4 mr-2" />
+                GitHub Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="cursor-pointer hover:bg-red-500/20 focus:bg-red-500/20 text-red-400"
+                onClick={() => signOut({ callbackUrl: '/login' })}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </motion.aside>
     </>
