@@ -1,0 +1,1 @@
+import { AR } from 'expo-ar'; <AR scene="metaverse-swarm" />
