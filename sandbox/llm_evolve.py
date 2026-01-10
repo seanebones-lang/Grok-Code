@@ -1,0 +1,1 @@
+from langchain_openai import ChatOpenAI; llm = ChatOpenAI(model='gpt-4o'); prompt = 'Evolve cosmic swarm: {code}'; async def evolve(code): return llm.invoke(prompt.format(code=code)).content
