@@ -1,0 +1,4 @@
+-r requirements-omni.txt
+-r requirements-langchain.txt
+torch
+qiskit
