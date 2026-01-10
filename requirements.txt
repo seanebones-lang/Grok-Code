@@ -1,0 +1,110 @@
+# =============================================================================
+# Agent Tools - Python Requirements (Full Install)
+# Requires Python 3.12 - Install with: pip install -r requirements.txt
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Data Manipulation
+# -----------------------------------------------------------------------------
+pandas>=2.1.0
+numpy>=1.26.0
+PyMuPDF>=1.24.0          # PDF parsing (import as fitz)
+Pillow>=10.0.0           # Image processing
+PyYAML>=6.0.0            # YAML parsing
+pydantic>=2.0.0          # Data validation
+python-docx>=1.0.0       # Word documents
+markdown>=3.5.0          # Markdown to HTML
+orjson>=3.9.0            # Fast JSON
+sqlalchemy>=2.0.0        # Database ORM
+
+# -----------------------------------------------------------------------------
+# Web & Network
+# -----------------------------------------------------------------------------
+requests>=2.31.0
+httpx>=0.27.0            # Async HTTP with HTTP/2
+aiohttp>=3.9.0           # Async HTTP/WebSocket
+beautifulsoup4>=4.12.0   # HTML parsing
+lxml>=5.0.0              # XML/HTML parser (for BeautifulSoup)
+playwright>=1.40.0       # Browser automation
+websockets>=12.0         # WebSocket client
+tavily-python>=0.3.0     # AI search API
+duckduckgo-search>=6.0.0 # Free web search (no API key!)
+fastapi>=0.110.0         # Modern API framework
+flask>=3.0.0             # Web framework
+uvicorn>=0.30.0          # ASGI server for FastAPI
+
+# -----------------------------------------------------------------------------
+# LLM & Cloud APIs
+# -----------------------------------------------------------------------------
+openai>=1.40.0           # OpenAI API
+anthropic>=0.30.0        # Claude API
+google-generativeai>=0.7.0  # Gemini API
+groq>=0.9.0              # Groq API (fast inference)
+mistralai>=1.0.0         # Mistral API
+cohere>=5.0.0            # Cohere API
+boto3>=1.34.0            # AWS SDK
+stripe>=10.0.0           # Stripe payments
+
+# -----------------------------------------------------------------------------
+# ML, Embeddings & Specialized
+# -----------------------------------------------------------------------------
+sympy>=1.12.0            # Symbolic math
+scipy>=1.12.0            # Scientific computing
+scikit-learn>=1.4.0      # Machine learning
+torch>=2.2.0             # Deep learning
+networkx>=3.2.0          # Graph analysis
+sentence-transformers>=2.5.0  # Text embeddings
+tiktoken>=0.7.0          # OpenAI tokenizer
+transformers>=4.40.0     # HuggingFace models
+
+# -----------------------------------------------------------------------------
+# Vector Databases (RAG)
+# -----------------------------------------------------------------------------
+chromadb>=0.4.0          # Vector store
+faiss-cpu>=1.7.0         # Facebook AI similarity search
+qdrant-client>=1.9.0     # Qdrant vector DB
+
+# -----------------------------------------------------------------------------
+# Agent Orchestration
+# -----------------------------------------------------------------------------
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.0
+langgraph>=0.2.0
+pyautogen>=0.3.0         # Microsoft AutoGen
+crewai>=0.60.0           # CrewAI framework
+llama-index>=0.10.0      # LlamaIndex
+
+# -----------------------------------------------------------------------------
+# Media & Multimedia
+# -----------------------------------------------------------------------------
+opencv-python>=4.9.0     # Computer vision
+moviepy>=1.0.0           # Video editing
+pydub>=0.25.0            # Audio processing
+
+# -----------------------------------------------------------------------------
+# Social & Real-Time
+# -----------------------------------------------------------------------------
+tweepy>=4.14.0           # Twitter/X API
+feedparser>=6.0.0        # RSS/Atom feeds
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+python-dotenv>=1.0.0     # Load .env files
+rich>=13.0.0             # Beautiful terminal output
+typer>=0.9.0             # CLI framework
+click>=8.0.0             # CLI creation
+tqdm>=4.65.0             # Progress bars
+pytest>=8.0.0            # Testing
+faker>=25.0.0            # Fake data generation
+python-dateutil>=2.8.0   # Date parsing
+jinja2>=3.1.0            # Templating
+tenacity>=8.2.0          # Retry with backoff
+loguru>=0.7.0            # Better logging
+schedule>=1.2.0          # Job scheduling
+
+# -----------------------------------------------------------------------------
+# Security
+# -----------------------------------------------------------------------------
+cryptography>=42.0.0     # Encryption

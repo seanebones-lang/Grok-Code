@@ -1,0 +1,59 @@
+# =============================================================================
+# Agent Tools - CORE Requirements (Python 3.14 Tested)
+# These packages are known to work with Python 3.14
+# Install with: pip install -r requirements-core.txt
+# =============================================================================
+
+# Core Data
+pandas
+numpy
+pydantic
+orjson
+PyYAML
+
+# Web & HTTP
+requests
+httpx
+aiohttp
+beautifulsoup4
+lxml
+websockets
+
+# LLM APIs (these should work)
+openai
+anthropic
+google-generativeai
+groq
+
+# Utilities
+python-dotenv
+rich
+tqdm
+tenacity
+loguru
+jinja2
+
+# File Processing
+Pillow
+python-docx
+markdown
+
+# Database
+sqlalchemy
+
+# Testing
+pytest
+faker
+
+# Date/Time
+python-dateutil
+
+# Security
+cryptography
+
+# CLI
+typer
+click
+
+# Network
+feedparser
