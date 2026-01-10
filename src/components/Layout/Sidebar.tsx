@@ -25,7 +25,14 @@ import {
   Clock,
   Workflow,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Activity,
+  Shield,
+  TestTube,
+  Package,
+  Gauge,
+  Zap,
+  Play
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -42,6 +49,7 @@ import { GROK_MODELS, MODEL_PRIORITY, DEFAULT_MODEL } from '@/lib/grok-models'
 import { getAllAgents } from '@/lib/specialized-agents'
 import { sessionManager, type SessionSummary } from '@/lib/session-manager'
 import { isOrchestratorModeEnabled, setOrchestratorMode } from '@/lib/orchestrator'
+import { healthDashboard, type HealthReport, formatTimeAgo } from '@/lib/health-dashboard'
 import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'nexteleven_fileTree'
@@ -88,6 +96,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [showAllSessions, setShowAllSessions] = useState(false)
   const [orchestratorMode, setOrchestratorModeState] = useState(false)
+  const [healthReport, setHealthReport] = useState<HealthReport | null>(null)
+  const [healthExpanded, setHealthExpanded] = useState(false)
 
   // Load saved repo, model, and pinned agents from localStorage
   useEffect(() => {
@@ -112,6 +122,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       }
       // Load orchestrator mode
       setOrchestratorModeState(isOrchestratorModeEnabled())
+      // Load health report
+      setHealthReport(healthDashboard.load())
     } catch (e) {
       console.error('Failed to load saved data:', e)
     }
@@ -124,6 +136,37 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     setOrchestratorMode(newValue)
     window.dispatchEvent(new CustomEvent('orchestratorModeChanged', { detail: { enabled: newValue } }))
   }, [orchestratorMode])
+
+  // Run health scan
+  const handleRunScan = useCallback((type: 'security' | 'coverage' | 'dependencies' | 'techDebt' | 'performance' | 'full') => {
+    const prompts = healthDashboard.prompts
+    const prompt = prompts[type]()
+    
+    const event = new CustomEvent('newSession', { 
+      detail: { message: prompt } 
+    })
+    window.dispatchEvent(event)
+  }, [])
+
+  // Get status color
+  const getStatusColor = (status: 'good' | 'warning' | 'critical' | undefined) => {
+    switch (status) {
+      case 'good': return 'text-green-400'
+      case 'warning': return 'text-yellow-400'
+      case 'critical': return 'text-red-400'
+      default: return 'text-[#606070]'
+    }
+  }
+
+  // Get status bg
+  const getStatusBg = (status: 'good' | 'warning' | 'critical' | undefined) => {
+    switch (status) {
+      case 'good': return 'bg-green-400'
+      case 'warning': return 'bg-yellow-400'
+      case 'critical': return 'bg-red-400'
+      default: return 'bg-[#606070]'
+    }
+  }
 
   // Toggle agent pinning
   const togglePinAgent = useCallback((agentId: string) => {
@@ -751,6 +794,97 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                 <ToggleLeft className="h-5 w-5 text-[#606070]" />
               )}
             </button>
+          </div>
+
+          {/* Health Dashboard (Collapsed) */}
+          <div className="mt-3 px-4">
+            <button
+              onClick={() => setHealthExpanded(!healthExpanded)}
+              className="w-full p-2 rounded-lg bg-[#1a1a2e] border border-[#404050] hover:bg-[#2a2a3e] transition-all flex items-center gap-2"
+            >
+              <Activity className="h-4 w-4 text-[#9ca3af]" />
+              <span className="text-xs font-medium text-white flex-1 text-left">Health</span>
+              {healthReport?.overall.lastChecked ? (
+                <>
+                  <span className={cn("text-xs font-bold", getStatusColor(healthReport.overall.status))}>
+                    {healthReport.overall.score}/100
+                  </span>
+                  <div className={cn("w-2 h-2 rounded-full", getStatusBg(healthReport.overall.status))} />
+                </>
+              ) : (
+                <span className="text-[10px] text-[#606070]">Not scanned</span>
+              )}
+              {healthExpanded ? (
+                <ChevronDown className="h-3 w-3 text-[#606070]" />
+              ) : (
+                <ChevronRight className="h-3 w-3 text-[#606070]" />
+              )}
+            </button>
+            
+            {/* Expanded Health Panel */}
+            {healthExpanded && (
+              <div className="mt-2 p-3 rounded-lg bg-[#1a1a2e] border border-[#404050] space-y-2">
+                {/* Metrics */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                      <Shield className="h-3 w-3" /> Security
+                    </span>
+                    <span className={getStatusColor(healthReport?.security.status)}>
+                      {healthReport?.security.lastChecked ? `${healthReport.security.score}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                      <TestTube className="h-3 w-3" /> Coverage
+                    </span>
+                    <span className={getStatusColor(healthReport?.coverage.status)}>
+                      {healthReport?.coverage.lastChecked ? `${healthReport.coverage.score}%` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                      <Package className="h-3 w-3" /> Dependencies
+                    </span>
+                    <span className={getStatusColor(healthReport?.dependencies.status)}>
+                      {healthReport?.dependencies.lastChecked ? `${healthReport.dependencies.score}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                      <Gauge className="h-3 w-3" /> Tech Debt
+                    </span>
+                    <span className={getStatusColor(healthReport?.techDebt.status)}>
+                      {healthReport?.techDebt.lastChecked ? `${healthReport.techDebt.score}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                      <Zap className="h-3 w-3" /> Performance
+                    </span>
+                    <span className={getStatusColor(healthReport?.performance.status)}>
+                      {healthReport?.performance.lastChecked ? `${healthReport.performance.score}` : '—'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Last scan info */}
+                {healthReport?.lastFullScan && (
+                  <p className="text-[10px] text-[#606070] pt-1 border-t border-[#404050]">
+                    Last scan: {formatTimeAgo(healthReport.lastFullScan)}
+                  </p>
+                )}
+                
+                {/* Run Scan Button */}
+                <button
+                  onClick={() => handleRunScan('full')}
+                  className="w-full mt-2 p-2 rounded bg-primary/20 hover:bg-primary/30 text-primary text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Play className="h-3 w-3" />
+                  Run Full Audit
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Specialized Agents */}
