@@ -1,5 +1,1 @@
-provider "aws" { region = "us-east-1" }
-resource "aws_groundstation_config" "swarm_sat" {
-  name = "cosmic-swarm"
-  # Orbital swarm deploy
-}
+resource "aws_groundstation_config" "hyperverse" { name = "satellite-swarm" type = "UPLINK_ECHO" }
