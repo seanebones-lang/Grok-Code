@@ -1,8 +1,15 @@
 version: '3.8'
 services:
-  sandbox:
+  swarm:
     build: .
+    context: .
+    dockerfile: Dockerfile.swarm
+    ports:
+      - '8000:8000'
     volumes:
       - .:/app
-    stdin_open: true
-    tty: true
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+  db:
+    image: postgres:16
+    # Prisma compat
