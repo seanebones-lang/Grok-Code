@@ -1,0 +1,1 @@
+from langchain_openai import ChatOpenAI; from langchain_groq import ChatGroq; claude=ChatOpenAI(model='claude-3-5-sonnet'); grok=ChatGroq(); def oracle(query): votes = [claude.invoke(query), grok.invoke(query)]; return max(set(votes), key=votes.count)
