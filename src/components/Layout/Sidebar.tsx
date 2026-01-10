@@ -71,6 +71,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [selectedModel, setSelectedModel] = useState<string>('grok-4.1-fast')
   const [showModelMenu, setShowModelMenu] = useState(false)
   const [environment, setEnvironment] = useState<'cloud' | 'other'>('cloud')
+  const [showAllAgents, setShowAllAgents] = useState(false)
 
   // Load saved repo and model from localStorage
   useEffect(() => {
@@ -602,9 +603,24 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
           
           {/* Specialized Agents */}
           <div className="mt-4 pt-4 border-t border-[#404050] px-4">
-            <h3 className="text-xs font-semibold text-[#9ca3af] mb-2">Specialized Agents</h3>
-            <div className="space-y-1 text-xs">
-              {getAllAgents().slice(0, 6).map((agent) => (
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#9ca3af]">Specialized Agents</h3>
+              {getAllAgents().length > 6 && (
+                <button
+                  onClick={() => setShowAllAgents(!showAllAgents)}
+                  className="text-[10px] text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                >
+                  {showAllAgents ? 'Show less' : `+${getAllAgents().length - 6} more`}
+                  {showAllAgents ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </button>
+              )}
+            </div>
+            <div className="space-y-1 text-xs max-h-[400px] overflow-y-auto">
+              {(showAllAgents ? getAllAgents() : getAllAgents().slice(0, 6)).map((agent) => (
                 <button
                   key={agent.id}
                   onClick={() => {
@@ -634,11 +650,6 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                   </div>
                 </button>
               ))}
-              {getAllAgents().length > 6 && (
-                <p className="text-[10px] text-[#9ca3af] pt-2">
-                  +{getAllAgents().length - 6} more agents available
-                </p>
-              )}
             </div>
           </div>
           
