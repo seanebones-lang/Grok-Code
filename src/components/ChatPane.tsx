@@ -10,6 +10,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Button } from '@/components/ui/button'
 import { sessionManager, type ChatSession } from '@/lib/session-manager'
 import { getAgent } from '@/lib/specialized-agents'
+import { analyzeTask, generateOrchestratorPrompt, isOrchestratorModeEnabled, formatAnalysisForDisplay } from '@/lib/orchestrator'
 import type { Message } from '@/types'
 
 // SSE chunk schema for type-safe parsing
@@ -57,6 +58,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
   const [currentMode, setCurrentMode] = useState<ChatMode>('default')
   const [showAgentMode, setShowAgentMode] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [orchestratorMode, setOrchestratorModeState] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -69,6 +71,17 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     if (session.messages.length > 0) {
       setMessages(session.messages)
     }
+    // Load orchestrator mode
+    setOrchestratorModeState(isOrchestratorModeEnabled())
+  }, [])
+
+  // Listen for orchestrator mode changes
+  useEffect(() => {
+    const handleOrchestratorChange = (e: CustomEvent<{ enabled: boolean }>) => {
+      setOrchestratorModeState(e.detail.enabled)
+    }
+    window.addEventListener('orchestratorModeChanged', handleOrchestratorChange as EventListener)
+    return () => window.removeEventListener('orchestratorModeChanged', handleOrchestratorChange as EventListener)
   }, [])
 
   // Save messages to session when they change
@@ -205,10 +218,31 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     setCurrentMode(mode)
     lastRequestRef.current = { content, mode }
     
+    // Check if orchestrator mode is enabled and this is a new task (not already orchestrated)
+    let processedContent = content
+    let orchestratorPrefix = ''
+    
+    if (orchestratorMode && !content.startsWith('/agent') && messages.length === 0) {
+      // Analyze the task
+      const analysis = analyzeTask(content)
+      
+      // Show analysis to user
+      orchestratorPrefix = `🎼 **Auto-Orchestrator Active**\n\n${formatAnalysisForDisplay(analysis)}\n\n---\n\n`
+      
+      // Route to the best agent
+      if (analysis.suggestedAgents.length > 0) {
+        const primaryAgent = analysis.suggestedAgents[0]
+        processedContent = `/agent ${primaryAgent.agentId} ${content}`
+        
+        // Add orchestrator context
+        orchestratorPrefix += `**Routing to ${primaryAgent.emoji} ${primaryAgent.agentName}**\n_${primaryAgent.reason}_\n\n---\n\n`
+      }
+    }
+    
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content,
+      content: orchestratorPrefix ? `${orchestratorPrefix}${content}` : content,
       timestamp: new Date(),
       metadata: mode !== 'default' ? { mode } : undefined,
     }
@@ -232,7 +266,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
-              message: content,
+              message: processedContent,
               mode: mode !== 'default' ? mode : undefined,
               history,
               repository: repository ? {
