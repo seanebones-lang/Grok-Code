@@ -206,66 +206,37 @@ Provide comprehensive review covering:
 5. Best practices compliance
 6. Suggestions for improvement`,
 
-  agent: `\n\n[AUTONOMOUS AGENT MODE ACTIVE]
-You are now operating as an autonomous agent with access to tools.
+  agent: `\n\n[AUTONOMOUS AGENT MODE - FULL AUTO-EXECUTION]
+You are an autonomous agent. **ALL TOOLS EXECUTE AUTOMATICALLY - NO USER APPROVAL NEEDED.**
 
-## Available Tools
+## CRITICAL: Just Do It!
+- Output JSON tool calls and they RUN IMMEDIATELY
+- NEVER say "I'll wait for approval" or "type execute"
+- NEVER ask "should I proceed?" - just PROCEED
+- Build, write, run commands - everything is AUTO
 
-### 1. read_file
-Read the contents of a file.
+## Tools (Auto-Execute on Output)
+
 \`\`\`json
-{"name": "read_file", "arguments": {"path": "string"}}
+{"name": "read_file", "arguments": {"path": "file.ts"}}
+{"name": "write_file", "arguments": {"path": "file.ts", "content": "code here"}}
+{"name": "list_files", "arguments": {"path": "src/"}}
+{"name": "run_command", "arguments": {"command": "npm install"}}
+{"name": "delete_file", "arguments": {"path": "old.ts"}}
+{"name": "search_code", "arguments": {"query": "function name"}}
 \`\`\`
 
-### 2. write_file
-Create or update a file.
+## Workflow
+1. Read what's needed
+2. Write files (they save automatically)
+3. Run commands (they execute automatically)
+4. Continue until DONE
+5. Call complete when finished:
 \`\`\`json
-{"name": "write_file", "arguments": {"path": "string", "content": "string"}}
+{"name": "complete", "arguments": {"summary": "What I did", "files_changed": ["file1.ts"]}}
 \`\`\`
 
-### 3. list_files
-List files in a directory.
-\`\`\`json
-{"name": "list_files", "arguments": {"path": "string (optional)"}}
-\`\`\`
-
-### 4. run_command
-Execute a terminal command.
-\`\`\`json
-{"name": "run_command", "arguments": {"command": "string", "cwd": "string (optional)"}}
-\`\`\`
-Allowed: npm, npx, yarn, node, git, tsc, eslint, prettier, jest, python, pip, cargo, go
-
-### 5. think
-Record your reasoning (no execution).
-\`\`\`json
-{"name": "think", "arguments": {"thought": "string"}}
-\`\`\`
-
-### 6. complete
-Mark task as complete.
-\`\`\`json
-{"name": "complete", "arguments": {"summary": "string", "files_changed": ["array"]}}
-\`\`\`
-
-## Response Format
-For each step:
-1. **Thought**: Your reasoning
-2. **Action**: Tool call in JSON
-
-Example:
-**Thought**: I need to read package.json first.
-
-**Action**:
-\`\`\`json
-{"name": "read_file", "arguments": {"path": "package.json"}}
-\`\`\`
-
-## Rules
-- One tool call per response
-- Wait for observation before next action
-- Handle errors and retry with different approach
-- Always call 'complete' when finished`,
+**You are fully autonomous. Take action, don't ask permission.**`,
 }
 
 // Available models in priority order (January 2026)
@@ -329,29 +300,175 @@ function parseToolCallFromResponse(response: string): ToolCall | null {
   return null
 }
 
+// Local file execution for when no GitHub repository is connected
+async function executeLocalTool(
+  toolCall: ToolCall
+): Promise<{ success: boolean; output: string; error?: string }> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  
+  switch (toolCall.name) {
+    case 'read_file': {
+      try {
+        const response = await fetch(`${baseUrl}/api/agent/local`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'read',
+            path: toolCall.arguments.path as string,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          return { success: false, output: '', error: data.error || 'Failed to read file' }
+        }
+        return { success: true, output: data.content }
+      } catch (error: any) {
+        return { success: false, output: '', error: error.message || 'Failed to read file' }
+      }
+    }
+    
+    case 'list_files': {
+      try {
+        const response = await fetch(`${baseUrl}/api/agent/local`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'list',
+            path: (toolCall.arguments.path as string) || '.',
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          return { success: false, output: '', error: data.error || 'Failed to list files' }
+        }
+        const files = data.files || []
+        const fileList = files
+          .map((f: { type: string; name: string; size?: number }) => 
+            `${f.type === 'directory' ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
+          )
+          .join('\n')
+        return { success: true, output: fileList || 'Empty directory' }
+      } catch (error: any) {
+        return { success: false, output: '', error: error.message || 'Failed to list files' }
+      }
+    }
+    
+    case 'write_file': {
+      try {
+        const response = await fetch(`${baseUrl}/api/agent/local`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'write',
+            path: toolCall.arguments.path as string,
+            content: toolCall.arguments.content as string,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          return { success: false, output: '', error: data.error || 'Failed to write file' }
+        }
+        return { success: true, output: `File written: ${toolCall.arguments.path}` }
+      } catch (error: any) {
+        return { success: false, output: '', error: error.message || 'Failed to write file' }
+      }
+    }
+    
+    case 'delete_file': {
+      try {
+        const response = await fetch(`${baseUrl}/api/agent/local`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            path: toolCall.arguments.path as string,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          return { success: false, output: '', error: data.error || 'Failed to delete file' }
+        }
+        return { success: true, output: `File deleted: ${toolCall.arguments.path}` }
+      } catch (error: any) {
+        return { success: false, output: '', error: error.message || 'Failed to delete file' }
+      }
+    }
+    
+    case 'run_command': {
+      try {
+        const response = await fetch(`${baseUrl}/api/agent/terminal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            command: toolCall.arguments.command as string,
+            cwd: toolCall.arguments.cwd as string | undefined,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          return { success: false, output: '', error: data.error || 'Command failed' }
+        }
+        return { 
+          success: data.exitCode === 0, 
+          output: data.output || data.stdout || '',
+          error: data.exitCode !== 0 ? (data.stderr || 'Command failed') : undefined 
+        }
+      } catch (error: any) {
+        return { success: false, output: '', error: error.message || 'Command failed' }
+      }
+    }
+    
+    case 'search_code': {
+      // For local search, use grep via terminal
+      const query = toolCall.arguments.query as string
+      const path = (toolCall.arguments.path as string) || '.'
+      try {
+        const response = await fetch(`${baseUrl}/api/agent/terminal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            command: `grep -rn "${query.replace(/"/g, '\\"')}" ${path} --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.json" 2>/dev/null | head -50`,
+          }),
+        })
+        const data = await response.json()
+        return { success: true, output: data.output || 'No results found' }
+      } catch (error: any) {
+        return { success: false, output: '', error: error.message || 'Search failed' }
+      }
+    }
+    
+    default:
+      return { success: false, output: '', error: `Tool '${toolCall.name}' not supported for local execution` }
+  }
+}
+
 async function executeTool(
   toolCall: ToolCall,
   repository?: { owner: string; repo: string; branch?: string },
   accessToken?: string
 ): Promise<{ success: boolean; output: string; error?: string }> {
+  // If no repository, use local execution
+  if (!repository) {
+    return executeLocalTool(toolCall)
+  }
+  
   try {
     // We need to call the internal API routes directly since we're in the same process
     // Import the auth and file operations directly
     const session = await auth()
     if (!session?.user) {
-      return { success: false, output: '', error: 'Authentication required' }
+      // Fall back to local execution if not authenticated
+      return executeLocalTool(toolCall)
     }
     
     const userAccessToken = (session as { accessToken?: string }).accessToken
     if (!userAccessToken) {
-      return { success: false, output: '', error: 'GitHub access token required' }
+      // Fall back to local execution if no GitHub token
+      return executeLocalTool(toolCall)
     }
     
     switch (toolCall.name) {
       case 'read_file': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
         const octokit = new Octokit({ auth: userAccessToken })
         const ref = repository.branch || 'main'
         try {
@@ -372,9 +489,6 @@ async function executeTool(
       }
       
       case 'list_files': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
         const octokit = new Octokit({ auth: userAccessToken })
         const ref = repository.branch || 'main'
         const path = (toolCall.arguments.path as string) || ''
@@ -398,9 +512,6 @@ async function executeTool(
       }
       
       case 'write_file': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
         const octokit = new Octokit({ auth: userAccessToken })
         const ref = repository.branch || 'main'
         const path = toolCall.arguments.path as string
@@ -984,17 +1095,19 @@ export async function POST(request: NextRequest) {
 You are working with the GitHub repository: **${owner}/${repo}**${branch ? ` (branch: ${branch})` : ''}
 - When the user asks about "this repo" or "the codebase", they are referring to ${owner}/${repo}
 
-## Available Tools (You Can Use These!)
+## Available Tools (AUTO-EXECUTE - NO USER CONFIRMATION NEEDED!)
 
-You have direct access to tools to interact with the repository. **IMPORTANT: When you need to use a tool, simply include it as a JSON code block in your response. The tool will be executed AUTOMATICALLY and the results will be provided to you immediately.**
+You have direct access to tools. **CRITICAL: Tools execute AUTOMATICALLY without ANY user confirmation. Just output the JSON and it runs immediately.**
 
-Format tool calls like this:
+**ALWAYS use this exact JSON format in a code block:**
 
 \`\`\`json
-{"name": "tool_name", "arguments": {"arg1": "value1", "arg2": "value2"}}
+{"name": "tool_name", "arguments": {"arg1": "value1"}}
 \`\`\`
 
-**After you show a tool call, wait for the tool result before continuing. The tool will execute automatically and you'll receive the results.**
+**NEVER ask the user to "execute" or "confirm" or "apply" - just DO IT. Output the JSON and the action happens instantly.**
+
+After each tool call, wait for results before continuing. You can chain multiple operations to complete tasks fully.
 
 ### Available Tools:
 
@@ -1238,7 +1351,8 @@ The tool will be executed automatically and the results will be provided to you.
               const data = trimmedLine.slice(6)
               if (data === '[DONE]') {
                 // After stream completes, check for tool calls and execute them
-                if (repository && accessToken) {
+                // Always try to execute tools - use local execution if no repository
+                {
                   // Find all tool calls in the response
                   const toolCalls: ToolCall[] = []
                   const seen = new Set<string>()
@@ -1283,6 +1397,47 @@ The tool will be executed automatically and the results will be provided to you.
                       }
                     } catch {
                       // Not valid JSON, continue
+                    }
+                  }
+                  
+                  // Also parse formatted Tool Request sections (### 🔧 Tool Request)
+                  const toolRequestPattern = /###\s*🔧\s*Tool Request\s*\n([\s\S]*?)(?=###|$)/gi
+                  let toolRequestMatch
+                  while ((toolRequestMatch = toolRequestPattern.exec(fullResponse)) !== null) {
+                    const content = toolRequestMatch[1]
+                    const toolMatch = content.match(/Tool:?\s*([^\n]+)/i)
+                    const inputMatch = content.match(/Input:?\s*([^\n]+)/i)
+                    const pathMatch = content.match(/Path:?\s*([^\n]+)/i)
+                    const commandMatch = content.match(/Command:?\s*([^\n]+)/i)
+                    const contentMatch = content.match(/Content:?\s*```[\s\S]*?\n([\s\S]*?)```/i)
+                    
+                    if (toolMatch) {
+                      const toolName = toolMatch[1].trim().toLowerCase().replace(/\s+/g, '_')
+                      const args: Record<string, unknown> = {}
+                      
+                      // Build arguments based on what we found
+                      if (pathMatch) args.path = pathMatch[1].trim()
+                      if (inputMatch && !pathMatch) args.path = inputMatch[1].trim()
+                      if (commandMatch) args.command = commandMatch[1].trim()
+                      if (contentMatch) args.content = contentMatch[1].trim()
+                      
+                      // Map common tool names
+                      const normalizedToolName = 
+                        toolName.includes('read') ? 'read_file' :
+                        toolName.includes('write') ? 'write_file' :
+                        toolName.includes('list') ? 'list_files' :
+                        toolName.includes('delete') ? 'delete_file' :
+                        toolName.includes('command') || toolName.includes('run') || toolName.includes('terminal') ? 'run_command' :
+                        toolName.includes('search') ? 'search_code' :
+                        toolName
+                      
+                      if (Object.keys(args).length > 0) {
+                        const key = `${normalizedToolName}:${JSON.stringify(args)}`
+                        if (!seen.has(key)) {
+                          seen.add(key)
+                          toolCalls.push({ name: normalizedToolName, arguments: args })
+                        }
+                      }
                     }
                   }
                   
