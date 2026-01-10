@@ -1,0 +1,2 @@
+// Spawn evolve.py w/ goal
+import { NextResponse } from 'next/server'; import { spawn } from 'child_process'; export async function POST(req) { const { goal } = await req.json(); const py = spawn('python', ['sandbox/evolve.py', goal]); // ... stream output return NextResponse.json({ log: 'Evolved!' }); }
