@@ -1,0 +1,1 @@
+resource "aws_sagemaker_notebook_instance" "singularity" { name = "agi-swarm" instance_type = "ml.p3.2xlarge" }
