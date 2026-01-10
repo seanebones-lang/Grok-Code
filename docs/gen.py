@@ -1,0 +1,1 @@
+import sphinx; sphinx.build('source', 'build', 'omniverse'); print('Eternal docs generated')
