@@ -19,6 +19,7 @@ const chatSchema = z.object({
     content: z.string(),
   })).optional(),
   mode: z.enum(['default', 'refactor', 'orchestrate', 'debug', 'review', 'agent']).optional(),
+  memoryContext: z.string().optional(), // Agent memory from past sessions
   repository: z.object({
     owner: z.string(),
     repo: z.string(),
@@ -914,7 +915,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const { message, history, mode: explicitMode, repository } = parseResult.data
+    const { message, history, mode: explicitMode, memoryContext, repository } = parseResult.data
 
     // Check for /execute command - force tool execution from previous message
     const isExecuteCommand = message.trim().toLowerCase() === '/execute' || message.trim().toLowerCase().startsWith('/execute ')
@@ -1073,6 +1074,11 @@ The tool will be executed automatically and the results will be provided to you.
     
     if (effectiveMode !== 'default' && MODE_PROMPTS[effectiveMode]) {
       fullSystemPrompt += MODE_PROMPTS[effectiveMode]
+    }
+
+    // Inject memory context if available
+    if (memoryContext) {
+      fullSystemPrompt += `\n\n${memoryContext}\n\nUse this context to provide more personalized and consistent assistance. Reference past decisions when relevant.`
     }
 
     // Build messages array with history support
