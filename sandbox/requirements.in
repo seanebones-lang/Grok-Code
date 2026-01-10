@@ -1,0 +1,7 @@
+fastapi[all]
+uvicorn[standard]
+pydantic
+langchain
+langchain-openai
+httpx
+# + existing from requirements.txt
