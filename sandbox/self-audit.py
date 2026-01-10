@@ -1,0 +1,1 @@
+import subprocess; files = subprocess.check_output(['git', 'ls-files']).decode().split(); for f in files: res = subprocess.check_output(['curl', '-d', f'code={f}', 'localhost:8000/swarm']).decode(); if 'bug' in res: print(f'Fix {f}');
