@@ -22,7 +22,10 @@ import {
   Plus,
   Trash2,
   MessageSquare,
-  Clock
+  Clock,
+  Workflow,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -38,6 +41,7 @@ import {
 import { GROK_MODELS, MODEL_PRIORITY, DEFAULT_MODEL } from '@/lib/grok-models'
 import { getAllAgents } from '@/lib/specialized-agents'
 import { sessionManager, type SessionSummary } from '@/lib/session-manager'
+import { isOrchestratorModeEnabled, setOrchestratorMode } from '@/lib/orchestrator'
 import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'nexteleven_fileTree'
@@ -83,6 +87,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [pinnedAgents, setPinnedAgents] = useState<Set<string>>(new Set())
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [showAllSessions, setShowAllSessions] = useState(false)
+  const [orchestratorMode, setOrchestratorModeState] = useState(false)
 
   // Load saved repo, model, and pinned agents from localStorage
   useEffect(() => {
@@ -105,10 +110,20 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       if (savedPinned) {
         setPinnedAgents(new Set(JSON.parse(savedPinned)))
       }
+      // Load orchestrator mode
+      setOrchestratorModeState(isOrchestratorModeEnabled())
     } catch (e) {
       console.error('Failed to load saved data:', e)
     }
   }, [onRepoConnect])
+
+  // Toggle orchestrator mode
+  const handleToggleOrchestratorMode = useCallback(() => {
+    const newValue = !orchestratorMode
+    setOrchestratorModeState(newValue)
+    setOrchestratorMode(newValue)
+    window.dispatchEvent(new CustomEvent('orchestratorModeChanged', { detail: { enabled: newValue } }))
+  }, [orchestratorMode])
 
   // Toggle agent pinning
   const togglePinAgent = useCallback((agentId: string) => {
@@ -699,6 +714,45 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
             </Button>
           )}
           
+          {/* Orchestrator Mode Toggle */}
+          <div className="mt-4 pt-4 border-t border-[#404050] px-4">
+            <button
+              onClick={handleToggleOrchestratorMode}
+              className={cn(
+                "w-full p-3 rounded-lg border transition-all flex items-center gap-3",
+                orchestratorMode 
+                  ? "bg-primary/10 border-primary/50 hover:bg-primary/20" 
+                  : "bg-[#1a1a2e] border-[#404050] hover:bg-[#2a2a3e]"
+              )}
+            >
+              <div className={cn(
+                "p-2 rounded-lg",
+                orchestratorMode ? "bg-primary/20" : "bg-[#2a2a3e]"
+              )}>
+                <Workflow className={cn(
+                  "h-4 w-4",
+                  orchestratorMode ? "text-primary" : "text-[#9ca3af]"
+                )} />
+              </div>
+              <div className="flex-1 text-left">
+                <p className={cn(
+                  "text-xs font-semibold",
+                  orchestratorMode ? "text-primary" : "text-white"
+                )}>
+                  Auto-Orchestrator
+                </p>
+                <p className="text-[10px] text-[#9ca3af]">
+                  {orchestratorMode ? 'ON - Routes to best agent' : 'OFF - Direct input'}
+                </p>
+              </div>
+              {orchestratorMode ? (
+                <ToggleRight className="h-5 w-5 text-primary" />
+              ) : (
+                <ToggleLeft className="h-5 w-5 text-[#606070]" />
+              )}
+            </button>
+          </div>
+
           {/* Specialized Agents */}
           <div className="mt-4 pt-4 border-t border-[#404050] px-4">
             <div className="flex items-center justify-between mb-2">
