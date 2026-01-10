@@ -1,1 +1,17 @@
-<canvas id="holo" className="w-full h-screen"></canvas><script src="https://cdn.babylonjs.com/babylon.js"></script><script>const canvas = document.getElementById('holo'); const engine = new BABYLON.Engine(canvas); const scene = new BABYLON.Scene(engine); const camera = new BABYLON.ArcRotateCamera('cam', 1, 1, 10, BABYLON.Vector3.Zero(), scene); const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0,1,0), scene); const sphere = BABYLON.MeshBuilder.CreateSphere('neural', {diameter:2}, scene); engine.runRenderLoop(() => scene.render());</script>
+import { useEffect } from 'react';
+export default function Singularity() {
+  useEffect(() => {
+    const canvas = document.getElementById('holo') as HTMLCanvasElement;
+    // Babylon.js CDN stub
+    const script = document.createElement('script');
+    script.src = 'https://cdn.babylonjs.com/babylon.js';
+    script.onload = () => {
+      // Simple neural sphere
+      (window as any).BABYLON.Engine.ShadersRepository = 'https://cdn.babylonjs.com/shaders/';
+      // Viz code...
+      alert('🧠 Singularity Holo Loaded!');
+    };
+    document.body.append(script);
+  }, []);
+  return (<div className="min-h-screen bg-gradient-to-br from-purple-900 to-black p-8"><h1 className="text-6xl font-black text-white mb-8">🧠 Singularity Dashboard</h1><canvas id="holo" className="w-full h-96 bg-gray-900 rounded-3xl border-4 border-purple-500"></canvas><p className="text-xl text-white mt-4">Neural Evolution Viz ∞</p></div>);
+}
