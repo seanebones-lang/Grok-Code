@@ -1,0 +1,1 @@
+from libp2p import new_node; node = new_node(); node.listen(9001); print('P2P Omniverse node eternal')
