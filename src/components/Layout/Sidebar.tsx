@@ -762,7 +762,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
         </div>
           
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           {/* Orchestrator Mode Toggle */}
           <div className="pt-4 px-4">
             <button

@@ -105,8 +105,11 @@ export default function RootLayout({
             <ResizablePanel 
               defaultSize={50}
               minSize={10}
+              className="h-full"
             >
-              <Sidebar />
+              <div className="h-full overflow-hidden">
+                <Sidebar />
+              </div>
             </ResizablePanel>
             
             {/* Resizable Handle */}
