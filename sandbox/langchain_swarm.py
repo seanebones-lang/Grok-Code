@@ -1,0 +1,1 @@
+from langchain_groq import ChatGroq; from langchain.chains import LLMChain; llm = ChatGroq(model='mixtral-8x7b-32768'); chain = LLMChain(llm=llm, prompt='Transcend {code}'); async def run(code): return chain.run(code=code)
