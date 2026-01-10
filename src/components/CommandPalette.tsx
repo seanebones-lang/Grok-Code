@@ -26,10 +26,14 @@ import {
   ArrowRight,
   Keyboard,
   History,
+  Scissors,
+  Copy,
+  Star,
 } from 'lucide-react'
 import { getAllAgents, type SpecializedAgent } from '@/lib/specialized-agents'
 import { WORKFLOWS, formatWorkflowPrompt } from '@/lib/workflows'
 import { DEFAULT_GROKCONTEXT_TEMPLATE } from '@/lib/project-context'
+import { snippetsLibrary, type CodeSnippet } from '@/lib/snippets'
 import { cn } from '@/lib/utils'
 
 interface CommandItem {
@@ -37,7 +41,7 @@ interface CommandItem {
   label: string
   description?: string
   icon: React.ReactNode
-  category: 'agents' | 'actions' | 'navigation' | 'workflows'
+  category: 'agents' | 'actions' | 'navigation' | 'workflows' | 'snippets'
   action: () => void
   keywords?: string[]
 }
@@ -346,7 +350,29 @@ What are you working on? I'll suggest branch names.`
       keywords: workflow.tags,
     }))
 
-    return [...workflowCommands, ...actionCommands, ...agentCommands]
+    // Generate snippet commands
+    const snippets = snippetsLibrary.load()
+    const snippetCommands: CommandItem[] = snippets.slice(0, 15).map(snippet => ({
+      id: `snippet-${snippet.id}`,
+      label: `📋 ${snippet.name}`,
+      description: snippet.description,
+      icon: snippet.isFavorite ? <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" /> : <Scissors className="h-4 w-4" />,
+      category: 'snippets',
+      action: () => {
+        // Copy to clipboard
+        navigator.clipboard.writeText(snippet.code)
+        snippetsLibrary.incrementUsage(snippet.id)
+        // Show notification
+        const event = new CustomEvent('notification', { 
+          detail: { message: `"${snippet.name}" copied to clipboard!` } 
+        })
+        window.dispatchEvent(event)
+        setIsOpen(false)
+      },
+      keywords: [...snippet.tags, snippet.language, snippet.category],
+    }))
+
+    return [...workflowCommands, ...actionCommands, ...snippetCommands, ...agentCommands]
   }, [onSelectAgent, onAction])
 
   // Filter commands based on search
@@ -367,6 +393,7 @@ What are you working on? I'll suggest branch names.`
     const groups: Record<string, CommandItem[]> = {
       workflows: [],
       actions: [],
+      snippets: [],
       agents: [],
     }
     
@@ -437,6 +464,7 @@ What are you working on? I'll suggest branch names.`
   const categoryLabels: Record<string, string> = {
     workflows: '⚡ Workflows',
     actions: '🎯 Quick Actions',
+    snippets: '📋 Code Snippets',
     agents: '🤖 Agents',
   }
 
