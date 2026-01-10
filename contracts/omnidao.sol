@@ -1,0 +1,1 @@
+// SPDX-License-Identifier: MIT; pragma solidity ^0.8.0; contract OmniDAO { function eternal_vote() public {} }
