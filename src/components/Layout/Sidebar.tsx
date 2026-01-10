@@ -18,7 +18,11 @@ import {
   Image,
   MoreVertical,
   Star,
-  Pin
+  Pin,
+  Plus,
+  Trash2,
+  MessageSquare,
+  Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -33,6 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { GROK_MODELS, MODEL_PRIORITY, DEFAULT_MODEL } from '@/lib/grok-models'
 import { getAllAgents } from '@/lib/specialized-agents'
+import { sessionManager, type SessionSummary } from '@/lib/session-manager'
 import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'nexteleven_fileTree'
@@ -76,6 +81,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [environment, setEnvironment] = useState<'cloud' | 'other'>('cloud')
   const [showAllAgents, setShowAllAgents] = useState(false)
   const [pinnedAgents, setPinnedAgents] = useState<Set<string>>(new Set())
+  const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [showAllSessions, setShowAllSessions] = useState(false)
 
   // Load saved repo, model, and pinned agents from localStorage
   useEffect(() => {
@@ -124,6 +131,67 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     const unpinned = allAgents.filter(a => !pinnedAgents.has(a.id))
     return [...pinned, ...unpinned]
   }, [pinnedAgents])
+
+  // Load sessions and listen for updates
+  useEffect(() => {
+    const loadSessions = () => {
+      setSessions(sessionManager.getRecent(20))
+    }
+    
+    loadSessions()
+    
+    // Listen for session updates
+    const handleSessionUpdate = () => loadSessions()
+    window.addEventListener('sessionUpdated', handleSessionUpdate)
+    
+    // Also refresh on newSession events
+    window.addEventListener('newSession', handleSessionUpdate)
+    
+    return () => {
+      window.removeEventListener('sessionUpdated', handleSessionUpdate)
+      window.removeEventListener('newSession', handleSessionUpdate)
+    }
+  }, [])
+
+  // Create new session
+  const handleNewSession = useCallback(() => {
+    const event = new CustomEvent('newSession', { 
+      detail: { message: '', forceNew: true } 
+    })
+    window.dispatchEvent(event)
+  }, [])
+
+  // Switch to session
+  const handleSwitchSession = useCallback((sessionId: string) => {
+    const session = sessionManager.switch(sessionId)
+    if (session) {
+      const event = new CustomEvent('loadSession', { detail: { session } })
+      window.dispatchEvent(event)
+    }
+  }, [])
+
+  // Delete session
+  const handleDeleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    sessionManager.delete(sessionId)
+    setSessions(sessionManager.getRecent(20))
+    window.dispatchEvent(new CustomEvent('sessionUpdated'))
+  }, [])
+
+  // Format relative time
+  const formatRelativeTime = useCallback((date: Date) => {
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
+  }, [])
 
   // Load files from localStorage with error handling
   const loadSavedFiles = useCallback(() => {
@@ -706,14 +774,78 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
           
           {/* Recent Sessions - directly under Agents */}
           <div className="mt-4 pt-4 border-t border-[#404050] px-4">
-            <h3 className="text-xs font-semibold text-[#9ca3af] mb-2">Sessions</h3>
-            <div className="space-y-1 text-xs text-[#9ca3af]">
-              {/* TODO: Load sessions from localStorage or API */}
-              <div className="p-2 hover:bg-[#2a2a3e] rounded cursor-pointer">
-                <p className="text-white truncate">No sessions yet</p>
-                <p className="text-[10px] text-[#9ca3af]">Start a session to see history</p>
-          </div>
-          </div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#9ca3af] flex items-center gap-1">
+                <MessageSquare className="h-3 w-3" />
+                Sessions
+                {sessions.length > 0 && (
+                  <span className="text-[#606070]">({sessions.length})</span>
+                )}
+              </h3>
+              <div className="flex items-center gap-1">
+                {sessions.length > 5 && (
+                  <button
+                    onClick={() => setShowAllSessions(!showAllSessions)}
+                    className="text-[10px] text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {showAllSessions ? 'Less' : 'More'}
+                  </button>
+                )}
+                <button
+                  onClick={handleNewSession}
+                  className="p-1 rounded hover:bg-[#2a2a3e] text-[#9ca3af] hover:text-white transition-colors"
+                  title="New session"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1 text-xs max-h-[300px] overflow-y-auto">
+              {sessions.length === 0 ? (
+                <div className="p-3 text-center text-[#606070]">
+                  <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                  <p>No sessions yet</p>
+                  <p className="text-[10px] mt-1">Start chatting to create one</p>
+                </div>
+              ) : (
+                (showAllSessions ? sessions : sessions.slice(0, 5)).map((session) => (
+                  <div
+                    key={session.id}
+                    onClick={() => handleSwitchSession(session.id)}
+                    className="p-2 hover:bg-[#2a2a3e] rounded cursor-pointer text-left transition-colors group relative"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {session.agentName && (
+                            <span className="text-xs">{getAllAgents().find(a => a.id === session.agentId)?.emoji || '💬'}</span>
+                          )}
+                          <p className="text-white truncate font-medium group-hover:text-primary transition-colors text-xs">
+                            {session.title}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-[#606070] flex items-center gap-0.5">
+                            <Clock className="h-2.5 w-2.5" />
+                            {formatRelativeTime(session.updatedAt)}
+                          </span>
+                          <span className="text-[10px] text-[#606070]">
+                            {session.messageCount} msgs
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteSession(session.id, e)}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-[#606070] hover:text-red-400 transition-all"
+                        title="Delete session"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
       </div>
       </motion.aside>

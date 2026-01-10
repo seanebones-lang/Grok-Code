@@ -8,6 +8,8 @@ import { InputBar, type ChatMode } from '@/components/InputBar'
 import { AgentRunner } from '@/components/AgentRunner'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Button } from '@/components/ui/button'
+import { sessionManager, type ChatSession } from '@/lib/session-manager'
+import { getAgent } from '@/lib/specialized-agents'
 import type { Message } from '@/types'
 
 // SSE chunk schema for type-safe parsing
@@ -54,10 +56,71 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
   const [isOnline, setIsOnline] = useState(true)
   const [currentMode, setCurrentMode] = useState<ChatMode>('default')
   const [showAgentMode, setShowAgentMode] = useState(false)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const lastRequestRef = useRef<{ content: string; mode: ChatMode } | null>(null)
+
+  // Initialize or load session
+  useEffect(() => {
+    const session = sessionManager.getCurrent()
+    setCurrentSessionId(session.id)
+    if (session.messages.length > 0) {
+      setMessages(session.messages)
+    }
+  }, [])
+
+  // Save messages to session when they change
+  useEffect(() => {
+    if (currentSessionId && messages.length > 0) {
+      sessionManager.updateMessages(currentSessionId, messages)
+      window.dispatchEvent(new CustomEvent('sessionUpdated'))
+    }
+  }, [messages, currentSessionId])
+
+  // Listen for session events
+  useEffect(() => {
+    const handleNewSession = (e: CustomEvent<{ message?: string; forceNew?: boolean; agentId?: string }>) => {
+      const { message, forceNew, agentId } = e.detail || {}
+      
+      // Extract agent ID from message if present
+      const agentMatch = message?.match(/^\/agent\s+(\w+)/i)
+      const detectedAgentId = agentMatch?.[1] || agentId
+      const agent = detectedAgentId ? getAgent(detectedAgentId) : undefined
+      
+      // Create new session if forced or if agent specified
+      if (forceNew || agent || !currentSessionId || messages.length > 0) {
+        const newSession = sessionManager.create({
+          agentId: agent?.id,
+          agentName: agent?.name,
+          metadata: { repository, model: undefined, environment: 'cloud' },
+        })
+        setCurrentSessionId(newSession.id)
+        setMessages([])
+        setError(null)
+        setShowAgentMode(false)
+      }
+      
+      window.dispatchEvent(new CustomEvent('sessionUpdated'))
+    }
+
+    const handleLoadSession = (e: CustomEvent<{ session: ChatSession }>) => {
+      const { session } = e.detail
+      setCurrentSessionId(session.id)
+      setMessages(session.messages)
+      setError(null)
+      setShowAgentMode(false)
+    }
+
+    window.addEventListener('newSession', handleNewSession as EventListener)
+    window.addEventListener('loadSession', handleLoadSession as EventListener)
+    
+    return () => {
+      window.removeEventListener('newSession', handleNewSession as EventListener)
+      window.removeEventListener('loadSession', handleLoadSession as EventListener)
+    }
+  }, [currentSessionId, messages.length, repository])
 
   // Monitor online status
   useEffect(() => {
@@ -99,10 +162,13 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       metaKey: true,
       shiftKey: true,
       handler: () => {
-        // Clear chat
+        // Clear chat and start new session
         if (!isLoading) {
+          const newSession = sessionManager.create()
+          setCurrentSessionId(newSession.id)
           setMessages([])
           setError(null)
+          window.dispatchEvent(new CustomEvent('sessionUpdated'))
         }
       },
     },
