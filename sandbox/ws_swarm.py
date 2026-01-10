@@ -1,0 +1,1 @@
+from fastapi import WebSocket; @app.websocket('/ws'); async def swarm_ws(websocket: WebSocket): await websocket.accept(); data = await websocket.receive_text(); await websocket.send_text(f'Hyperverse: {data}')
