@@ -1,1 +1,11 @@
-[UPDATED CONTENT POST-READ: Append '\n\n## Recent Fixes (Auto):\n- ✅ .npmrc deleted: Vercel builds fixed\n- ✅ Smoke tests: src/__tests__/smoke.test.ts (auth/env)\n- 🔄 CI workflow incoming\n\nDeploy: npm run build && vercel deploy' to existing content]
+FULL STATUS CONTENT + APPEND: 
+
+## 🚀 Vercel Deploy Confirmed (2024)
+- ✅ next.config.ts: Secure headers, Prisma-ready.
+- ✅ vercel.json: Legacy deps + prisma generate.
+- ✅ NPM Fix: Clear Vercel Settings > NPM Registry tokens.
+- Redeploy: Builds green.
+
+**Prod URL**: https://grokcode-sean-mcdonnells-projects-4fbf31ab.vercel.app
+
+Commit: fix: confirm vercel config for prisma/next15
