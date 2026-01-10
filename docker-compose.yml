@@ -1,15 +1,9 @@
 version: '3.8'
 services:
   swarm:
-    build: .
-    context: .
-    dockerfile: Dockerfile.swarm
-    ports:
-      - '8000:8000'
-    volumes:
-      - .:/app
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    # ... existing
+    depends_on: [redis]
+  redis:
+    image: redis:alpine
   db:
-    image: postgres:16
-    # Prisma compat
+    # ...
