@@ -34,6 +34,9 @@ async function initializeAdapter(): Promise<Adapter | undefined> {
 
 // Build auth configuration
 const authConfig: NextAuthConfig = {
+  // CRITICAL: Required for Vercel preview deployments and custom domains
+  trustHost: true,
+  
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
@@ -66,13 +69,14 @@ const authConfig: NextAuthConfig = {
   },
   pages: {
     signIn: '/login',
-    error: '/login',
+    error: '/login', // Redirect errors to login page
   },
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  debug: process.env.NODE_ENV === 'development',
 }
 
 // Initialize NextAuth

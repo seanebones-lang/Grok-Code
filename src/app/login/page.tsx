@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, Suspense } from 'react'
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Github, Code2, Loader2, Shield, Zap, GitBranch, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -25,11 +25,43 @@ const FEATURES = [
   },
 ]
 
-export default function LoginPage() {
+// Map NextAuth error codes to user-friendly messages
+const ERROR_MESSAGES: Record<string, string> = {
+  Configuration: 'Server configuration error. Please contact support.',
+  AccessDenied: 'Access denied. You may not have permission to sign in.',
+  Verification: 'The verification link has expired or has already been used.',
+  OAuthSignin: 'Error starting the sign-in process. Please try again.',
+  OAuthCallback: 'Error during GitHub authentication. The callback URL may not match.',
+  OAuthCreateAccount: 'Could not create your account. Please try again.',
+  EmailCreateAccount: 'Could not create your account. Please try again.',
+  Callback: 'Authentication callback error. Please try again.',
+  OAuthAccountNotLinked: 'This email is already linked to another account.',
+  EmailSignin: 'Error sending the sign-in email.',
+  CredentialsSignin: 'Sign in failed. Check the details you provided.',
+  SessionRequired: 'Please sign in to access this page.',
+  Default: 'An error occurred during sign in. Please try again.',
+}
+
+// Inner component that uses useSearchParams
+function LoginContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Check for error in URL params (redirected from /api/auth/error)
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      const errorMessage = ERROR_MESSAGES[errorParam] || ERROR_MESSAGES.Default
+      setError(errorMessage)
+      // Clean up URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('error')
+      window.history.replaceState({}, '', url.pathname)
+    }
+  }, [searchParams])
 
   // Redirect to home if already authenticated
   useEffect(() => {
@@ -56,7 +88,7 @@ export default function LoginPage() {
       
       // If signIn returns (which it shouldn't with redirect: true), handle error
       if (result?.error) {
-        setError('Failed to sign in. Please try again.')
+        setError(ERROR_MESSAGES[result.error] || ERROR_MESSAGES.Default)
         setIsLoading(false)
       }
     } catch (err) {
@@ -167,10 +199,17 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 p-3 mb-6 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm"
+                className="flex items-start gap-2 p-3 mb-6 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm"
               >
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <span>{error}</span>
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p>{error}</p>
+                  {error.includes('callback') && (
+                    <p className="text-xs mt-1 text-red-400/70">
+                      This may be a GitHub OAuth configuration issue.
+                    </p>
+                  )}
+                </div>
               </motion.div>
             )}
             
@@ -226,5 +265,23 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+// Loading fallback for Suspense
+function LoginLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0f0f23]">
+      <Loader2 className="h-8 w-8 animate-spin text-[#6841e7]" />
+    </div>
+  )
+}
+
+// Main page component with Suspense boundary
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginContent />
+    </Suspense>
   )
 }
