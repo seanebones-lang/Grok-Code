@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+'use client'
+
+import { useEffect, useState } from 'react'
+
 export default function Domination() {
   const [score, setScore] = useState(0);
   useEffect(() => { fetch('/api/metrics').then(r => r.json()).then(setScore); }, []);
