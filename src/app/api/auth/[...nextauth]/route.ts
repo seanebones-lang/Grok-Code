@@ -4,9 +4,8 @@ import GitHubProvider from 'next-auth/providers/github'
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   // Required for Next.js 13+ App Router - allows NextAuth to trust the host
+  // When trustHost is true, NextAuth automatically uses NEXTAUTH_URL from environment
   trustHost: true,
-  // Explicitly set the base URL if NEXTAUTH_URL is provided
-  ...(process.env.NEXTAUTH_URL && { baseUrl: process.env.NEXTAUTH_URL }),
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID as string,
@@ -46,6 +45,20 @@ export const authOptions: NextAuthOptions = {
   },
   // Ensure proper error handling
   debug: process.env.NODE_ENV === 'development',
+  // Handle errors explicitly
+  events: {
+    async signIn({ user, account, profile }) {
+      // Log successful sign in for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Sign in successful:', { user: user.email, provider: account?.provider })
+      }
+      return true
+    },
+    async signInError({ error }) {
+      // Log sign in errors
+      console.error('Sign in error:', error)
+    },
+  },
 }
 
 const handler = NextAuth(authOptions)
