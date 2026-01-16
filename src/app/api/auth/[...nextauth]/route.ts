@@ -53,20 +53,22 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60,
   },
-  // Ensure proper error handling
-  debug: process.env.NODE_ENV === 'development',
+  // Ensure proper error handling - enable debug in production to see errors
+  debug: true, // Enable debug to see OAuth errors
   // Handle errors explicitly
   events: {
     async signIn({ user, account, profile }) {
       // Log successful sign in for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Sign in successful:', { user: user.email, provider: account?.provider })
-      }
+      console.log('Sign in successful:', { user: user.email, provider: account?.provider })
       return true
     },
     async signInError({ error }) {
-      // Log sign in errors
-      console.error('Sign in error:', error)
+      // Log sign in errors with full details
+      console.error('Sign in error:', {
+        error: error.message,
+        stack: error.stack,
+        name: error.name,
+      })
     },
   },
 }
