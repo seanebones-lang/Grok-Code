@@ -76,4 +76,8 @@ export const authOptions: NextAuthOptions = {
 const handler = NextAuth(authOptions)
 
 // Export all HTTP methods that NextAuth might need
+// CRITICAL: Must export both GET and POST for NextAuth to work
 export { handler as GET, handler as POST }
+
+// Also handle OPTIONS for CORS if needed
+export { handler as OPTIONS }
