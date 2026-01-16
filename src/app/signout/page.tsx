@@ -1,11 +1,12 @@
 'use client'
 
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function SignOutPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [isSigningOut, setIsSigningOut] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -13,24 +14,49 @@ export default function SignOutPage() {
     // Auto sign out when page loads
     const performSignOut = async () => {
       try {
-        // Try client-side signOut first
-        const result = await signOut({ 
-          callbackUrl: '/login',
-          redirect: false 
+        // First, call NextAuth signout API endpoint directly to clear server-side session
+        const signoutResponse = await fetch('/api/auth/signout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         })
-        
-        // If successful, redirect manually
-        if (result?.url) {
-          window.location.href = result.url
-        } else {
-          // Fallback: clear cookies and redirect
-          document.cookie.split(";").forEach((c) => {
-            document.cookie = c
-              .replace(/^ +/, "")
-              .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
-          })
-          router.push('/login')
-        }
+
+        // Clear all NextAuth cookies
+        const cookiesToClear = [
+          'next-auth.session-token',
+          '__Secure-next-auth.session-token',
+          'next-auth.csrf-token',
+          '__Host-next-auth.csrf-token',
+          'next-auth.callback-url',
+          '__Secure-next-auth.callback-url',
+        ]
+
+        cookiesToClear.forEach((cookieName) => {
+          // Clear for current domain
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+          // Clear for .vercel.app domain
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.vercel.app;`
+          // Clear for grok-code2.vercel.app
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=grok-code2.vercel.app;`
+        })
+
+        // Clear all cookies (fallback)
+        document.cookie.split(";").forEach((c) => {
+          const cookieName = c.trim().split("=")[0]
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.vercel.app;`
+        })
+
+        // Clear localStorage and sessionStorage
+        localStorage.clear()
+        sessionStorage.clear()
+
+        // Wait a moment for cookies to clear, then redirect
+        setTimeout(() => {
+          // Force a hard redirect to login page with signout parameter
+          window.location.href = '/login?fromSignout=true'
+        }, 500)
       } catch (error) {
         console.error('Sign out error:', error)
         setError('Failed to sign out. Clearing cookies and redirecting...')
@@ -42,9 +68,11 @@ export default function SignOutPage() {
           document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.vercel.app;`
         })
         
+        localStorage.clear()
+        sessionStorage.clear()
+        
         // Redirect after a short delay
         setTimeout(() => {
-          router.push('/login')
           window.location.href = '/login'
         }, 1000)
       }
@@ -58,31 +86,57 @@ export default function SignOutPage() {
     setError(null)
     
     try {
-      const result = await signOut({ 
-        callbackUrl: '/login',
-        redirect: false 
+      // Call NextAuth signout API endpoint
+      await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
-      
-      if (result?.url) {
-        window.location.href = result.url
-      } else {
-        // Clear cookies and redirect
-        document.cookie.split(";").forEach((c) => {
-          document.cookie = c
-            .replace(/^ +/, "")
-            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
-        })
-        window.location.href = '/login'
-      }
-    } catch (error) {
-      console.error('Sign out error:', error)
-      setError('Failed to sign out. Please try again or clear cookies manually.')
-      setIsSigningOut(false)
-      
+
+      // Clear all NextAuth cookies
+      const cookiesToClear = [
+        'next-auth.session-token',
+        '__Secure-next-auth.session-token',
+        'next-auth.csrf-token',
+        '__Host-next-auth.csrf-token',
+        'next-auth.callback-url',
+        '__Secure-next-auth.callback-url',
+      ]
+
+      cookiesToClear.forEach((cookieName) => {
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.vercel.app;`
+      })
+
+      // Clear all cookies
+      document.cookie.split(";").forEach((c) => {
+        const cookieName = c.trim().split("=")[0]
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+      })
+
+      localStorage.clear()
+      sessionStorage.clear()
+
       // Force redirect
       setTimeout(() => {
         window.location.href = '/login'
-      }, 2000)
+      }, 500)
+    } catch (error) {
+      console.error('Sign out error:', error)
+      setError('Failed to sign out. Clearing cookies and redirecting...')
+      
+      // Force clear everything
+      document.cookie.split(";").forEach((c) => {
+        const cookieName = c.trim().split("=")[0]
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+      })
+      localStorage.clear()
+      sessionStorage.clear()
+      
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 1000)
     }
   }
 

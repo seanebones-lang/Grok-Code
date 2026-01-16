@@ -64,9 +64,39 @@ function LoginContent() {
   }, [searchParams])
 
   // Redirect to home if already authenticated
+  // But check if we're coming from signout - if so, clear session first
   useEffect(() => {
+    // Check if we have a signout parameter or if session seems stale
+    const urlParams = new URLSearchParams(window.location.search)
+    const fromSignout = urlParams.get('fromSignout') === 'true'
+    
+    if (fromSignout) {
+      // Clear all cookies and storage
+      document.cookie.split(";").forEach((c) => {
+        const cookieName = c.trim().split("=")[0]
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.vercel.app;`
+      })
+      localStorage.clear()
+      sessionStorage.clear()
+      
+      // Reload the page to clear session
+      window.location.href = '/login'
+      return
+    }
+    
+    // Only redirect if truly authenticated (not stale session)
     if (status === 'authenticated' && session) {
-      router.replace('/')
+      // Double-check session is valid by checking if we have a valid user
+      if (session.user && session.user.email) {
+        router.replace('/')
+      } else {
+        // Stale session - clear it
+        document.cookie.split(";").forEach((c) => {
+          const cookieName = c.trim().split("=")[0]
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+        })
+      }
     }
   }, [status, session, router])
 
