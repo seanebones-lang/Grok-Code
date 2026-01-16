@@ -71,17 +71,26 @@ function LoginContent() {
     const fromSignout = urlParams.get('fromSignout') === 'true'
     
     if (fromSignout) {
-      // Clear all cookies and storage
-      document.cookie.split(";").forEach((c) => {
-        const cookieName = c.trim().split("=")[0]
+      // Clear only session cookies, NOT OAuth state cookies
+      // We need to preserve any OAuth state cookies if user is signing in
+      const sessionCookiesToClear = [
+        'next-auth.session-token',
+        '__Secure-next-auth.session-token',
+      ]
+      
+      sessionCookiesToClear.forEach((cookieName) => {
         document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
         document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.vercel.app;`
       })
+      
+      // Clear storage but don't reload - let user sign in fresh
       localStorage.clear()
       sessionStorage.clear()
       
-      // Reload the page to clear session
-      window.location.href = '/login'
+      // Remove fromSignout param from URL but don't reload
+      const url = new URL(window.location.href)
+      url.searchParams.delete('fromSignout')
+      window.history.replaceState({}, '', url.toString())
       return
     }
     
@@ -111,28 +120,16 @@ function LoginContent() {
     setError(null)
     
     try {
-      // Use redirect: false to handle redirect manually and preserve state
-      const result = await signIn('github', { 
+      // Use redirect: true - this ensures NextAuth properly sets the state cookie
+      // and handles the OAuth flow correctly
+      await signIn('github', { 
         callbackUrl: '/',
-        redirect: false 
+        redirect: true 
       })
       
-      // If there's an error, show it
-      if (result?.error) {
-        const errorMessage = ERROR_MESSAGES[result.error] || ERROR_MESSAGES.Default
-        setError(errorMessage)
-        setIsLoading(false)
-        console.error('Sign in error:', result.error)
-      } else if (result?.ok && result?.url) {
-        // If successful, redirect manually to preserve state cookie
-        window.location.href = result.url
-      } else {
-        // Fallback: try with redirect: true
-        await signIn('github', { 
-          callbackUrl: '/',
-          redirect: true 
-        })
-      }
+      // Note: With redirect: true, signIn should not return, it redirects
+      // If we get here, there was an error
+      setIsLoading(false)
     } catch (err) {
       console.error('Sign in error:', err)
       setError('Failed to sign in. Please try again.')
