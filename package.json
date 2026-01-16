@@ -1,39 +1,5 @@
-{
-  "name": "grok-code",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "self-loop": "node scripts/self_improve.js",
-    "test": "vitest --coverage",
-    "test:e2e": "vitest tests/ --run"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "next": "14.2.3",
-    "openai": "^4.52.7",
-    "react": "^18",
-    "react-dom": "^18",
-    "simple-git": "^3.22.1"
-  },
+*(Append)*
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/react": "^16.0.1",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.3",
-    "jsdom": "^24.1.1",
-    "js-yaml": "^4.1.0",
-    "p-retry": "^7.2.0",
-    "prisma": "^5.15.0",
-    "typescript": "^5",
-    "vercel": "^33.6.1",
-    "vitest": "^2.0.5",
-    "zod": "^3.23.8"
+    ...existing...,
+    "dockerode": "^4.0.0"
   }
-}
