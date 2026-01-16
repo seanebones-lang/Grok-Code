@@ -111,15 +111,27 @@ function LoginContent() {
     setError(null)
     
     try {
+      // Use redirect: false to handle redirect manually and preserve state
       const result = await signIn('github', { 
         callbackUrl: '/',
-        redirect: true 
+        redirect: false 
       })
       
-      // If signIn returns (which it shouldn't with redirect: true), handle error
+      // If there's an error, show it
       if (result?.error) {
-        setError(ERROR_MESSAGES[result.error] || ERROR_MESSAGES.Default)
+        const errorMessage = ERROR_MESSAGES[result.error] || ERROR_MESSAGES.Default
+        setError(errorMessage)
         setIsLoading(false)
+        console.error('Sign in error:', result.error)
+      } else if (result?.ok && result?.url) {
+        // If successful, redirect manually to preserve state cookie
+        window.location.href = result.url
+      } else {
+        // Fallback: try with redirect: true
+        await signIn('github', { 
+          callbackUrl: '/',
+          redirect: true 
+        })
       }
     } catch (err) {
       console.error('Sign in error:', err)
