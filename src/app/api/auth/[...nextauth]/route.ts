@@ -35,14 +35,27 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      // Ensure redirects work properly
+      // Ensure redirects work properly - always use baseUrl from NEXTAUTH_URL
+      const base = baseUrl || process.env.NEXTAUTH_URL || 'https://grok-code2.vercel.app'
+      
+      // If url is relative, make it absolute
       if (url.startsWith('/')) {
-        return `${baseUrl}${url}`
+        return `${base}${url}`
       }
-      if (new URL(url).origin === baseUrl) {
-        return url
+      
+      // If url is absolute and same origin, allow it
+      try {
+        const urlObj = new URL(url)
+        const baseObj = new URL(base)
+        if (urlObj.origin === baseObj.origin) {
+          return url
+        }
+      } catch (e) {
+        // Invalid URL, use base
       }
-      return baseUrl
+      
+      // Default to base URL
+      return base
     },
   },
   pages: {
@@ -68,7 +81,20 @@ export const authOptions: NextAuthOptions = {
         error: error.message,
         stack: error.stack,
         name: error.name,
+        cause: error.cause,
       })
+    },
+  },
+  // Add error page redirect to handle OAuth errors
+  logger: {
+    error(code, metadata) {
+      console.error('NextAuth error:', { code, metadata })
+    },
+    warn(code) {
+      console.warn('NextAuth warning:', code)
+    },
+    debug(code, metadata) {
+      console.log('NextAuth debug:', { code, metadata })
     },
   },
 }
