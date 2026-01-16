@@ -18,8 +18,19 @@ const securityHeaders = {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
+  // CRITICAL: Always allow NextAuth routes to pass through without interference
+  // This includes /api/auth/* routes (signin, callback, signout, etc.)
+  if (pathname.startsWith('/api/auth/')) {
+    const response = NextResponse.next()
+    // Add security headers but don't block the route
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value)
+    })
+    return response
+  }
+  
   // Rate limiting disabled - single user app
-  // Just add security headers to API routes
+  // Just add security headers to other API routes
   if (pathname.startsWith('/api/')) {
     const response = NextResponse.next()
     Object.entries(securityHeaders).forEach(([key, value]) => {
@@ -60,7 +71,13 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/:path*',
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder files
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)).*)',
   ],
 }
