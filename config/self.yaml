@@ -1,0 +1,7 @@
+agents:
+  - architect
+  - coder
+  - tester
+prompt_template: 'Evolve for autonomy: {feature}'
+max_batches: 50
+diff_threshold: 0.05
