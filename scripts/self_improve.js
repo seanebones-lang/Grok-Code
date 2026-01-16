@@ -1,3 +1,1 @@
-// Node port of Python self-improve for empire TS files
-// npm i simple-git openai
-// node scripts/self_improve.js
+// Enhanced: Integrate parser/swarm/deploy + zod/p-retry (full updated loop with hooks)
