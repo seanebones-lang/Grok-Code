@@ -1,4 +1,7 @@
-import { useEffect } from 'react';
+'use client'
+
+import { useEffect } from 'react'
+
 export default function Singularity() {
   useEffect(() => {
     const canvas = document.getElementById('holo') as HTMLCanvasElement;
