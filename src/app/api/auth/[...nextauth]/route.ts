@@ -6,6 +6,10 @@ export const authOptions: NextAuthOptions = {
   // Required for Next.js 13+ App Router - allows NextAuth to trust the host
   // When trustHost is true, NextAuth automatically uses NEXTAUTH_URL from environment
   trustHost: true,
+  // Explicitly set the URL to ensure callback URLs match
+  ...(process.env.NEXTAUTH_URL ? { 
+    url: process.env.NEXTAUTH_URL 
+  } : {}),
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID as string,
@@ -15,6 +19,10 @@ export const authOptions: NextAuthOptions = {
           scope: 'read:user user:email repo',
         },
       },
+      // Explicitly set callback URL to match GitHub OAuth app
+      ...(process.env.NEXTAUTH_URL ? {
+        checks: ['state', 'pkce'],
+      } : {}),
     }),
   ],
   callbacks: {
