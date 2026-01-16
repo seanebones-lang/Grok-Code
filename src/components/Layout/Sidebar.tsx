@@ -1092,7 +1092,21 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               </DropdownMenuItem>
               <DropdownMenuItem 
                 className="cursor-pointer hover:bg-red-500/20 focus:bg-red-500/20 text-red-400"
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={async () => {
+                  try {
+                    const result = await signOut({ callbackUrl: '/login', redirect: false })
+                    if (result?.url) {
+                      window.location.href = result.url
+                    } else {
+                      // Fallback: redirect to signout page
+                      window.location.href = '/signout'
+                    }
+                  } catch (error) {
+                    console.error('Sign out error:', error)
+                    // Fallback: redirect to signout page
+                    window.location.href = '/signout'
+                  }
+                }}
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
