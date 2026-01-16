@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { signIn } from 'next-auth/react'
+import { useState, useCallback, useEffect } from 'react'
+import { signIn, useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Github, Code2, Loader2, Shield, Zap, GitBranch, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -25,20 +26,66 @@ const FEATURES = [
 ]
 
 export default function LoginPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      router.replace('/')
+    }
+  }, [status, session, router])
+
   const handleSignIn = useCallback(async () => {
+    // Don't sign in if already authenticated
+    if (status === 'authenticated') {
+      router.replace('/')
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     
     try {
-      await signIn('github', { callbackUrl: '/' })
+      const result = await signIn('github', { 
+        callbackUrl: '/',
+        redirect: true 
+      })
+      
+      // If signIn returns (which it shouldn't with redirect: true), handle error
+      if (result?.error) {
+        setError('Failed to sign in. Please try again.')
+        setIsLoading(false)
+      }
     } catch (err) {
+      console.error('Sign in error:', err)
       setError('Failed to sign in. Please try again.')
       setIsLoading(false)
     }
-  }, [])
+  }, [status, router])
+
+  // Show loading while checking auth status
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0f0f23]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6841e7]" />
+      </div>
+    )
+  }
+
+  // If authenticated, show redirecting message (useEffect will redirect)
+  if (status === 'authenticated') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0f0f23]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#6841e7] mx-auto mb-4" />
+          <p className="text-[#9ca3af]">Already signed in, redirecting...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#0f0f23]">
