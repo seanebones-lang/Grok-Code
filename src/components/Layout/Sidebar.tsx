@@ -320,22 +320,30 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       // Get GitHub token from localStorage
       const githubToken = localStorage.getItem('nexteleven_github_token')
       
+      if (!githubToken) {
+        throw new Error('GitHub token not found. Please configure it in the setup screen.')
+      }
+      
       // Use API route that handles GitHub token
       const response = await fetch(
         `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
         {
           headers: {
             Accept: 'application/vnd.github.v3+json',
-            ...(githubToken && { 'X-Github-Token': githubToken }),
+            'X-Github-Token': githubToken,
           },
         }
       )
       
+      const data = await response.json()
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch file tree')
+        throw new Error(data.error || data.details || 'Failed to fetch file tree')
       }
       
-      const data = await response.json()
+      if (!data.tree || !Array.isArray(data.tree)) {
+        throw new Error('Invalid response from server')
+      }
       
       // Convert flat tree to nested structure
       const fileNodes: FileNode[] = []
@@ -386,16 +394,27 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       }
       
       setFiles(sortNodes(fileNodes))
+      setError(null) // Clear any previous errors on success
     } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to fetch file tree'
       console.error('Failed to fetch file tree:', e)
-      setError('Failed to fetch file tree')
+      setError(errorMessage)
+      // Don't clear files on error - keep what we have
     } finally {
       setLoading(false)
     }
   }, [])
 
   const handleConnectRepo = useCallback(async () => {
+    // Check if we have a GitHub token before showing modal
+    const githubToken = localStorage.getItem('nexteleven_github_token')
+    if (!githubToken) {
+      setError('Please configure your GitHub token in the setup screen first')
+      return
+    }
+    
     setShowRepoModal(true)
+    setError(null) // Clear any previous errors
     fetchRepos()
   }, [fetchRepos])
 
@@ -406,18 +425,25 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
       branch: repo.default_branch,
     }
     
-    setConnectedRepo(repoInfo)
-    localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
-    onRepoConnect?.(repoInfo)
-    
-    // Dispatch event for page component
-    const event = new CustomEvent('repoConnect', { detail: { repo: repoInfo } })
-    window.dispatchEvent(event)
-    
+    // Close modal first to avoid UI issues
     setShowRepoModal(false)
     
-    // Fetch the file tree
-    await fetchFileTree(repo.owner.login, repo.name, repo.default_branch)
+    try {
+      setConnectedRepo(repoInfo)
+      localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
+      onRepoConnect?.(repoInfo)
+      
+      // Dispatch event for page component
+      const event = new CustomEvent('repoConnect', { detail: { repo: repoInfo } })
+      window.dispatchEvent(event)
+      
+      // Fetch the file tree - handle errors gracefully
+      await fetchFileTree(repo.owner.login, repo.name, repo.default_branch)
+    } catch (error) {
+      console.error('Failed to connect repository:', error)
+      setError('Failed to load repository. Please try again.')
+      // Don't reset state on error - keep repo selected
+    }
   }, [fetchFileTree, onRepoConnect])
 
   const handleDisconnectRepo = useCallback(() => {
@@ -987,6 +1013,48 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
             </DropdownMenu>
           </div>
           
+          {/* File Tree - Show when repo is connected */}
+          {connectedRepo && (
+            <div className="mt-4 pt-4 border-t border-[#404050] px-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-[#9ca3af] flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  Files
+                  {loading && (
+                    <Loader2 className="h-3 w-3 animate-spin ml-1" />
+                  )}
+                </h3>
+                <button
+                  onClick={handleRefresh}
+                  className="p-1 rounded hover:bg-[#2a2a3e] text-[#9ca3af] hover:text-white transition-colors"
+                  title="Refresh file tree"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+              </div>
+              
+              {error && (
+                <div className="mb-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
+                  <div className="flex items-start gap-1.5">
+                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                </div>
+              )}
+              
+              {files.length > 0 ? (
+                <FileTree
+                  files={files}
+                  onFileSelect={onFileSelect}
+                  selectedPath={selectedPath}
+                  className="text-sm"
+                />
+              ) : !loading && !error ? (
+                <p className="text-xs text-[#606070] text-center py-4">No files loaded</p>
+              ) : null}
+            </div>
+          )}
+
           {/* Recent Sessions - directly under Agents */}
           <div className="mt-4 pt-4 border-t border-[#404050] px-4">
             <div className="flex items-center justify-between mb-2">
