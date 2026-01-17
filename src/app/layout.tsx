@@ -87,22 +87,7 @@ export default function RootLayout({
         className="font-sans bg-[#0a0a0a] text-white antialiased h-screen overflow-hidden"
         suppressHydrationWarning
       >
-        <ErrorBoundary
-          fallback={
-            <div className="h-screen w-screen flex items-center justify-center bg-[#0a0a0a] text-white">
-              <div className="text-center p-8">
-                <h1 className="text-2xl font-bold mb-4">Application Error</h1>
-                <p className="text-[#9ca3af] mb-4">A critical error occurred. Please refresh the page.</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg"
-                >
-                  Refresh Page
-                </button>
-              </div>
-            </div>
-          }
-        >
+        <ErrorBoundary>
           <Providers>
             {/* Skip to main content link for accessibility */}
             <a 
