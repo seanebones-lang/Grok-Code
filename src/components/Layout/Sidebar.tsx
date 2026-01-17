@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSession, signOut } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import { 
   FileText, 
@@ -33,9 +32,6 @@ import {
   Gauge,
   Zap,
   Play,
-  LogOut,
-  User,
-  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -80,7 +76,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: SidebarProps) {
-  const { data: session } = useSession()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [files, setFiles] = useState<FileNode[]>([])
   const [loading, setLoading] = useState(false)
@@ -290,14 +285,15 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
 
   // Fetch user's repositories
   const fetchRepos = useCallback(async () => {
-    if (!session?.accessToken) return
-    
     setLoadingRepos(true)
     try {
-      const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+      // Get GitHub token from localStorage
+      const githubToken = localStorage.getItem('nexteleven_github_token')
+      
+      const response = await fetch('/api/github/repos', {
         headers: {
-          Authorization: `Bearer ${session.accessToken}`,
           Accept: 'application/vnd.github.v3+json',
+          ...(githubToken && { 'X-Github-Token': githubToken }),
         },
       })
       
@@ -313,23 +309,24 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     } finally {
       setLoadingRepos(false)
     }
-  }, [session?.accessToken])
+  }, [])
 
   // Fetch file tree for a repository
   const fetchFileTree = useCallback(async (owner: string, repo: string, branch: string) => {
-    if (!session?.accessToken) return
-    
     setLoading(true)
     setError(null)
     
     try {
-      // Get the tree recursively
+      // Get GitHub token from localStorage
+      const githubToken = localStorage.getItem('nexteleven_github_token')
+      
+      // Use API route that handles GitHub token
       const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+        `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
         {
           headers: {
-            Authorization: `Bearer ${session.accessToken}`,
             Accept: 'application/vnd.github.v3+json',
+            ...(githubToken && { 'X-Github-Token': githubToken }),
           },
         }
       )
@@ -395,18 +392,12 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     } finally {
       setLoading(false)
     }
-  }, [session?.accessToken])
+  }, [])
 
   const handleConnectRepo = useCallback(async () => {
-    if (!session) {
-      // Redirect to login
-      window.location.href = '/login'
-      return
-    }
-    
     setShowRepoModal(true)
     fetchRepos()
-  }, [session, fetchRepos])
+  }, [fetchRepos])
 
   const handleSelectRepo = useCallback(async (repo: Repository) => {
     const repoInfo = {
@@ -522,7 +513,30 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               </Button>
             </div>
             
-            <div className="p-4 border-b border-[#404050]">
+            <div className="p-4 border-b border-[#404050] space-y-3">
+              <div>
+                <label className="block text-xs text-[#9ca3af] mb-2">GitHub Personal Access Token</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="w-full px-3 py-2 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-[#6841e7] text-sm"
+                    onBlur={(e) => {
+                      const token = e.target.value.trim()
+                      if (token) {
+                        // Store token suggestion (they still need to add to Vercel, but show instructions)
+                        localStorage.setItem('github_token_suggestion', token)
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-[#606070] mt-1">
+                  Get token from: <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">github.com/settings/tokens</a>
+                </p>
+                <p className="text-[10px] text-[#606070] mt-1">
+                  Add this to Vercel env vars as <code className="bg-[#2a2a3e] px-1 rounded">GITHUB_TOKEN</code> and redeploy
+                </p>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
                 <input
@@ -543,6 +557,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               ) : filteredRepos.length === 0 ? (
                 <div className="text-center py-8 text-[#9ca3af]">
                   <p>No repositories found</p>
+                  <p className="text-xs text-[#606070] mt-2">Set GITHUB_TOKEN in Vercel to see your repos</p>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -1049,71 +1064,6 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
           </div>
         </div>
         
-        {/* User Profile & Logout - FIXED at bottom */}
-        <div className="flex-shrink-0 p-3 border-t border-[#404050] bg-[#1a1a2e]">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full p-2 rounded-lg hover:bg-[#2a2a3e] transition-all flex items-center gap-2">
-                {session?.user?.image ? (
-                  <img 
-                    src={session.user.image} 
-                    alt="Profile" 
-                    className="w-7 h-7 rounded-full"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary" />
-                  </div>
-                )}
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-xs font-medium text-white truncate">
-                    {session?.user?.name || 'User'}
-                  </p>
-                  <p className="text-[10px] text-[#606070] truncate">
-                    {session?.user?.email || 'Signed in'}
-                  </p>
-                </div>
-                <LogOut className="h-4 w-4 text-[#606070] hover:text-red-400" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              className="w-56 bg-[#1a1a2e] border-[#404050]"
-              align="start"
-              side="top"
-            >
-              <DropdownMenuLabel className="text-xs text-[#9ca3af]">Account</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-[#404050]" />
-              <DropdownMenuItem 
-                className="cursor-pointer hover:bg-[#2a2a3e] focus:bg-[#2a2a3e] text-[#9ca3af]"
-                onClick={() => window.open('https://github.com/settings/applications', '_blank')}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                GitHub Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                className="cursor-pointer hover:bg-red-500/20 focus:bg-red-500/20 text-red-400"
-                onClick={async () => {
-                  try {
-                    const result = await signOut({ callbackUrl: '/login', redirect: false })
-                    if (result?.url) {
-                      window.location.href = result.url
-                    } else {
-                      // Fallback: redirect to signout page
-                      window.location.href = '/signout'
-                    }
-                  } catch (error) {
-                    console.error('Sign out error:', error)
-                    // Fallback: redirect to signout page
-                    window.location.href = '/signout'
-                  }
-                }}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </motion.aside>
     </>
   )

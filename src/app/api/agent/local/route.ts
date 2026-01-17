@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/auth'
 import { promises as fs } from 'fs'
 import path from 'path'
 import os from 'os'
@@ -172,11 +171,6 @@ export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'read'
     const filePath = searchParams.get('path') || ''
@@ -282,11 +276,6 @@ export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 })
-    }
-
     const body = await request.json()
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'write'
@@ -344,11 +333,6 @@ export async function PATCH(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 })
-    }
-
     const body = await request.json()
     const parsed = moveSchema.safeParse(body)
     
@@ -381,11 +365,6 @@ export async function DELETE(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 })
-    }
-
     const body = await request.json()
     const parsed = deleteSchema.safeParse(body)
     

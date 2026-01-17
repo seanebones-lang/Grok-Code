@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/auth'
 import { Octokit } from '@octokit/rest'
 
 /**
@@ -48,8 +47,12 @@ const getCommitHistorySchema = z.object({
 // Helper Functions
 // ============================================================================
 
-async function getOctokit(accessToken: string) {
-  return new Octokit({ auth: accessToken })
+function getOctokit() {
+  const githubToken = process.env.GITHUB_TOKEN
+  if (!githubToken) {
+    throw new Error('GITHUB_TOKEN not configured')
+  }
+  return new Octokit({ auth: githubToken })
 }
 
 async function getDefaultBranch(octokit: Octokit, owner: string, repo: string): Promise<string> {
@@ -65,19 +68,10 @@ export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
-      )
-    }
-    
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
@@ -94,7 +88,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { owner, repo, branch, fromBranch } = parsed.data
-      const octokit = await getOctokit(accessToken)
+      const octokit = getOctokit()
       const sourceBranch = fromBranch || await getDefaultBranch(octokit, owner, repo)
 
       // Get the SHA of the source branch
@@ -132,7 +126,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { owner, repo, title, body, head, base } = parsed.data
-      const octokit = await getOctokit(accessToken)
+      const octokit = getOctokit()
 
       const { data: pr } = await octokit.pulls.create({
         owner,
@@ -180,26 +174,17 @@ export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
-      )
-    }
-    
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'get_diff'
 
-    const octokit = await getOctokit(accessToken)
+    const octokit = getOctokit()
 
     if (action === 'get_diff') {
       const parsed = getDiffSchema.safeParse({

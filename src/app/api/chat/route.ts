@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { checkRateLimit } from '@/lib/ratelimit'
-import { auth } from '@/auth'
 import { Octokit } from '@octokit/rest'
 import { SPECIALIZED_AGENTS, findAgentsByKeywords, formatAgentsForPrompt, getAgentSystemPrompt } from '@/lib/specialized-agents'
 import { parseOrchestratorCommand, createOrchestrationPlan, formatOrchestrationPlan } from '@/lib/agent-orchestrator'
@@ -163,7 +162,6 @@ Recognize these prefixes in user messages:
 - \`/deps\` - Use Dependency Agent
 - \`/bugs\` - Use Bug Hunter Agent
 - \`/a11y\` - Use Accessibility Agent
-- \`/oauth\` or \`/github-oauth\` - Use GitHub OAuth Master Agent for OAuth diagnostics and fixes
 - \`/orchestrate\` or \`/orchestrator\` - Use Orchestrator Agent to coordinate multiple agents
 - \`/swarm\` - Run multiple agents in parallel for comprehensive analysis
 
@@ -446,7 +444,7 @@ async function executeLocalTool(
 async function executeTool(
   toolCall: ToolCall,
   repository?: { owner: string; repo: string; branch?: string },
-  accessToken?: string
+  githubToken?: string
 ): Promise<{ success: boolean; output: string; error?: string }> {
   // If no repository, use local execution
   if (!repository) {
@@ -454,23 +452,15 @@ async function executeTool(
   }
   
   try {
-    // We need to call the internal API routes directly since we're in the same process
-    // Import the auth and file operations directly
-    const session = await auth()
-    if (!session?.user) {
-      // Fall back to local execution if not authenticated
-      return executeLocalTool(toolCall)
-    }
-    
-    const userAccessToken = (session as { accessToken?: string }).accessToken
-    if (!userAccessToken) {
-      // Fall back to local execution if no GitHub token
+    // GitHub token should be passed in from the request
+    if (!githubToken && repository) {
+      // Fall back to local execution if no GitHub token and repo is needed
       return executeLocalTool(toolCall)
     }
     
     switch (toolCall.name) {
       case 'read_file': {
-        const octokit = new Octokit({ auth: userAccessToken })
+        const octokit = new Octokit({ auth: githubToken })
         const ref = repository.branch || 'main'
         try {
           const { data } = await octokit.repos.getContent({
@@ -490,7 +480,7 @@ async function executeTool(
       }
       
       case 'list_files': {
-        const octokit = new Octokit({ auth: userAccessToken })
+        const octokit = new Octokit({ auth: githubToken })
         const ref = repository.branch || 'main'
         const path = (toolCall.arguments.path as string) || ''
         try {
@@ -513,7 +503,7 @@ async function executeTool(
       }
       
       case 'write_file': {
-        const octokit = new Octokit({ auth: userAccessToken })
+        const octokit = new Octokit({ auth: githubToken })
         const ref = repository.branch || 'main'
         const path = toolCall.arguments.path as string
         const content = toolCall.arguments.content as string
@@ -558,7 +548,7 @@ async function executeTool(
         if (!repository) {
           return { success: false, output: '', error: 'Repository required' }
         }
-        const octokit = new Octokit({ auth: userAccessToken })
+        const octokit = new Octokit({ auth: githubToken })
         const ref = repository.branch || 'main'
         const oldPath = toolCall.arguments.old_path as string
         const newPath = toolCall.arguments.new_path as string
@@ -1000,9 +990,8 @@ export async function POST(request: NextRequest) {
   const startTime = performance.now()
   
   try {
-    // Get session for tool execution
-    const session = await auth()
-    const accessToken = session ? (session as { accessToken?: string }).accessToken : undefined
+    // Get GitHub token from header or env for GitHub operations
+    const githubToken = request.headers.get('X-Github-Token') || process.env.GITHUB_TOKEN
     
     // Parse and validate request body
     let body: unknown
@@ -1054,9 +1043,6 @@ export async function POST(request: NextRequest) {
     
     // Agent command aliases (maps user-friendly commands to agent IDs)
     const AGENT_ALIASES: Record<string, string> = {
-      'oauth': 'githubOAuth',
-      'github-oauth': 'githubOAuth',
-      'githuboauth': 'githubOAuth',
     }
     
     // Check for specialized agent requests
@@ -1229,13 +1215,13 @@ The tool will be executed automatically and the results will be provided to you.
     //            'anonymous'
     // const rateLimitResult = await checkRateLimit(ip)
 
-    // Validate API key
-    const grokApiKey = process.env.GROK_API_KEY
+    // Get API key from header or env
+    const grokApiKey = request.headers.get('X-Grok-Token') || process.env.GROK_API_KEY
     if (!grokApiKey) {
-      console.error(`[${requestId}] GROK_API_KEY not configured`)
+      console.error(`[${requestId}] GROK_API_KEY not provided`)
       return NextResponse.json(
-        { error: 'Service configuration error', requestId },
-        { status: 503 }
+        { error: 'Grok API token required. Please configure it in the setup screen.', requestId },
+        { status: 401 }
       )
     }
 
@@ -1461,7 +1447,7 @@ The tool will be executed automatically and the results will be provided to you.
                     for (const toolCall of toolCalls) {
                       try {
                         safeEnqueue(`data: ${JSON.stringify({ content: `⚙️ Executing: ${toolCall.name}...\n` })}\n\n`)
-                        const toolResult = await executeTool(toolCall, repository, accessToken)
+                        const toolResult = await executeTool(toolCall, repository, githubToken)
                         
                         if (toolResult.success) {
                           toolResults.push(`✅ ${toolCall.name}: ${toolResult.output}`)

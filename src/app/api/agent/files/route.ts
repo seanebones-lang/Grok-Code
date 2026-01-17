@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/auth'
 import { Octokit } from '@octokit/rest'
 
 /**
@@ -69,8 +68,12 @@ const moveFileSchema = z.object({
 // Helper Functions
 // ============================================================================
 
-async function getOctokit(accessToken: string) {
-  return new Octokit({ auth: accessToken })
+function getOctokit() {
+  const githubToken = process.env.GITHUB_TOKEN
+  if (!githubToken) {
+    throw new Error('GITHUB_TOKEN not configured')
+  }
+  return new Octokit({ auth: githubToken })
 }
 
 async function getDefaultBranch(octokit: Octokit, owner: string, repo: string): Promise<string> {
@@ -86,26 +89,17 @@ export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
-      )
-    }
-    
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'read'
     
-    const octokit = await getOctokit(accessToken)
+    const octokit = getOctokit()
 
     if (action === 'list') {
       // List directory contents
@@ -234,24 +228,15 @@ export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
-      )
-    }
-    
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
     const body = await request.json()
-    const octokit = await getOctokit(accessToken)
+    const octokit = getOctokit()
 
     // Check if batch write
     if (body.files && Array.isArray(body.files)) {
@@ -412,19 +397,10 @@ export async function PATCH(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
-      )
-    }
-    
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
@@ -439,7 +415,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { owner, repo, oldPath, newPath, message, branch } = parsed.data
-    const octokit = await getOctokit(accessToken)
+    const octokit = getOctokit()
     const ref = branch || await getDefaultBranch(octokit, owner, repo)
 
     // Get current commit SHA
@@ -556,11 +532,10 @@ export async function DELETE(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
@@ -576,15 +551,14 @@ export async function DELETE(request: NextRequest) {
 
     const { owner, repo, path, message, branch, sha } = parsed.data
     
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
     
-    const octokit = await getOctokit(accessToken)
+    const octokit = getOctokit()
     const ref = branch || await getDefaultBranch(octokit, owner, repo)
 
     const { data } = await octokit.repos.deleteFile({
