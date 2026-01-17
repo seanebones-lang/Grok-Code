@@ -99,29 +99,61 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
 
   // Load saved repo, model, and pinned agents from localStorage
   useEffect(() => {
+    // Safety check for client-side
+    if (typeof window === 'undefined') return
+    
     try {
       const savedRepo = localStorage.getItem(REPO_KEY)
       if (savedRepo) {
-        const parsed = JSON.parse(savedRepo)
-        setConnectedRepo(parsed)
-        onRepoConnect?.(parsed)
+        try {
+          const parsed = JSON.parse(savedRepo)
+          setConnectedRepo(parsed)
+          onRepoConnect?.(parsed)
+        } catch (e) {
+          console.error('Failed to parse saved repo:', e)
+        }
       }
-      const savedModel = localStorage.getItem(MODEL_KEY)
-      if (savedModel && savedModel in GROK_MODELS) {
-        setSelectedModel(savedModel)
+      
+      try {
+        const savedModel = localStorage.getItem(MODEL_KEY)
+        if (savedModel && savedModel in GROK_MODELS) {
+          setSelectedModel(savedModel)
+        }
+      } catch (e) {
+        console.error('Failed to load model:', e)
       }
-      const savedEnv = localStorage.getItem(ENVIRONMENT_KEY)
-      if (savedEnv === 'other' || savedEnv === 'cloud') {
-        setEnvironment(savedEnv)
+      
+      try {
+        const savedEnv = localStorage.getItem(ENVIRONMENT_KEY)
+        if (savedEnv === 'other' || savedEnv === 'cloud') {
+          setEnvironment(savedEnv)
+        }
+      } catch (e) {
+        console.error('Failed to load environment:', e)
       }
-      const savedPinned = localStorage.getItem(PINNED_AGENTS_KEY)
-      if (savedPinned) {
-        setPinnedAgents(new Set(JSON.parse(savedPinned)))
+      
+      try {
+        const savedPinned = localStorage.getItem(PINNED_AGENTS_KEY)
+        if (savedPinned) {
+          setPinnedAgents(new Set(JSON.parse(savedPinned)))
+        }
+      } catch (e) {
+        console.error('Failed to load pinned agents:', e)
       }
+      
       // Load orchestrator mode
-      setOrchestratorModeState(isOrchestratorModeEnabled())
+      try {
+        setOrchestratorModeState(isOrchestratorModeEnabled())
+      } catch (e) {
+        console.error('Failed to load orchestrator mode:', e)
+      }
+      
       // Load health report
-      setHealthReport(healthDashboard.load())
+      try {
+        setHealthReport(healthDashboard.load())
+      } catch (e) {
+        console.error('Failed to load health report:', e)
+      }
     } catch (e) {
       console.error('Failed to load saved data:', e)
     }
