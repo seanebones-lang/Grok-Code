@@ -109,7 +109,8 @@ export function Chat({ onCodeBlockClick }: ChatProps = {}) {
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          code: ({ node, inline, className, children, ...props }) => {
+                          code: ({ className, children, ...props }: { className?: string; children: React.ReactNode; [key: string]: unknown }) => {
+                            const inline = !className?.startsWith('language-')
                             const match = /language-(\w+)/.exec(className || '')
                             const language = match ? match[1] : ''
                             const codeString = String(children).replace(/\n$/, '')
@@ -124,7 +125,6 @@ export function Chat({ onCodeBlockClick }: ChatProps = {}) {
                                       'border border-[#1a1a1a] hover:border-primary/50'
                                     )}
                                     onClick={() => handleCodeBlockClick(codeString, language)}
-                                    {...props}
                                   >
                                     <code className={className}>{children}</code>
                                   </pre>

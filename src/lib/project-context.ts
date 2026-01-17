@@ -259,7 +259,7 @@ export function parseGrokContext(content: string): ProjectContext {
       const sectionMatch = line.match(/^(\w+):$/)
       if (sectionMatch && !line.startsWith(' ')) {
         if (currentSection && currentSubSection && currentValue.length > 0) {
-          setNestedValue(context, [currentSection, currentSubSection], currentValue.join('\n'))
+          setNestedValue(context as Record<string, unknown>, [currentSection, currentSubSection], currentValue.join('\n'))
         }
         currentSection = sectionMatch[1]
         currentSubSection = null
@@ -272,7 +272,7 @@ export function parseGrokContext(content: string): ProjectContext {
       const keyValueMatch = line.match(/^\s{2}(\w+):\s*(.*)$/)
       if (keyValueMatch) {
         if (currentSubSection && currentValue.length > 0) {
-          setNestedValue(context, [currentSection!, currentSubSection], 
+          setNestedValue(context as Record<string, unknown>, [currentSection!, currentSubSection], 
             currentValue.length === 1 ? currentValue[0] : currentValue)
         }
         currentSubSection = keyValueMatch[1]
@@ -314,7 +314,7 @@ export function parseGrokContext(content: string): ProjectContext {
     
     // Save last value
     if (currentSection && currentSubSection && currentValue.length > 0) {
-      setNestedValue(context, [currentSection, currentSubSection], 
+      setNestedValue(context as Record<string, unknown>, [currentSection, currentSubSection], 
         currentValue.length === 1 ? currentValue[0] : currentValue)
     }
     

@@ -51,7 +51,7 @@ interface ChatPaneProps {
   onNewSessionHandled?: () => void
 }
 
-export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }: ChatPaneProps = {}) {
+export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }: ChatPaneProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -108,7 +108,11 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
         const newSession = sessionManager.create({
           agentId: agent?.id,
           agentName: agent?.name,
-          metadata: { repository, model: undefined, environment: 'cloud' },
+          metadata: { 
+            repository: repository ? { ...repository, branch: repository.branch || 'main' } : undefined, 
+            model: undefined, 
+            environment: 'cloud' 
+          },
         })
         setCurrentSessionId(newSession.id)
         setMessages([])

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { promises as fs } from 'fs'
-import path from 'path'
-import os from 'os'
+import * as path from 'path'
+import * as os from 'os'
 
 /**
  * Local File System API for Agentic Operations
@@ -242,12 +242,15 @@ export async function GET(request: NextRequest) {
       const encoding = searchParams.get('encoding') || 'utf-8'
       const content = await fs.readFile(resolvedPath, encoding as BufferEncoding)
       
+      // When encoding is provided, readFile returns string
+      const contentStr: string = typeof content === 'string' ? content : Buffer.from(content).toString(encoding === 'base64' ? 'base64' : 'utf-8')
+      
       return NextResponse.json({
         success: true,
         file: {
           path: resolvedPath,
           name: path.basename(resolvedPath),
-          content: typeof content === 'string' ? content : content.toString('base64'),
+          content: contentStr,
           size: stats.size,
           encoding,
         },
