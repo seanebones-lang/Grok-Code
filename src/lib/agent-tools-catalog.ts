@@ -507,7 +507,7 @@ print(f"Nodes: {G.nodes()}, Edges: {G.edges()}")`,
     example: `import ccxt
 exchange = ccxt.binance()
 ticker = exchange.fetch_ticker('BTC/USDT')
-print(f"BTC price: ${ticker['last']:,.2f}")`,
+print(f"BTC price: \${ticker['last']:,.2f}")`,
     preInstalled: false,
     stars: 33000,
     riskLevel: 'medium',

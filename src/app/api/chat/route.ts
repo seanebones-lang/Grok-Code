@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { spawn } from 'child_process'
 import { checkRateLimit } from '@/lib/ratelimit'
 import { Octokit } from '@octokit/rest'
 import { SPECIALIZED_AGENTS, findAgentsByKeywords, formatAgentsForPrompt, getAgentSystemPrompt } from '@/lib/specialized-agents'
@@ -537,7 +538,7 @@ async function executeTool(
           
           return { 
             success: true, 
-            output: `File written: ${path}\nCommit: ${data.commit.sha.slice(0, 7)}` 
+            output: `File written: ${path}\nCommit: ${data.commit?.sha?.slice(0, 7) || 'unknown'}` 
           }
         } catch (error: any) {
           return { success: false, output: '', error: error.message || 'Failed to write file' }
@@ -821,15 +822,15 @@ async function executeTool(
               resolve({ success: false, output: stdout + (stderr ? `\nStderr:\n${stderr}` : ''), error: 'Command timed out' })
             }, 30000) // 30 second timeout
             
-            child.stdout?.on('data', (data) => {
+            child.stdout?.on('data', (data: Buffer | string) => {
               stdout += data.toString()
             })
             
-            child.stderr?.on('data', (data) => {
+            child.stderr?.on('data', (data: Buffer | string) => {
               stderr += data.toString()
             })
             
-            child.on('close', (code) => {
+            child.on('close', (code: number | null) => {
               clearTimeout(timeout)
               const output = [
                 stdout,
@@ -839,7 +840,7 @@ async function executeTool(
               resolve({ success: code === 0, output })
             })
             
-            child.on('error', (error) => {
+            child.on('error', (error: Error) => {
               clearTimeout(timeout)
               resolve({ success: false, output: '', error: error.message })
             })

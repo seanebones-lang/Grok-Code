@@ -47,19 +47,28 @@ export default function Home() {
 
   // Check if setup is complete on mount
   useEffect(() => {
-    const grokToken = localStorage.getItem(GROK_TOKEN_KEY)
-    const githubToken = localStorage.getItem(GITHUB_TOKEN_KEY)
-    const savedRepo = localStorage.getItem(REPO_KEY)
+    // Safety check for localStorage availability
+    if (typeof window === 'undefined') return
     
-    if (grokToken && githubToken && savedRepo) {
-      try {
-        const parsedRepo = JSON.parse(savedRepo)
-        setRepository(parsedRepo)
-        setIsSetupComplete(true)
-      } catch {
+    try {
+      const grokToken = localStorage.getItem(GROK_TOKEN_KEY)
+      const githubToken = localStorage.getItem(GITHUB_TOKEN_KEY)
+      const savedRepo = localStorage.getItem(REPO_KEY)
+      
+      if (grokToken && githubToken && savedRepo) {
+        try {
+          const parsedRepo = JSON.parse(savedRepo)
+          setRepository(parsedRepo)
+          setIsSetupComplete(true)
+        } catch {
+          setIsSetupComplete(false)
+        }
+      } else {
         setIsSetupComplete(false)
       }
-    } else {
+    } catch (error) {
+      // Handle localStorage errors gracefully
+      console.error('Error accessing localStorage:', error)
       setIsSetupComplete(false)
     }
   }, [])
@@ -105,13 +114,19 @@ export default function Home() {
     return (
       <SetupScreen 
         onComplete={() => {
-          const savedRepo = localStorage.getItem(REPO_KEY)
-          if (savedRepo) {
-            try {
-              setRepository(JSON.parse(savedRepo))
-            } catch {
-              // Ignore parse errors
+          try {
+            if (typeof window !== 'undefined') {
+              const savedRepo = localStorage.getItem(REPO_KEY)
+              if (savedRepo) {
+                try {
+                  setRepository(JSON.parse(savedRepo))
+                } catch {
+                  // Ignore parse errors
+                }
+              }
             }
+          } catch (error) {
+            console.error('Error reading repository from localStorage:', error)
           }
           setIsSetupComplete(true)
         }}

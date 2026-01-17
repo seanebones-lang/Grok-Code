@@ -125,14 +125,14 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const { owner, repo, title, body, head, base } = parsed.data
+      const { owner, repo, title, body: prBody, head, base } = parsed.data
       const octokit = getOctokit()
 
       const { data: pr } = await octokit.pulls.create({
         owner,
         repo,
         title,
-        body: body || '',
+        body: prBody || '',
         head,
         base,
       })
