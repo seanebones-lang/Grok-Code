@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { ChatPane } from '@/components/ChatPane'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { SetupScreen } from '@/components/SetupScreen'
 import { Loader2 } from 'lucide-react'
 
 // Loading fallback for chat pane
@@ -35,9 +36,33 @@ function ErrorFallback() {
   )
 }
 
+const GROK_TOKEN_KEY = 'nexteleven_grok_token'
+const GITHUB_TOKEN_KEY = 'nexteleven_github_token'
+const REPO_KEY = 'nexteleven_connectedRepo'
+
 export default function Home() {
+  const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null)
   const [repository, setRepository] = useState<{ owner: string; repo: string; branch: string } | null>(null)
   const [newSessionMessage, setNewSessionMessage] = useState<string | null>(null)
+
+  // Check if setup is complete on mount
+  useEffect(() => {
+    const grokToken = localStorage.getItem(GROK_TOKEN_KEY)
+    const githubToken = localStorage.getItem(GITHUB_TOKEN_KEY)
+    const savedRepo = localStorage.getItem(REPO_KEY)
+    
+    if (grokToken && githubToken && savedRepo) {
+      try {
+        const parsedRepo = JSON.parse(savedRepo)
+        setRepository(parsedRepo)
+        setIsSetupComplete(true)
+      } catch {
+        setIsSetupComplete(false)
+      }
+    } else {
+      setIsSetupComplete(false)
+    }
+  }, [])
 
   // Listen for new session events from sidebar
   useEffect(() => {
@@ -65,6 +90,34 @@ export default function Home() {
     window.addEventListener('repoConnect', handleRepoConnect)
     return () => window.removeEventListener('repoConnect', handleRepoConnect)
   }, [])
+
+  // Show loading while checking setup
+  if (isSetupComplete === null) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-[#0a0a0a]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Show setup screen if not configured
+  if (!isSetupComplete) {
+    return (
+      <SetupScreen 
+        onComplete={() => {
+          const savedRepo = localStorage.getItem(REPO_KEY)
+          if (savedRepo) {
+            try {
+              setRepository(JSON.parse(savedRepo))
+            } catch {
+              // Ignore parse errors
+            }
+          }
+          setIsSetupComplete(true)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="h-full w-full">

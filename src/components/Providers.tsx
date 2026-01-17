@@ -1,6 +1,5 @@
 'use client'
 
-import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider } from '@/components/theme-provider'
 import { CommandPalette } from '@/components/CommandPalette'
 import { KeyboardShortcuts } from '@/components/KeyboardShortcuts'
@@ -11,18 +10,16 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider>
-      <ThemeProvider 
-        attribute="class" 
-        defaultTheme="dark" 
-        forcedTheme="dark" 
-        enableSystem={false}
-        disableTransitionOnChange
-      >
-        {children}
-        <CommandPalette />
-        <KeyboardShortcuts />
-      </ThemeProvider>
-    </SessionProvider>
+    <ThemeProvider 
+      attribute="class" 
+      defaultTheme="dark" 
+      forcedTheme="dark" 
+      enableSystem={false}
+      disableTransitionOnChange
+    >
+      {children}
+      <CommandPalette />
+      <KeyboardShortcuts />
+    </ThemeProvider>
   )
 }

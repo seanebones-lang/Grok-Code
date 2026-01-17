@@ -186,9 +186,9 @@ patterns:
     // Always include error codes
     // Log errors with context
   auth: |
-    // Use NextAuth.js
-    // Middleware for protected routes
-    // Role-based access control
+    // Authentication patterns
+    // Token-based authentication
+    // API key validation
 
 # ============================================================================
 # Important Paths
@@ -212,7 +212,7 @@ agents:
     - mobile
     - testing
   instructions:
-    security: "Pay special attention to API route authentication"
+    security: "Pay special attention to API route security and token validation"
     testing: "Focus on integration tests for this project"
     codeReview: "Check for performance issues with large lists"
   avoid:

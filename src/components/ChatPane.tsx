@@ -267,10 +267,16 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     abortControllerRef.current = new AbortController()
 
         try {
+          // Get tokens from localStorage
+          const grokToken = localStorage.getItem('nexteleven_grok_token')
+          const githubToken = localStorage.getItem('nexteleven_github_token')
+          
           const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(grokToken && { 'X-Grok-Token': grokToken }),
+              ...(githubToken && { 'X-Github-Token': githubToken }),
             },
             body: JSON.stringify({ 
               message: processedContent,

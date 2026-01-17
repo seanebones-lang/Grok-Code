@@ -18,46 +18,13 @@ const securityHeaders = {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // CRITICAL: Always allow NextAuth routes to pass through without interference
-  // This includes /api/auth/* routes (signin, callback, signout, etc.)
-  if (pathname.startsWith('/api/auth/')) {
-    const response = NextResponse.next()
-    // Add security headers but don't block the route
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value)
-    })
-    return response
-  }
-  
-  // Rate limiting disabled - single user app
-  // Just add security headers to other API routes
+  // Add security headers to API routes
   if (pathname.startsWith('/api/')) {
     const response = NextResponse.next()
     Object.entries(securityHeaders).forEach(([key, value]) => {
       response.headers.set(key, value)
     })
     return response
-  }
-  
-  // Protected routes that require authentication
-  const protectedPaths = ['/api/github/push']
-  if (protectedPaths.some(path => pathname.startsWith(path))) {
-    // Check for session cookie (basic check, full auth in route handler)
-    const sessionCookie = request.cookies.get('next-auth.session-token') ||
-                          request.cookies.get('__Secure-next-auth.session-token')
-    
-    if (!sessionCookie) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Unauthorized', message: 'Authentication required' }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-            ...securityHeaders,
-          },
-        }
-      )
-    }
   }
   
   // Add security headers to all responses

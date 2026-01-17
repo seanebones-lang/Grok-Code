@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/auth'
 import { Octokit } from '@octokit/rest'
 
 /**
@@ -25,8 +24,12 @@ const codeSearchSchema = z.object({
 // Helper Functions
 // ============================================================================
 
-async function getOctokit(accessToken: string) {
-  return new Octokit({ auth: accessToken })
+function getOctokit() {
+  const githubToken = process.env.GITHUB_TOKEN
+  if (!githubToken) {
+    throw new Error('GITHUB_TOKEN not configured')
+  }
+  return new Octokit({ auth: githubToken })
 }
 
 // ============================================================================
@@ -37,19 +40,11 @@ export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
   
   try {
-    const session = await auth()
-    if (!session?.user) {
+    // Check GITHUB_TOKEN is configured
+    if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(
-        { error: 'Unauthorized', requestId },
-        { status: 401 }
-      )
-    }
-    
-    const accessToken = (session as { accessToken?: string }).accessToken
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No GitHub access token', requestId },
-        { status: 401 }
+        { error: 'Service configuration error', requestId },
+        { status: 503 }
       )
     }
 
@@ -71,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { owner, repo, query, language, path, limit = 10 } = parsed.data
-    const octokit = await getOctokit(accessToken)
+    const octokit = getOctokit()
 
     // Build search query
     let searchQuery = `${query} repo:${owner}/${repo}`
