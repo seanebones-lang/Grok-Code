@@ -4,6 +4,7 @@ import '@/styles/globals.css'
 import { Providers } from '@/components/Providers'
 import Sidebar from '@/components/Layout/Sidebar'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Primary font for UI
 const spaceGrotesk = Space_Grotesk({
@@ -86,47 +87,66 @@ export default function RootLayout({
         className="font-sans bg-[#0a0a0a] text-white antialiased h-screen overflow-hidden"
         suppressHydrationWarning
       >
-        <Providers>
-          {/* Skip to main content link for accessibility */}
-          <a 
-            href="#main-content" 
-            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg"
-          >
-            Skip to main content
-          </a>
-          
-          {/* Full-screen resizable split layout - two halves like Claude Code */}
-          <ResizablePanelGroup 
-            direction="horizontal" 
-            className="h-screen w-full bg-[#0a0a0a]"
-            autoSaveId="nexteleven-layout"
-          >
-            {/* Left Panel - Sidebar */}
-            <ResizablePanel 
-              defaultSize={50}
-              minSize={10}
-              className="h-full"
-            >
-              <div className="h-full overflow-hidden">
-                <Sidebar />
+        <ErrorBoundary
+          fallback={
+            <div className="h-screen w-screen flex items-center justify-center bg-[#0a0a0a] text-white">
+              <div className="text-center p-8">
+                <h1 className="text-2xl font-bold mb-4">Application Error</h1>
+                <p className="text-[#9ca3af] mb-4">A critical error occurred. Please refresh the page.</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg"
+                >
+                  Refresh Page
+                </button>
               </div>
-            </ResizablePanel>
+            </div>
+          }
+        >
+          <Providers>
+            {/* Skip to main content link for accessibility */}
+            <a 
+              href="#main-content" 
+              className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-lg"
+            >
+              Skip to main content
+            </a>
             
-            {/* Resizable Handle */}
-            <ResizableHandle withHandle />
-            
-            {/* Right Panel - Chat Content (no header, just chat) */}
-            <ResizablePanel defaultSize={50} minSize={10}>
-              <main 
-                id="main-content"
-                className="h-full w-full overflow-hidden bg-[#0f0f23] text-white"
-                role="main"
+            {/* Full-screen resizable split layout - two halves like Claude Code */}
+            <ResizablePanelGroup 
+              direction="horizontal" 
+              className="h-screen w-full bg-[#0a0a0a]"
+              autoSaveId="nexteleven-layout"
+            >
+              {/* Left Panel - Sidebar */}
+              <ResizablePanel 
+                defaultSize={50}
+                minSize={10}
+                className="h-full"
               >
-                {children}
-              </main>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </Providers>
+                <div className="h-full overflow-hidden">
+                  <ErrorBoundary fallback={<div className="p-4 text-red-400">Sidebar error</div>}>
+                    <Sidebar />
+                  </ErrorBoundary>
+                </div>
+              </ResizablePanel>
+              
+              {/* Resizable Handle */}
+              <ResizableHandle withHandle />
+              
+              {/* Right Panel - Chat Content (no header, just chat) */}
+              <ResizablePanel defaultSize={50} minSize={10}>
+                <main 
+                  id="main-content"
+                  className="h-full w-full overflow-hidden bg-[#0f0f23] text-white"
+                  role="main"
+                >
+                  {children}
+                </main>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </Providers>
+        </ErrorBoundary>
         
         {/* Noscript fallback */}
         <noscript>
