@@ -13,8 +13,27 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onComplete }: SetupScreenProps) {
-  const [githubToken, setGithubToken] = useState('')
-  const [repoUrl, setRepoUrl] = useState('')
+  // Auto-load saved values if they exist
+  const [githubToken, setGithubToken] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(GITHUB_TOKEN_KEY) || ''
+    }
+    return ''
+  })
+  
+  const [repoUrl, setRepoUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(REPO_KEY)
+      if (saved) {
+        try {
+          const repo = JSON.parse(saved)
+          return `${repo.owner}/${repo.repo}`
+        } catch {}
+      }
+    }
+    return ''
+  })
+  
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validating, setValidating] = useState(false)
@@ -76,33 +95,39 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
     try {
       // Validate inputs
       // Note: GROK_API_KEY is server-side only (handled by Vercel env vars)
-      // We only need GITHUB_TOKEN for client-side GitHub API access
-      if (!githubToken.trim()) {
-        throw new Error('GitHub token is required')
+      // GitHub token is optional - only needed for repo features
+      // Repository is optional - can be connected later via sidebar
+      
+      // Always save GitHub token if provided
+      if (githubToken.trim()) {
+        localStorage.setItem(GITHUB_TOKEN_KEY, githubToken.trim())
       }
-
-      if (!repoUrl.trim()) {
-        throw new Error('Repository URL is required')
-      }
-
-      // Parse repo URL
-      const repoInfo = parseRepoUrl(repoUrl)
+      
+      // Parse and validate repo if provided
+      let repoInfo: { owner: string; repo: string; branch: string } | null = null
+      
+      if (repoUrl.trim()) {
+        repoInfo = parseRepoUrl(repoUrl)
       if (!repoInfo) {
         throw new Error('Invalid repository URL. Use format: owner/repo or https://github.com/owner/repo')
       }
 
-      // Validate repo access
+        // Validate repo access if we have a token
+        if (githubToken.trim()) {
       setValidating(true)
-      const isValid = await validateRepo(repoInfo.owner, repoInfo.repo, githubToken)
+          const isValid = await validateRepo(repoInfo.owner, repoInfo.repo, githubToken.trim())
       if (!isValid) {
         throw new Error('Cannot access repository. Check your GitHub token permissions.')
       }
       setValidating(false)
+        }
 
-      // Store GitHub token and repo info
-      // GROK_API_KEY is server-side only and should be in Vercel env vars
-      localStorage.setItem(GITHUB_TOKEN_KEY, githubToken.trim())
+        // Store repo info
       localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
+      } else if (!githubToken.trim()) {
+        // If nothing provided, at least save an empty setup flag
+        localStorage.setItem(GITHUB_TOKEN_KEY, '')
+      }
 
       // Notify parent component
       onComplete()
@@ -125,7 +150,7 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
           {/* Header */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold text-white">NextEleven Code</h1>
-            <p className="text-[#9ca3af] text-sm">Enter your tokens to get started</p>
+            <p className="text-[#9ca3af] text-sm">One-time setup - we'll remember everything</p>
           </div>
 
           {/* Form */}
@@ -141,11 +166,11 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
               </p>
             </div>
 
-            {/* GitHub Token */}
+            {/* GitHub Token - Optional */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
                 <Github className="inline h-4 w-4 mr-1.5" />
-                GitHub Personal Access Token
+                GitHub Personal Access Token <span className="text-xs text-[#606070]">(optional)</span>
               </label>
               <input
                 type="password"
@@ -154,7 +179,6 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 className="w-full px-4 py-2.5 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 disabled={loading}
-                required
               />
               <p className="text-xs text-[#606070] mt-1.5">
                 Get your token from{' '}
@@ -170,23 +194,23 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
               </p>
             </div>
 
-            {/* Repository URL */}
+            {/* Repository URL - Optional */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
                 <Github className="inline h-4 w-4 mr-1.5" />
-                Repository URL
+                Repository URL <span className="text-xs text-[#606070]">(optional - can connect later)</span>
               </label>
               <input
                 type="text"
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
-                placeholder="owner/repo or https://github.com/owner/repo"
+                placeholder="owner/repo or https://github.com/owner/repo (optional)"
                 className="w-full px-4 py-2.5 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 disabled={loading}
-                required
               />
               <p className="text-xs text-[#606070] mt-1.5">
-                Format: <code className="bg-[#2a2a3e] px-1 rounded">owner/repo</code> or full GitHub URL
+                Format: <code className="bg-[#2a2a3e] px-1 rounded">owner/repo</code> or full GitHub URL. 
+                You can skip this and connect a repo later via the sidebar.
               </p>
             </div>
 

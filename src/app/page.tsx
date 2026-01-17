@@ -52,18 +52,38 @@ export default function Home() {
     
     try {
       // GROK_API_KEY is server-side only (Vercel env vars)
-      // We only need GitHub token for client-side GitHub API access
+      // Setup is complete if we have a setup flag (even if empty)
+      // GitHub token and repo are optional - can be added later
+      const hasSetupFlag = localStorage.getItem('nexteleven_setup_complete') === 'true'
       const githubToken = localStorage.getItem(GITHUB_TOKEN_KEY)
       const savedRepo = localStorage.getItem(REPO_KEY)
       
-      if (githubToken && savedRepo) {
-        try {
-          const parsedRepo = JSON.parse(savedRepo)
-          setRepository(parsedRepo)
-          setIsSetupComplete(true)
-        } catch {
-          setIsSetupComplete(false)
+      // If already marked as complete, we're good
+      if (hasSetupFlag) {
+        if (savedRepo) {
+          try {
+            const parsedRepo = JSON.parse(savedRepo)
+            setRepository(parsedRepo)
+          } catch {
+            // Ignore parse errors
+          }
         }
+        setIsSetupComplete(true)
+        return
+      }
+      
+      // Legacy check: if we have token/repo, mark as complete
+      if (githubToken || savedRepo) {
+        if (savedRepo) {
+          try {
+            const parsedRepo = JSON.parse(savedRepo)
+            setRepository(parsedRepo)
+          } catch {
+            // Ignore parse errors
+          }
+        }
+        localStorage.setItem('nexteleven_setup_complete', 'true')
+        setIsSetupComplete(true)
       } else {
         setIsSetupComplete(false)
       }
