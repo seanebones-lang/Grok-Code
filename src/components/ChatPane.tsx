@@ -271,15 +271,13 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     abortControllerRef.current = new AbortController()
 
         try {
-          // Get tokens from localStorage
-          const grokToken = localStorage.getItem('nexteleven_grok_token')
+          // Get GitHub token from localStorage (Grok API key is server-side via Vercel env vars)
           const githubToken = localStorage.getItem('nexteleven_github_token')
           
           const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...(grokToken && { 'X-Grok-Token': grokToken }),
               ...(githubToken && { 'X-Github-Token': githubToken }),
             },
             body: JSON.stringify({ 
