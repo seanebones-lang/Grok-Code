@@ -163,6 +163,7 @@ Recognize these prefixes in user messages:
 - \`/deps\` - Use Dependency Agent
 - \`/bugs\` - Use Bug Hunter Agent
 - \`/a11y\` - Use Accessibility Agent
+- \`/oauth\` or \`/github-oauth\` - Use GitHub OAuth Master Agent for OAuth diagnostics and fixes
 - \`/orchestrate\` or \`/orchestrator\` - Use Orchestrator Agent to coordinate multiple agents
 - \`/swarm\` - Run multiple agents in parallel for comprehensive analysis
 
@@ -1051,11 +1052,22 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Agent command aliases (maps user-friendly commands to agent IDs)
+    const AGENT_ALIASES: Record<string, string> = {
+      'oauth': 'githubOAuth',
+      'github-oauth': 'githubOAuth',
+      'githuboauth': 'githubOAuth',
+    }
+    
     // Check for specialized agent requests
     if (!selectedAgent) {
-      const agentMatch = message.match(/^\/(?:agent\s+)?(\w+)/i)
+      const agentMatch = message.match(/^\/(?:agent\s+)?([\w-]+)/i)
       if (agentMatch) {
-        const agentId = agentMatch[1].toLowerCase()
+        let agentId = agentMatch[1].toLowerCase()
+        // Check aliases first
+        if (AGENT_ALIASES[agentId]) {
+          agentId = AGENT_ALIASES[agentId]
+        }
         if (SPECIALIZED_AGENTS[agentId]) {
           selectedAgent = agentId
         }

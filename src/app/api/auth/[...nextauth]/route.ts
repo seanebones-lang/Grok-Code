@@ -1,10 +1,23 @@
 import NextAuth, { type NextAuthOptions } from 'next-auth'
 import GitHubProvider from 'next-auth/providers/github'
 
+// Normalize base URL - remove trailing slashes, trim whitespace, remove newlines
+function normalizeBaseUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined
+  return url.trim().replace(/\/+$/, '').replace(/\n/g, '').replace(/\r/g, '')
+}
+
+// Get normalized base URL from environment
+const normalizedBaseUrl = normalizeBaseUrl(process.env.NEXTAUTH_URL)
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   // Required for Next.js 13+ App Router - allows NextAuth to trust the host
   trustHost: true,
+  // CRITICAL: Explicit baseUrl ensures NextAuth generates correct callback URLs
+  // This prevents 404 errors by ensuring NextAuth knows the exact base URL
+  // Normalize the URL to remove trailing slashes and whitespace issues
+  ...(normalizedBaseUrl && { baseUrl: normalizedBaseUrl }),
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID as string,
@@ -34,27 +47,39 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      // Ensure redirects work properly - always use baseUrl from NEXTAUTH_URL
-      const base = baseUrl || process.env.NEXTAUTH_URL || 'https://grok-code2.vercel.app'
+      // CRITICAL FIX: Use baseUrl parameter (provided by NextAuth from baseUrl config)
+      // This ensures we use the correct domain for redirects
+      // Normalize the base URL to prevent issues with trailing slashes/whitespace
+      const base = normalizeBaseUrl(baseUrl || process.env.NEXTAUTH_URL)
       
-      // If url is relative, make it absolute
+      // If no base URL is available, log error and redirect to login
+      if (!base) {
+        console.error('NextAuth redirect: No baseUrl or NEXTAUTH_URL found!')
+        return '/login?error=configuration'
+      }
+      
+      // Use normalized base (already normalized above)
+      const normalizedBase = base
+      
+      // If url is relative, make it absolute using the normalized base
       if (url.startsWith('/')) {
-        return `${base}${url}`
+        return `${normalizedBase}${url}`
       }
       
       // If url is absolute and same origin, allow it
       try {
         const urlObj = new URL(url)
-        const baseObj = new URL(base)
+        const baseObj = new URL(normalizedBase)
         if (urlObj.origin === baseObj.origin) {
           return url
         }
+        // Different origin - redirect to base (security: prevent open redirects)
+        return normalizedBase
       } catch (e) {
-        // Invalid URL, use base
+        // Invalid URL, use normalized base
+        console.warn('NextAuth redirect: Invalid URL format, using base:', url)
+        return normalizedBase
       }
-      
-      // Default to base URL
-      return base
     },
   },
   pages: {
