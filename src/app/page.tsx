@@ -96,29 +96,63 @@ export default function Home() {
 
   // Listen for new session events from sidebar
   useEffect(() => {
-    const handleNewSession = (e: Event) => {
-      const customEvent = e as CustomEvent<{ 
-        message: string
-        repository?: { owner: string; repo: string; branch: string }
-      }>
-      setNewSessionMessage(customEvent.detail.message)
-      // Update repository if provided in the event
-      if (customEvent.detail.repository) {
-        setRepository(customEvent.detail.repository)
+    if (typeof window === 'undefined') return
+    
+    try {
+      const handleNewSession = (e: Event) => {
+        try {
+          const customEvent = e as CustomEvent<{ 
+            message: string
+            repository?: { owner: string; repo: string; branch: string }
+          }>
+          setNewSessionMessage(customEvent.detail?.message || null)
+          // Update repository if provided in the event
+          if (customEvent.detail?.repository) {
+            setRepository(customEvent.detail.repository)
+          }
+        } catch (e) {
+          console.error('Error handling newSession event:', e)
+        }
       }
+      window.addEventListener('newSession', handleNewSession)
+      return () => {
+        try {
+          window.removeEventListener('newSession', handleNewSession)
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+    } catch (e) {
+      console.error('Error setting up newSession listener:', e)
     }
-    window.addEventListener('newSession', handleNewSession)
-    return () => window.removeEventListener('newSession', handleNewSession)
   }, [])
 
   // Listen for repo connect events from sidebar
   useEffect(() => {
-    const handleRepoConnect = (e: Event) => {
-      const customEvent = e as CustomEvent<{ repo: { owner: string; repo: string; branch: string } }>
-      setRepository(customEvent.detail.repo)
+    if (typeof window === 'undefined') return
+    
+    try {
+      const handleRepoConnect = (e: Event) => {
+        try {
+          const customEvent = e as CustomEvent<{ repo: { owner: string; repo: string; branch: string } }>
+          if (customEvent.detail?.repo) {
+            setRepository(customEvent.detail.repo)
+          }
+        } catch (e) {
+          console.error('Error handling repoConnect event:', e)
+        }
+      }
+      window.addEventListener('repoConnect', handleRepoConnect)
+      return () => {
+        try {
+          window.removeEventListener('repoConnect', handleRepoConnect)
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+    } catch (e) {
+      console.error('Error setting up repoConnect listener:', e)
     }
-    window.addEventListener('repoConnect', handleRepoConnect)
-    return () => window.removeEventListener('repoConnect', handleRepoConnect)
   }, [])
 
   // Show loading while checking setup
