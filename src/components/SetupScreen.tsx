@@ -123,11 +123,16 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
         }
 
         // Store repo info
-      localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
-      } else if (!githubToken.trim()) {
-        // If nothing provided, at least save an empty setup flag
+        localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
+      }
+      
+      // Always save token (even if empty)
+      if (!githubToken.trim()) {
         localStorage.setItem(GITHUB_TOKEN_KEY, '')
       }
+
+      // Mark setup as complete - this persists forever
+      localStorage.setItem('nexteleven_setup_complete', 'true')
 
       // Notify parent component
       onComplete()
