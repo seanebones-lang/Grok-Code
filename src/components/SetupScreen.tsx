@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Github, Key, ArrowRight, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,30 +13,40 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onComplete }: SetupScreenProps) {
-  // Auto-load saved values if they exist
-  const [githubToken, setGithubToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(GITHUB_TOKEN_KEY) || ''
-    }
-    return ''
-  })
-  
-  const [repoUrl, setRepoUrl] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(REPO_KEY)
-      if (saved) {
-        try {
-          const repo = JSON.parse(saved)
-          return `${repo.owner}/${repo.repo}`
-        } catch {}
-      }
-    }
-    return ''
-  })
-  
+  const [githubToken, setGithubToken] = useState('')
+  const [repoUrl, setRepoUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validating, setValidating] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Load saved values after mount to avoid hydration issues
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    try {
+      const savedToken = localStorage.getItem(GITHUB_TOKEN_KEY) || ''
+      const savedRepo = localStorage.getItem(REPO_KEY)
+      
+      if (savedToken) {
+        setGithubToken(savedToken)
+      }
+      
+      if (savedRepo) {
+        try {
+          const repo = JSON.parse(savedRepo)
+          setRepoUrl(`${repo.owner}/${repo.repo}`)
+        } catch {
+          // Ignore parse errors
+        }
+      }
+      
+      setMounted(true)
+    } catch (e) {
+      console.error('Failed to load saved values:', e)
+      setMounted(true)
+    }
+  }, [])
 
   const parseRepoUrl = (url: string): { owner: string; repo: string; branch: string } | null => {
     // Support formats:

@@ -157,13 +157,20 @@ export default function Home() {
 
   return (
     <div className="h-full w-full">
-      <ErrorBoundary fallback={<ErrorFallback />}>
+      <ErrorBoundary 
+        fallback={<ErrorFallback />}
+        onError={(error, errorInfo) => {
+          console.error('Page error:', error, errorInfo)
+        }}
+      >
         <Suspense fallback={<ChatPaneLoading />}>
-          <ChatPane 
-            repository={repository || undefined}
-            newSessionMessage={newSessionMessage}
-            onNewSessionHandled={() => setNewSessionMessage(null)}
-          />
+          <ErrorBoundary fallback={<ErrorFallback />}>
+            <ChatPane 
+              repository={repository || undefined}
+              newSessionMessage={newSessionMessage}
+              onNewSessionHandled={() => setNewSessionMessage(null)}
+            />
+          </ErrorBoundary>
         </Suspense>
       </ErrorBoundary>
     </div>
