@@ -51,11 +51,12 @@ export default function Home() {
     if (typeof window === 'undefined') return
     
     try {
-      const grokToken = localStorage.getItem(GROK_TOKEN_KEY)
+      // GROK_API_KEY is server-side only (Vercel env vars)
+      // We only need GitHub token for client-side GitHub API access
       const githubToken = localStorage.getItem(GITHUB_TOKEN_KEY)
       const savedRepo = localStorage.getItem(REPO_KEY)
       
-      if (grokToken && githubToken && savedRepo) {
+      if (githubToken && savedRepo) {
         try {
           const parsedRepo = JSON.parse(savedRepo)
           setRepository(parsedRepo)

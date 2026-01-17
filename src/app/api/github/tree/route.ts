@@ -43,11 +43,41 @@ export async function GET(request: NextRequest) {
     const { owner, repo, branch } = parsed.data
     const octokit = new Octokit({ auth: githubToken })
     
-    // Get the tree recursively
+    // First, get the commit SHA for the branch
+    let commitSha: string
+    try {
+      const refResponse = await octokit.git.getRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+      })
+      commitSha = refResponse.data.object.sha
+    } catch (refError: any) {
+      // If branch ref fails, try getting branch info via repos API
+      try {
+        const branchResponse = await octokit.repos.getBranch({
+          owner,
+          repo,
+          branch,
+        })
+        commitSha = branchResponse.data.commit.sha
+      } catch (branchError: any) {
+        return NextResponse.json(
+          { 
+            error: 'Branch not found',
+            details: `Could not find branch "${branch}". ${branchError.message || refError.message}`,
+            requestId,
+          },
+          { status: 404 }
+        )
+      }
+    }
+    
+    // Get the tree recursively using the commit SHA
     const { data } = await octokit.git.getTree({
       owner,
       repo,
-      tree_sha: branch,
+      tree_sha: commitSha,
       recursive: '1',
     })
 

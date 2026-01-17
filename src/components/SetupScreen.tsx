@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { Github, Key, ArrowRight, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-const GROK_TOKEN_KEY = 'nexteleven_grok_token'
 const GITHUB_TOKEN_KEY = 'nexteleven_github_token'
 const REPO_KEY = 'nexteleven_connectedRepo'
 
@@ -14,7 +13,6 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onComplete }: SetupScreenProps) {
-  const [grokToken, setGrokToken] = useState('')
   const [githubToken, setGithubToken] = useState('')
   const [repoUrl, setRepoUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -77,10 +75,8 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
 
     try {
       // Validate inputs
-      if (!grokToken.trim()) {
-        throw new Error('Grok API token is required')
-      }
-
+      // Note: GROK_API_KEY is server-side only (handled by Vercel env vars)
+      // We only need GITHUB_TOKEN for client-side GitHub API access
       if (!githubToken.trim()) {
         throw new Error('GitHub token is required')
       }
@@ -103,8 +99,8 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
       }
       setValidating(false)
 
-      // Store tokens and repo info
-      localStorage.setItem(GROK_TOKEN_KEY, grokToken.trim())
+      // Store GitHub token and repo info
+      // GROK_API_KEY is server-side only and should be in Vercel env vars
       localStorage.setItem(GITHUB_TOKEN_KEY, githubToken.trim())
       localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
 
@@ -134,31 +130,14 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Grok API Token */}
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                <Key className="inline h-4 w-4 mr-1.5" />
-                Grok API Token
-              </label>
-              <input
-                type="password"
-                value={grokToken}
-                onChange={(e) => setGrokToken(e.target.value)}
-                placeholder="xai-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                className="w-full px-4 py-2.5 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                disabled={loading}
-                required
-              />
-              <p className="text-xs text-[#606070] mt-1.5">
-                Get your token from{' '}
-                <a
-                  href="https://console.x.ai"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  console.x.ai
-                </a>
+            {/* Info Note */}
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
+              <p className="flex items-start gap-2">
+                <Key className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>
+                  <strong>Note:</strong> Grok API key is configured server-side via Vercel environment variables. 
+                  You only need to provide your GitHub token here.
+                </span>
               </p>
             </div>
 
