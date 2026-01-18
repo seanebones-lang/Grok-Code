@@ -2,6 +2,9 @@
 
 import { useEffect } from 'react'
 
+// Force dynamic rendering - this page has interactive elements
+export const dynamic = 'force-dynamic'
+
 export default function Singularity() {
   useEffect(() => {
     const canvas = document.getElementById('holo') as HTMLCanvasElement;
