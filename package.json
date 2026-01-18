@@ -14,7 +14,7 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "postinstall": "prisma generate",
-    "railway:build": "prisma generate && next build",
+    "railway:build": "prisma generate && prisma migrate deploy && next build",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
