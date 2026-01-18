@@ -10,6 +10,10 @@ import { checkDeploymentHealth, checkHealthAndRollback } from '@/lib/deployment-
  * Performs health checks and auto-rollback on failure
  */
 
+// Force dynamic rendering - API routes with database access should be dynamic
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const triggerSchema = z.object({
   owner: z.string(),
   repo: z.string(),
