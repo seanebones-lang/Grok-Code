@@ -6,9 +6,15 @@
 
 const { execSync } = require('child_process');
 
-const TOKEN = process.env.VERCEL_TOKEN || 'OsAZOPoqhyreAaZK7wsWpdxs';
+const TOKEN = process.env.VERCEL_TOKEN;
 const PROJECT_NAME = 'nexteleven-code';
 const EXPECTED_URL = 'https://nexteleven-code.vercel.app';
+
+if (!TOKEN) {
+  console.error('❌ Error: VERCEL_TOKEN environment variable is required');
+  console.error('   Set it with: export VERCEL_TOKEN=your_token');
+  process.exit(1);
+}
 
 function exec(command, silent = false) {
   try {

@@ -7,4 +7,28 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Deployment history for rollback mechanism
+model Deployment {
+  id            String   @id @default(cuid())
+  repoOwner     String
+  repoName      String
+  branch        String   @default("main")
+  commitSha     String
+  commitMessage String?
+  deploymentUrl String?
+  platform      String   // 'vercel' | 'railway' | 'aws' | 'docker'
+  status        String   // 'pending' | 'success' | 'failed' | 'rolled_back'
+  error         String?
+  createdAt     DateTime @default(now())
+  deployedAt    DateTime?
+  rolledBackAt  DateTime?
+  previousDeploymentId String? // For rollback tracking
+
+  @@index([repoOwner, repoName])
+  @@index([status])
+  @@index([createdAt])
+  @@map("deployments")
 }

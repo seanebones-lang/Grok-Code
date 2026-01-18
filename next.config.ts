@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
+// Validate environment on startup (in production builds only)
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+  try {
+    require('./src/app/startup')
+  } catch (error) {
+    // Environment validation failed - config will still be created but error is logged
+    console.error('Environment validation error during config:', error)
+  }
+}
+
 const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,

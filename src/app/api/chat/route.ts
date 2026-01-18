@@ -641,6 +641,35 @@ async function executeTool(
         }
       }
       
+      case 'create_repository': {
+        const name = toolCall.arguments.name as string
+        const description = toolCall.arguments.description as string | undefined
+        const isPrivate = (toolCall.arguments.private as boolean) ?? false
+        
+        try {
+          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          const response = await fetch(`${baseUrl}/api/github/create-repo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, private: isPrivate }),
+          })
+          
+          const data = await response.json()
+          
+          if (!response.ok) {
+            return { success: false, output: '', error: data.error || 'Repository creation failed' }
+          }
+          
+          const repo = data.repository
+          return { 
+            success: true, 
+            output: `Repository created: ${repo.fullName}\nURL: ${repo.url}\nDefault branch: ${repo.defaultBranch}` 
+          }
+        } catch (error: any) {
+          return { success: false, output: '', error: error.message || 'Failed to create repository' }
+        }
+      }
+      
       case 'create_branch': {
         if (!repository) {
           return { success: false, output: '', error: 'Repository required' }
