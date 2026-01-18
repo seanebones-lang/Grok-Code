@@ -51,15 +51,12 @@ export function extractApiKey(request: NextRequest): string | null {
 export function validateApiKey(providedKey: string): boolean {
   const configuredKey = process.env.NEXTELEVEN_API_KEY
   
-  // If no API key configured, allow access (development mode)
-  // In production, this should always be set
+  // If no API key configured, allow access (with warning)
+  // This prevents breaking production deployments that haven't set the key yet
   if (!configuredKey) {
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('[API-Auth] NEXTELEVEN_API_KEY not set in production!')
-      return false
-    }
-    console.warn('[API-Auth] NEXTELEVEN_API_KEY not set - allowing access (dev mode)')
-    return true
+    console.warn('[API-Auth] NEXTELEVEN_API_KEY not set - allowing access without authentication')
+    console.warn('[API-Auth] For production security, set NEXTELEVEN_API_KEY environment variable')
+    return true // Allow access if key not configured
   }
 
   // Use constant-time comparison to prevent timing attacks
@@ -94,7 +91,15 @@ export function authenticateRequest(request: NextRequest): NextResponse | null {
     return null // Allow access
   }
 
-  // Extract API key from request
+  // If NEXTELEVEN_API_KEY is not configured, skip authentication (with warning)
+  // This prevents breaking existing deployments
+  const configuredKey = process.env.NEXTELEVEN_API_KEY
+  if (!configuredKey) {
+    // Allow access but warn (already warned in validateApiKey)
+    return null
+  }
+
+  // API key is configured - require authentication
   const apiKey = extractApiKey(request)
 
   if (!apiKey) {
