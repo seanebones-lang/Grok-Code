@@ -139,7 +139,21 @@ Delete a file from the repository. **Automatically commits to GitHub** when a re
 }
 \`\`\`
 
-### 5. run_command
+### 5. create_repository
+Create a new GitHub repository. **Enables full project spawning from descriptions**.
+\`\`\`json
+{
+  "name": "create_repository",
+  "arguments": {
+    "name": "string (required) - Repository name (alphanumeric and hyphens only)",
+    "description": "string (optional) - Repository description",
+    "private": "boolean (optional) - Whether repository is private (default: false)"
+  }
+}
+\`\`\`
+Returns: Repository object with owner, name, fullName, url, defaultBranch.
+
+### 6. run_command
 Execute a terminal command.
 \`\`\`json
 {

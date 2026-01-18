@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest'
 import type { FileNode, GitHubCommit, GitHubRepository } from '@/types'
+import { getCircuitBreaker } from './circuit-breaker'
 
 /**
  * GitHub API Client
@@ -77,6 +78,74 @@ export class GitHubAPIError extends Error {
 }
 
 // ============================================================================
+// Retry Logic
+// ============================================================================
+
+interface RetryOptions {
+  maxRetries?: number
+  initialDelayMs?: number
+  maxDelayMs?: number
+}
+
+/**
+ * Execute a function with exponential backoff retry logic
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelayMs = 1000,
+    maxDelayMs = 30000,
+  } = options
+
+  let lastError: unknown
+  let attempt = 0
+
+  while (attempt < maxRetries) {
+    try {
+      return await fn()
+    } catch (error: any) {
+      lastError = error
+      attempt++
+
+      // Check if error is retryable
+      const isRetryable = 
+        error.status >= 500 || // Server errors
+        error.status === 429 || // Rate limit
+        error.status === 408 || // Request timeout
+        error.message?.includes('network') ||
+        error.message?.includes('timeout') ||
+        error.message?.includes('ECONNRESET') ||
+        error.message?.includes('ETIMEDOUT')
+
+      // Don't retry non-retryable errors or on last attempt
+      if (!isRetryable || attempt >= maxRetries) {
+        throw error
+      }
+
+      // Calculate exponential backoff delay
+      const backoffDelay = Math.min(
+        initialDelayMs * Math.pow(2, attempt - 1),
+        maxDelayMs
+      )
+
+      // Check for Retry-After header (rate limiting)
+      const retryAfter = error.response?.headers?.['retry-after']
+      const delay = retryAfter 
+        ? parseInt(retryAfter, 10) * 1000 
+        : backoffDelay
+
+      console.log(`GitHub API retry attempt ${attempt}/${maxRetries} after ${delay}ms`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -87,6 +156,13 @@ function createOctokit(token: string): Octokit {
     timeoutMs: 30000,
   })
 }
+
+// GitHub API circuit breaker
+const githubCircuitBreaker = getCircuitBreaker('github-api', {
+  failureThreshold: 5,
+  timeout: 60000, // 1 minute before attempting half-open
+  resetTimeout: 300000, // 5 minutes before resetting failure count
+})
 
 function handleGitHubError(error: unknown): never {
   if (error instanceof GitHubAPIError) {
@@ -308,8 +384,10 @@ export async function pushToGitHub(
     message = 'Update files via NextEleven Code' 
   } = options
 
-  try {
-    const octokit = createOctokit(token)
+  // Wrap with circuit breaker + retry
+  return githubCircuitBreaker.execute(async () => {
+    return withRetry(async () => {
+      const octokit = createOctokit(token)
 
     // Get current commit SHA
     const { data: refData } = await octokit.rest.git.getRef({
@@ -373,11 +451,16 @@ export async function pushToGitHub(
       sha: commit.sha,
     })
 
-    return {
-      sha: commit.sha,
-      url: commit.html_url || `https://github.com/${owner}/${repo}/commit/${commit.sha}`,
-      message: commit.message,
-    }
+        return {
+          sha: commit.sha,
+          url: commit.html_url || `https://github.com/${owner}/${repo}/commit/${commit.sha}`,
+          message: commit.message,
+        }
+      }, {
+        maxRetries: 3,
+        initialDelayMs: 1000,
+      })
+    })
   } catch (error) {
     handleGitHubError(error)
   }

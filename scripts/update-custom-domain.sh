@@ -6,8 +6,13 @@
 set -e
 
 DOMAIN=$1
-VERCEL_TOKEN=${VERCEL_TOKEN:-OsAZOPoqhyreAaZK7wsWpdxs}
 PROJECT_NAME="nexteleven-code"
+
+if [ -z "$VERCEL_TOKEN" ]; then
+  echo "❌ Error: VERCEL_TOKEN environment variable is required"
+  echo "   Set it with: export VERCEL_TOKEN=your_token"
+  exit 1
+fi
 
 if [ -z "$DOMAIN" ]; then
   echo "❌ Error: Please provide your custom domain"

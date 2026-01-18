@@ -226,6 +226,35 @@ export async function POST(request: NextRequest) {
     const duration = performance.now() - startTime
     console.log(`[${requestId}] Push completed in ${duration.toFixed(0)}ms: ${commit.sha}`)
 
+    // Trigger deployment asynchronously (non-blocking)
+    let deploymentUrl: string | null = null
+    if (process.env.AUTO_DEPLOY_ENABLED === 'true') {
+      // Trigger deployment in background (don't block response)
+      setImmediate(async () => {
+        try {
+          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          const deployResponse = await fetch(`${baseUrl}/api/deployment/trigger`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              owner,
+              repo,
+              branch,
+              commitSha: commit.sha,
+            }),
+          })
+          
+          if (deployResponse.ok) {
+            const deployData = await deployResponse.json()
+            console.log(`[${requestId}] Deployment triggered: ${deployData.deploymentUrl || 'in progress'}`)
+          }
+        } catch (error) {
+          console.error(`[${requestId}] Deployment trigger failed:`, error)
+          // Don't fail the push if deployment fails
+        }
+      })
+    }
+
     return NextResponse.json({
       success: true,
       commit: {
@@ -233,6 +262,7 @@ export async function POST(request: NextRequest) {
         message: commit.message,
         url: commit.html_url,
       },
+      deploymentUrl: deploymentUrl || undefined,
       requestId,
     })
   } catch (error) {
