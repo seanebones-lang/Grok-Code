@@ -8,7 +8,13 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const TOKEN = process.env.VERCEL_TOKEN || 'OsAZOPoqhyreAaZK7wsWpdxs';
+const TOKEN = process.env.VERCEL_TOKEN;
+
+if (!TOKEN) {
+  console.error('❌ Error: VERCEL_TOKEN environment variable is required');
+  console.error('   Set it with: export VERCEL_TOKEN=your_token');
+  process.exit(1);
+}
 const PROJECT_ID = 'prj_PwrqmqyzcAbLuTN6vHnK3YfCyAxR'; // nexteleven-code
 
 function apiRequest(method, path, data = null) {

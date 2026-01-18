@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { Octokit } from '@octokit/rest'
+import { withRetry } from '@/lib/retry'
 
 // Strict input validation with security constraints
 const filePathSchema = z
@@ -158,36 +159,45 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${requestId}] Pushing ${files.length} files to ${owner}/${repo}:${branch}`)
 
-    // Get the current commit SHA
-    const { data: refData } = await octokit.rest.git.getRef({
-      owner,
-      repo,
-      ref: `heads/${branch}`,
-    })
+    // Get the current commit SHA with retry
+    const { data: refData } = await withRetry(
+      () => octokit.rest.git.getRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+      }),
+      { maxRetries: 3, initialDelayMs: 1000 }
+    )
 
     const currentSha = refData.object.sha
 
-    // Get the tree SHA
-    const { data: commitData } = await octokit.rest.git.getCommit({
-      owner,
-      repo,
-      commit_sha: currentSha,
-    })
+    // Get the tree SHA with retry
+    const { data: commitData } = await withRetry(
+      () => octokit.rest.git.getCommit({
+        owner,
+        repo,
+        commit_sha: currentSha,
+      }),
+      { maxRetries: 3, initialDelayMs: 1000 }
+    )
 
     const baseTreeSha = commitData.tree.sha
 
-    // Create blobs for all files with proper base64 encoding
+    // Create blobs for all files with proper base64 encoding and retry
     const tree = await Promise.all(
       files.map(async (file) => {
         // Ensure content is properly base64 encoded
         const base64Content = Buffer.from(file.content, 'utf-8').toString('base64')
         
-        const { data: blobData } = await octokit.rest.git.createBlob({
-          owner,
-          repo,
-          content: base64Content,
-          encoding: 'base64',
-        })
+        const { data: blobData } = await withRetry(
+          () => octokit.rest.git.createBlob({
+            owner,
+            repo,
+            content: base64Content,
+            encoding: 'base64',
+          }),
+          { maxRetries: 3, initialDelayMs: 1000 }
+        )
 
         return {
           path: file.path,
@@ -198,30 +208,39 @@ export async function POST(request: NextRequest) {
       })
     )
 
-    // Create a new tree
-    const { data: treeData } = await octokit.rest.git.createTree({
-      owner,
-      repo,
-      base_tree: baseTreeSha,
-      tree,
-    })
+    // Create a new tree with retry
+    const { data: treeData } = await withRetry(
+      () => octokit.rest.git.createTree({
+        owner,
+        repo,
+        base_tree: baseTreeSha,
+        tree,
+      }),
+      { maxRetries: 3, initialDelayMs: 1000 }
+    )
 
-    // Create a new commit
-    const { data: commit } = await octokit.rest.git.createCommit({
-      owner,
-      repo,
-      message,
-      tree: treeData.sha,
-      parents: [currentSha],
-    })
+    // Create a new commit with retry
+    const { data: commit } = await withRetry(
+      () => octokit.rest.git.createCommit({
+        owner,
+        repo,
+        message,
+        tree: treeData.sha,
+        parents: [currentSha],
+      }),
+      { maxRetries: 3, initialDelayMs: 1000 }
+    )
 
-    // Update the branch reference
-    await octokit.rest.git.updateRef({
-      owner,
-      repo,
-      ref: `heads/${branch}`,
-      sha: commit.sha,
-    })
+    // Update the branch reference with retry
+    await withRetry(
+      () => octokit.rest.git.updateRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+        sha: commit.sha,
+      }),
+      { maxRetries: 3, initialDelayMs: 1000 }
+    )
 
     const duration = performance.now() - startTime
     console.log(`[${requestId}] Push completed in ${duration.toFixed(0)}ms: ${commit.sha}`)
@@ -233,9 +252,20 @@ export async function POST(request: NextRequest) {
       setImmediate(async () => {
         try {
           const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          
+          // Use internal API key for service-to-service calls
+          // Falls back to main API key if INTERNAL_API_KEY not set
+          const internalApiKey = process.env.INTERNAL_API_KEY || process.env.NEXTELEVEN_API_KEY
+          
+          // Build headers with authentication if API key is available
+          const headers: HeadersInit = { 'Content-Type': 'application/json' }
+          if (internalApiKey) {
+            headers['X-API-Key'] = internalApiKey
+          }
+          
           const deployResponse = await fetch(`${baseUrl}/api/deployment/trigger`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
               owner,
               repo,
@@ -247,6 +277,11 @@ export async function POST(request: NextRequest) {
           if (deployResponse.ok) {
             const deployData = await deployResponse.json()
             console.log(`[${requestId}] Deployment triggered: ${deployData.deploymentUrl || 'in progress'}`)
+          } else if (deployResponse.status === 401) {
+            console.warn(`[${requestId}] Deployment trigger authentication failed - check INTERNAL_API_KEY or NEXTELEVEN_API_KEY`)
+          } else {
+            const errorText = await deployResponse.text().catch(() => 'Unknown error')
+            console.error(`[${requestId}] Deployment trigger failed (${deployResponse.status}):`, errorText)
           }
         } catch (error) {
           console.error(`[${requestId}] Deployment trigger failed:`, error)

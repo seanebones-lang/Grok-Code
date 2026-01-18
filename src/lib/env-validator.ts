@@ -14,6 +14,7 @@ const ENV_CONFIG: EnvConfig = {
     'GROK_API_KEY', // Required for AI features
   ],
   optional: [
+    { name: 'NEXTELEVEN_API_KEY', description: 'API key for authenticating requests to /api routes (required in production)' },
     { name: 'GITHUB_TOKEN', description: 'GitHub Personal Access Token for repository operations' },
     { name: 'VERCEL_TOKEN', description: 'Vercel API token for deployments' },
     { name: 'RAILWAY_TOKEN', description: 'Railway API token for deployments' },
@@ -33,10 +34,22 @@ interface ValidationResult {
   errors: string[]
 }
 
+// Cache validation results to avoid repeated warnings during build
+let validationCache: { timestamp: number; result: ValidationResult } | null = null
+const CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutes
+let warningsLogged = false // Only log warnings once per process
+
 /**
  * Validate all environment variables
  */
-export function validateEnvironment(): ValidationResult {
+export function validateEnvironment(useCache: boolean = true): ValidationResult {
+  // Return cached result if available and not expired
+  if (useCache && validationCache) {
+    const age = Date.now() - validationCache.timestamp
+    if (age < CACHE_DURATION_MS) {
+      return validationCache.result
+    }
+  }
   const missing: string[] = []
   const warnings: string[] = []
   const errors: string[] = []
@@ -102,10 +115,12 @@ export function validateEnvironmentOrThrow(): void {
     throw new Error(`Environment validation failed: Missing ${result.missing.join(', ')}`)
   }
 
-  if (result.warnings.length > 0) {
+  // Only log warnings once per process to avoid cluttering build output
+  if (result.warnings.length > 0 && !warningsLogged) {
     console.warn('\n⚠️  Environment warnings:')
     result.warnings.forEach(warning => console.warn(`  - ${warning}`))
     console.warn('')
+    warningsLogged = true
   }
 
   console.log('✅ Environment validation passed')

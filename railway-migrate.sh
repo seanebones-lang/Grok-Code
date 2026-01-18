@@ -2,7 +2,11 @@
 # Script to run Prisma migrations on Railway database
 # This uses Railway's internal URL which works when run via Railway CLI
 
-export RAILWAY_TOKEN=a5a4fc54-13b0-4467-b90e-c1512ab9c7fc
+if [ -z "$RAILWAY_TOKEN" ]; then
+  echo "❌ Error: RAILWAY_TOKEN environment variable is required"
+  echo "   Set it with: export RAILWAY_TOKEN=your_token"
+  exit 1
+fi
 export DATABASE_URL="postgresql://postgres:CanjRuYicmTsBJobrKvDiLsJNwbXGNrK@postgres.railway.internal:5432/railway"
 
 echo "🚂 Running Prisma migrations on Railway database..."

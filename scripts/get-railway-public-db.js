@@ -6,8 +6,14 @@
 const internalUrl = 'postgresql://postgres:CanjRuYicmTsBJobrKvDiLsJNwbXGNrK@postgres.railway.internal:5432/railway';
 const https = require('https');
 
-const projectId = '080b0df0-f6c7-44c6-861f-c85c8256905b';
-const token = 'a5a4fc54-13b0-4467-b90e-c1512ab9c7fc';
+const projectId = process.env.RAILWAY_PROJECT_ID || '080b0df0-f6c7-44c6-861f-c85c8256905b';
+const token = process.env.RAILWAY_TOKEN;
+
+if (!token) {
+  console.error('❌ Error: RAILWAY_TOKEN environment variable is required');
+  console.error('   Set it with: export RAILWAY_TOKEN=your_token');
+  process.exit(1);
+}
 
 // Try to get public hostname from Railway
 const options = {
