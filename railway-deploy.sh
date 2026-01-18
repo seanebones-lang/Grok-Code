@@ -1,7 +1,11 @@
 #!/bin/bash
 # Railway Deployment Script
 
-export RAILWAY_TOKEN=a5a4fc54-13b0-4467-b90e-c1512ab9c7fc
+if [ -z "$RAILWAY_TOKEN" ]; then
+  echo "❌ Error: RAILWAY_TOKEN environment variable is required"
+  echo "   Set it with: export RAILWAY_TOKEN=your_token"
+  exit 1
+fi
 
 echo "🚀 Deploying GrokCode to Railway..."
 
