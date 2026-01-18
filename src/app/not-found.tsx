@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
-
-// Force dynamic rendering
+// Force dynamic rendering - not-found pages cannot be statically generated
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export default function NotFound() {
   return (
@@ -14,12 +13,12 @@ export default function NotFound() {
         <p className="text-[#9ca3af] mb-8">
           The page you're looking for doesn't exist.
         </p>
-        <Link
+        <a
           href="/"
           className="px-6 py-3 bg-primary hover:bg-primary/80 rounded-lg transition-colors inline-block"
         >
           Go Home
-        </Link>
+        </a>
       </div>
     </div>
   )
