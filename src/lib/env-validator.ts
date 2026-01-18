@@ -14,7 +14,7 @@ const ENV_CONFIG: EnvConfig = {
     'GROK_API_KEY', // Required for AI features
   ],
   optional: [
-    { name: 'NEXTELEVEN_API_KEY', description: 'API key for authenticating requests to /api routes (required in production)' },
+    { name: 'NEXTELEVEN_API_KEY', description: 'API key for authenticating requests to /api routes (optional - if not set, routes are public with warning)' },
     { name: 'GITHUB_TOKEN', description: 'GitHub Personal Access Token for repository operations' },
     { name: 'VERCEL_TOKEN', description: 'Vercel API token for deployments' },
     { name: 'RAILWAY_TOKEN', description: 'Railway API token for deployments' },
