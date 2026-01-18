@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { SPECIALIZED_AGENTS } from '@/lib/specialized-agents'
 
+// Force dynamic rendering - this page has interactive elements
+export const dynamic = 'force-dynamic'
+
 type AgentId = keyof typeof SPECIALIZED_AGENTS
 
 export default function SwarmUI() {

@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { SPECIALIZED_AGENTS } from '@/lib/specialized-agents'
 
+// Force dynamic rendering - this page has interactive elements
+export const dynamic = 'force-dynamic'
+
 export default function Marketplace() {
   const [agents, setAgents] = useState(Object.keys(SPECIALIZED_AGENTS))
   const [newAgent, setNewAgent] = useState({ name: '', desc: '', tools: [] as string[] })

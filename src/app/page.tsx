@@ -6,6 +6,9 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SetupScreen } from '@/components/SetupScreen'
 import { Loader2 } from 'lucide-react'
 
+// Force dynamic rendering - this page has interactive chat components
+export const dynamic = 'force-dynamic'
+
 // Loading fallback for chat pane
 function ChatPaneLoading() {
   return (
