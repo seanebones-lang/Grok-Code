@@ -8,6 +8,10 @@ import { Octokit } from '@octokit/rest'
  * Rolls back to previous successful deployment
  */
 
+// Force dynamic rendering - API routes with database access should be dynamic
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const rollbackSchema = z.object({
   repoOwner: z.string(),
   repoName: z.string(),
