@@ -108,9 +108,21 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
         try {
           const parsed = JSON.parse(savedRepo)
           setConnectedRepo(parsed)
-          onRepoConnect?.(parsed)
+          // Safely call callback
+          try {
+            onRepoConnect?.(parsed)
+          } catch (callbackError) {
+            console.error('Error in onRepoConnect callback during load:', callbackError)
+            // Continue anyway - callback error shouldn't block loading
+          }
         } catch (e) {
           console.error('Failed to parse saved repo:', e)
+          // Clear corrupted data
+          try {
+            localStorage.removeItem(REPO_KEY)
+          } catch (removeError) {
+            console.error('Failed to remove corrupted repo data:', removeError)
+          }
         }
       }
       
@@ -349,84 +361,113 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     setError(null)
     
     try {
-      // Get GitHub token from localStorage
-      const githubToken = localStorage.getItem('nexteleven_github_token')
+      // Get GitHub token from localStorage with error handling
+      let githubToken: string | null = null
+      try {
+        githubToken = localStorage.getItem('nexteleven_github_token')
+      } catch (storageError) {
+        console.error('Failed to access localStorage:', storageError)
+        throw new Error('Failed to access GitHub token. Please check browser settings.')
+      }
       
       if (!githubToken) {
         throw new Error('GitHub token not found. Please configure it in the setup screen.')
       }
       
       // Use API route that handles GitHub token
-      const response = await fetch(
-        `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
-        {
-          headers: {
-            Accept: 'application/vnd.github.v3+json',
-            'X-Github-Token': githubToken,
-          },
-        }
-      )
+      let response: Response
+      try {
+        response = await fetch(
+          `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
+          {
+            headers: {
+              Accept: 'application/vnd.github.v3+json',
+              'X-Github-Token': githubToken,
+            },
+          }
+        )
+      } catch (fetchError) {
+        console.error('Network error fetching file tree:', fetchError)
+        throw new Error('Network error. Please check your connection and try again.')
+      }
       
-      const data = await response.json()
+      let data: any
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error('Failed to parse response:', jsonError)
+        throw new Error('Invalid response from server. Please try again.')
+      }
       
       if (!response.ok) {
-        throw new Error(data.error || data.details || 'Failed to fetch file tree')
+        const errorMsg = data.error || data.details || 'Failed to fetch file tree'
+        throw new Error(errorMsg)
       }
       
       if (!data.tree || !Array.isArray(data.tree)) {
-        throw new Error('Invalid response from server')
+        throw new Error('Invalid response from server: missing tree data')
       }
       
-      // Convert flat tree to nested structure
-      const fileNodes: FileNode[] = []
-      const nodeMap = new Map<string, FileNode>()
-      
-      // Sort by path to ensure parents come before children
-      const sortedTree = data.tree.sort((a: { path: string }, b: { path: string }) => 
-        a.path.localeCompare(b.path)
-      )
-      
-      for (const item of sortedTree) {
-        const parts = item.path.split('/')
-        const name = parts[parts.length - 1]
-        const isDirectory = item.type === 'tree'
+      // Convert flat tree to nested structure with error handling
+      try {
+        const fileNodes: FileNode[] = []
+        const nodeMap = new Map<string, FileNode>()
         
-        const node: FileNode = {
-          name,
-          path: item.path,
-          type: isDirectory ? 'directory' : 'file',
-          children: isDirectory ? [] : undefined,
-        }
+        // Sort by path to ensure parents come before children
+        const sortedTree = data.tree.sort((a: { path: string }, b: { path: string }) => 
+          a.path.localeCompare(b.path)
+        )
         
-        nodeMap.set(item.path, node)
-        
-        if (parts.length === 1) {
-          // Root level item
-          fileNodes.push(node)
-        } else {
-          // Find parent
-          const parentPath = parts.slice(0, -1).join('/')
-          const parent = nodeMap.get(parentPath)
-          if (parent && parent.children) {
-            parent.children.push(node)
+        for (const item of sortedTree) {
+          if (!item || typeof item !== 'object' || !item.path) {
+            console.warn('Invalid tree item:', item)
+            continue // Skip invalid items
+          }
+          
+          const parts = item.path.split('/')
+          const name = parts[parts.length - 1]
+          const isDirectory = item.type === 'tree'
+          
+          const node: FileNode = {
+            name,
+            path: item.path,
+            type: isDirectory ? 'directory' : 'file',
+            children: isDirectory ? [] : undefined,
+          }
+          
+          nodeMap.set(item.path, node)
+          
+          if (parts.length === 1) {
+            // Root level item
+            fileNodes.push(node)
+          } else {
+            // Find parent
+            const parentPath = parts.slice(0, -1).join('/')
+            const parent = nodeMap.get(parentPath)
+            if (parent && parent.children) {
+              parent.children.push(node)
+            }
           }
         }
+        
+        // Sort: directories first, then alphabetically
+        const sortNodes = (nodes: FileNode[]): FileNode[] => {
+          return nodes.sort((a, b) => {
+            if (a.type === 'directory' && b.type !== 'directory') return -1
+            if (a.type !== 'directory' && b.type === 'directory') return 1
+            return a.name.localeCompare(b.name)
+          }).map(node => ({
+            ...node,
+            children: node.children ? sortNodes(node.children) : undefined,
+          }))
+        }
+        
+        setFiles(sortNodes(fileNodes))
+        setError(null) // Clear any previous errors on success
+      } catch (parseError) {
+        console.error('Failed to parse file tree:', parseError)
+        throw new Error('Failed to process file tree. The repository might be empty or inaccessible.')
       }
-      
-      // Sort: directories first, then alphabetically
-      const sortNodes = (nodes: FileNode[]): FileNode[] => {
-        return nodes.sort((a, b) => {
-          if (a.type === 'directory' && b.type !== 'directory') return -1
-          if (a.type !== 'directory' && b.type === 'directory') return 1
-          return a.name.localeCompare(b.name)
-        }).map(node => ({
-          ...node,
-          children: node.children ? sortNodes(node.children) : undefined,
-        }))
-      }
-      
-      setFiles(sortNodes(fileNodes))
-      setError(null) // Clear any previous errors on success
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to fetch file tree'
       console.error('Failed to fetch file tree:', e)
@@ -438,16 +479,34 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   }, [])
 
   const handleConnectRepo = useCallback(async () => {
-    // Check if we have a GitHub token before showing modal
-    const githubToken = localStorage.getItem('nexteleven_github_token')
-    if (!githubToken) {
-      setError('Please configure your GitHub token in the setup screen first')
-      return
+    try {
+      // Check if we have a GitHub token before showing modal
+      let githubToken: string | null = null
+      try {
+        githubToken = localStorage.getItem('nexteleven_github_token')
+      } catch (storageError) {
+        console.error('Failed to access localStorage:', storageError)
+      }
+      
+      if (!githubToken) {
+        setError('Please configure your GitHub token in the setup screen first')
+        return
+      }
+      
+      setShowRepoModal(true)
+      setError(null) // Clear any previous errors
+      
+      // Fetch repos with error handling
+      try {
+        await fetchRepos()
+      } catch (reposError) {
+        console.error('Failed to fetch repositories:', reposError)
+        setError('Failed to load repositories. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error in handleConnectRepo:', error)
+      setError('An unexpected error occurred. Please try again.')
     }
-    
-    setShowRepoModal(true)
-    setError(null) // Clear any previous errors
-    fetchRepos()
   }, [fetchRepos])
 
   const handleSelectRepo = useCallback(async (repo: Repository) => {
@@ -461,20 +520,52 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     setShowRepoModal(false)
     
     try {
-      setConnectedRepo(repoInfo)
-      localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
-      onRepoConnect?.(repoInfo)
+      // Safely update state
+      try {
+        setConnectedRepo(repoInfo)
+      } catch (stateError) {
+        console.error('Failed to update repo state:', stateError)
+      }
       
-      // Dispatch event for page component
-      const event = new CustomEvent('repoConnect', { detail: { repo: repoInfo } })
-      window.dispatchEvent(event)
+      // Safely save to localStorage
+      try {
+        localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
+      } catch (storageError) {
+        console.error('Failed to save repo to localStorage:', storageError)
+        // Continue anyway - localStorage might be full or disabled
+      }
+      
+      // Safely call callback
+      try {
+        onRepoConnect?.(repoInfo)
+      } catch (callbackError) {
+        console.error('Error in onRepoConnect callback:', callbackError)
+        // Continue anyway - callback error shouldn't block connection
+      }
+      
+      // Safely dispatch event
+      try {
+        const event = new CustomEvent('repoConnect', { detail: { repo: repoInfo } })
+        window.dispatchEvent(event)
+      } catch (eventError) {
+        console.error('Failed to dispatch repoConnect event:', eventError)
+        // Continue anyway - event dispatch failure shouldn't block
+      }
       
       // Fetch the file tree - handle errors gracefully
-      await fetchFileTree(repo.owner.login, repo.name, repo.default_branch)
+      try {
+        await fetchFileTree(repo.owner.login, repo.name, repo.default_branch)
+      } catch (treeError) {
+        console.error('Failed to fetch file tree:', treeError)
+        const errorMessage = treeError instanceof Error ? treeError.message : 'Failed to load repository files'
+        setError(errorMessage)
+        // Keep repo connected even if file tree fails
+      }
     } catch (error) {
       console.error('Failed to connect repository:', error)
-      setError('Failed to load repository. Please try again.')
-      // Don't reset state on error - keep repo selected
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect repository'
+      setError(errorMessage)
+      // Don't reset state on error - keep repo selected if it was set
     }
   }, [fetchFileTree, onRepoConnect])
 

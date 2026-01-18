@@ -110,7 +110,28 @@ export default function RootLayout({
                 className="h-full"
               >
                 <div className="h-full overflow-hidden">
-                  <ErrorBoundary fallback={<div className="p-4 text-red-400">Sidebar error</div>}>
+                  <ErrorBoundary 
+                    fallback={
+                      <div className="h-full p-4 bg-[#1a1a2e] flex flex-col items-center justify-center text-white">
+                        <div className="max-w-md text-center space-y-4">
+                          <h3 className="text-lg font-semibold text-red-400">Sidebar Error</h3>
+                          <p className="text-sm text-[#9ca3af]">
+                            The sidebar encountered an error. Try refreshing the page or disconnecting and reconnecting your repository.
+                          </p>
+                          <button
+                            onClick={() => window.location.reload()}
+                            className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg text-sm transition-colors"
+                          >
+                            Reload Page
+                          </button>
+                        </div>
+                      </div>
+                    }
+                    onError={(error, errorInfo) => {
+                      console.error('[Sidebar] Error caught by boundary:', error)
+                      console.error('[Sidebar] Error info:', errorInfo)
+                    }}
+                  >
                     <Sidebar />
                   </ErrorBoundary>
                 </div>
