@@ -4,7 +4,8 @@
  * This file is imported in next.config.ts or app layout to ensure validation
  */
 
-import { validateEnvironmentOrThrow } from '@/lib/env-validator'
+// Use relative import to avoid TypeScript path alias issues in next.config.ts
+import { validateEnvironmentOrThrow } from '../lib/env-validator'
 
 // Validate environment on module load (if not in test mode)
 if (process.env.NODE_ENV !== 'test' && typeof window === 'undefined') {
@@ -23,4 +24,4 @@ if (process.env.NODE_ENV !== 'test' && typeof window === 'undefined') {
 }
 
 // Export validation function for manual checks
-export { validateEnvironmentOrThrow, validateEnvironment, getEnvironmentStatus } from '@/lib/env-validator'
+export { validateEnvironmentOrThrow, validateEnvironment, getEnvironmentStatus } from '../lib/env-validator'
