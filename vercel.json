@@ -16,6 +16,9 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
+    },
+    "src/app/api/chat/route.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [

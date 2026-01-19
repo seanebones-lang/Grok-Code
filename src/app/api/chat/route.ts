@@ -1020,8 +1020,16 @@ export async function POST(request: NextRequest) {
   const startTime = performance.now()
   
   try {
-    // Get GitHub token from header or env for GitHub operations
-    const githubToken = request.headers.get('X-Github-Token') || process.env.GITHUB_TOKEN
+    // Get GitHub token from header, stored token, or env for GitHub operations
+    let githubToken = request.headers.get('X-Github-Token')
+    if (!githubToken) {
+      try {
+        const { getGitHubToken } = await import('@/scripts/github-api')
+        githubToken = getGitHubToken() || process.env.GITHUB_TOKEN || undefined
+      } catch {
+        githubToken = process.env.GITHUB_TOKEN || undefined
+      }
+    }
     
     // Parse and validate request body
     let body: unknown
@@ -1246,7 +1254,18 @@ The tool will be executed automatically and the results will be provided to you.
     // const rateLimitResult = await checkRateLimit(ip)
 
     // Get API key from header or env
+    // Get Grok API key from header or env
     const grokApiKey = request.headers.get('X-Grok-Token') || process.env.GROK_API_KEY
+    if (!grokApiKey) {
+      return NextResponse.json(
+        { 
+          error: 'GROK_API_KEY is required', 
+          message: 'Please configure GROK_API_KEY environment variable',
+          requestId,
+        },
+        { status: 500 }
+      )
+    }
     if (!grokApiKey) {
       console.error(`[${requestId}] GROK_API_KEY not provided`)
       return NextResponse.json(
