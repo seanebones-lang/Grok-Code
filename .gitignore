@@ -47,6 +47,10 @@ vercel-token.txt
 .railway-token
 railway-token.txt
 
+# github
+.github-token
+github-token.txt
+
 # tokens
 *.token
 
