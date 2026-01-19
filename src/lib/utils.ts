@@ -88,21 +88,37 @@ export function truncate(
  * 
  * @param fn - Function to debounce
  * @param delay - Delay in milliseconds
- * @returns Debounced function
+ * @returns Debounced function with cancel method
  * 
  * @example
  * const debouncedSearch = debounce(search, 300)
+ * debouncedSearch('query')
+ * debouncedSearch.cancel() // Cancel pending execution
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
+  let timeoutId: NodeJS.Timeout | null = null
   
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn(...args), delay)
+  const debouncedFn = (...args: Parameters<T>) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+    timeoutId = setTimeout(() => {
+      fn(...args)
+      timeoutId = null
+    }, delay)
   }
+  
+  debouncedFn.cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
+  }
+  
+  return debouncedFn
 }
 
 /**
