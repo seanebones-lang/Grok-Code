@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, AlertCircle, WifiOff, Wand2, GitBranch, Bug, FileSearch, Bot, ArrowLeft } from 'lucide-react'
+import { Loader2, AlertCircle, WifiOff, Wand2, GitBranch, Bug, FileSearch, Bot, ArrowLeft, X, Trash2 } from 'lucide-react'
 import { ChatMessage } from '@/components/ChatMessage'
 import { InputBar, type ChatMode } from '@/components/InputBar'
 import { AgentRunner } from '@/components/AgentRunner'
@@ -421,6 +421,26 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     }
   }, [handleSendMessage])
 
+  const handleClearChat = useCallback(() => {
+    if (confirm('Clear current chat? This will remove all messages in this conversation.')) {
+      setMessages([])
+      setError(null)
+      setCurrentMode('default')
+      setShowAgentMode(false)
+      lastRequestRef.current = null
+      abortControllerRef.current?.abort()
+      
+      // Create new session for clean state
+      const newSession = sessionManager.create({
+        metadata: {
+          repository: repository ? { ...repository, branch: repository.branch || 'main' } : undefined,
+        },
+      })
+      setCurrentSessionId(newSession.id)
+      window.dispatchEvent(new CustomEvent('sessionUpdated'))
+    }
+  }, [repository])
+
   // Handle new session message from sidebar (⭐️ = new session)
   useEffect(() => {
     if (newSessionMessage) {
@@ -515,13 +535,33 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
         </motion.div>
       )}
 
-      {/* Messages area */}
+      {/* Messages area with clear chat button */}
       <div 
-        className="flex-1 overflow-y-auto py-6 space-y-6"
+        className="flex-1 overflow-y-auto py-6 space-y-6 relative"
         role="log"
         aria-live="polite"
         aria-label="Chat messages"
       >
+        {/* Clear Chat Button - visible when messages exist */}
+        {messages.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-2 right-4 z-10"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearChat}
+              className="bg-[#1a1a1a]/90 hover:bg-[#2a2a2a] text-[#9ca3af] hover:text-white border border-[#1a1a1a] h-8 px-3 text-xs backdrop-blur-sm"
+              title="Clear current chat"
+            >
+              <X className="h-3 w-3 mr-1.5" />
+              Clear Chat
+            </Button>
+          </motion.div>
+        )}
+
         <AnimatePresence mode="popLayout">
           {messages.length === 0 ? null : (
             messages.map((message) => (
