@@ -3,10 +3,7 @@
 import { useState } from 'react'
 import { SPECIALIZED_AGENTS } from '@/lib/specialized-agents'
 
-// Force dynamic rendering - this page has interactive elements
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-export const fetchCache = 'force-no-store'
+// Client Component - already dynamic by nature, no route segment config needed
 
 type AgentId = keyof typeof SPECIALIZED_AGENTS
 
