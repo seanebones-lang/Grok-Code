@@ -1,14 +1,20 @@
 /**
  * Mobile Authentication Service
- * Handles OAuth flow, token management, and secure storage
+ * Enhanced with expo-auth-session for proper OAuth flow
  */
 
+import * as AuthSession from 'expo-auth-session'
 import * as SecureStore from 'expo-secure-store'
-import { apiClient } from '../api/client'
+import { api } from '../api/client'
+import * as Haptics from 'expo-haptics'
 
-const ACCESS_TOKEN_KEY = 'mobile_access_token'
-const REFRESH_TOKEN_KEY = 'mobile_refresh_token'
-const USER_KEY = 'mobile_user'
+const GITHUB_CLIENT_ID = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || ''
+const REDIRECT_URI = process.env.EXPO_PUBLIC_REDIRECT_URI || 'grokswarm://auth'
+
+const discovery = {
+  authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+  tokenEndpoint: 'https://github.com/login/oauth/access_token',
+}
 
 export interface User {
   id: string
@@ -16,6 +22,99 @@ export interface User {
   name?: string
 }
 
+/**
+ * Use GitHub OAuth request hook
+ */
+export const useAuthRequest = () => {
+  return AuthSession.useAuthRequest(
+    {
+      clientId: GITHUB_CLIENT_ID,
+      scopes: ['user', 'repo'],
+      redirectUri: AuthSession.makeRedirectUri({
+        scheme: 'grokswarm',
+        path: 'auth',
+      }),
+    },
+    discovery
+  )
+}
+
+/**
+ * Exchange OAuth code for JWT tokens
+ */
+export const exchangeCodeForToken = async (code: string): Promise<boolean> => {
+  try {
+    const redirectUri = AuthSession.makeRedirectUri({
+      scheme: 'grokswarm',
+      path: 'auth',
+    })
+
+    const response = await api.login(code, redirectUri)
+
+    if (!response.success || !response.data) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      return false
+    }
+
+    // Store tokens securely
+    await SecureStore.setItemAsync('mobile_access_token', response.data.access_token)
+    await SecureStore.setItemAsync('mobile_refresh_token', response.data.refresh_token)
+    await SecureStore.setItemAsync('mobile_user', JSON.stringify(response.data.user))
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    return true
+  } catch (error) {
+    console.error('Token exchange error:', error)
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+    return false
+  }
+}
+
+/**
+ * Get current user from secure storage
+ */
+export const getCurrentUser = async (): Promise<User | null> => {
+  try {
+    const userJson = await SecureStore.getItemAsync('mobile_user')
+    if (userJson) {
+      return JSON.parse(userJson)
+    }
+    return null
+  } catch (error) {
+    console.error('Get user error:', error)
+    return null
+  }
+}
+
+/**
+ * Check if user is authenticated
+ */
+export const isAuthenticated = async (): Promise<boolean> => {
+  try {
+    const token = await SecureStore.getItemAsync('mobile_access_token')
+    return token !== null
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Logout - clear all stored data
+ */
+export const logout = async (): Promise<void> => {
+  try {
+    await SecureStore.deleteItemAsync('mobile_access_token')
+    await SecureStore.deleteItemAsync('mobile_refresh_token')
+    await SecureStore.deleteItemAsync('mobile_user')
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+  } catch (error) {
+    console.error('Logout error:', error)
+  }
+}
+
+/**
+ * Legacy AuthService class for backward compatibility
+ */
 export class AuthService {
   private static instance: AuthService
   private currentUser: User | null = null
@@ -29,98 +128,49 @@ export class AuthService {
     return AuthService.instance
   }
 
-  /**
-   * Initialize auth service - load tokens from secure storage
-   */
   async initialize(): Promise<void> {
     try {
-      const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY)
-      const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY)
-      const userJson = await SecureStore.getItemAsync(USER_KEY)
+      const accessToken = await SecureStore.getItemAsync('mobile_access_token')
+      const refreshToken = await SecureStore.getItemAsync('mobile_refresh_token')
+      const userJson = await SecureStore.getItemAsync('mobile_user')
 
-      if (accessToken && refreshToken) {
-        apiClient.setTokens(accessToken, refreshToken)
-        
-        if (userJson) {
-          this.currentUser = JSON.parse(userJson)
-        }
+      if (accessToken && refreshToken && userJson) {
+        this.currentUser = JSON.parse(userJson)
       }
     } catch (error) {
       console.error('Auth initialization error:', error)
     }
   }
 
-  /**
-   * Start OAuth login flow
-   */
   async login(code: string, redirectUri: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const response = await apiClient.login(code, redirectUri)
-
-      if (!response.success || !response.data) {
-        return {
-          success: false,
-          error: response.error?.message || 'Login failed',
-        }
-      }
-
-      // Store tokens securely
-      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, response.data.access_token)
-      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, response.data.refresh_token)
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(response.data.user))
-
-      // Set tokens in API client
-      apiClient.setTokens(response.data.access_token, response.data.refresh_token)
-      this.currentUser = response.data.user
-
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Login failed',
-      }
+    const success = await exchangeCodeForToken(code)
+    if (success) {
+      this.currentUser = await getCurrentUser()
+    }
+    return {
+      success,
+      error: success ? undefined : 'Login failed',
     }
   }
 
-  /**
-   * Logout - clear tokens and user data
-   */
   async logout(): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY)
-      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)
-      await SecureStore.deleteItemAsync(USER_KEY)
-
-      apiClient.clearTokens()
-      this.currentUser = null
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
+    await logout()
+    this.currentUser = null
   }
 
-  /**
-   * Check if user is authenticated
-   */
   isAuthenticated(): boolean {
     return this.currentUser !== null
   }
 
-  /**
-   * Get current user
-   */
   getCurrentUser(): User | null {
     return this.currentUser
   }
 
-  /**
-   * Get OAuth login URL
-   */
   getOAuthUrl(): string {
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'
-    const clientId = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || ''
-    const redirectUri = process.env.EXPO_PUBLIC_REDIRECT_URI || 'exp://localhost:8081'
-    
-    return `${baseUrl}/api/auth/signin/github?callbackUrl=${encodeURIComponent(redirectUri)}&client_id=${clientId}`
+    return AuthSession.makeRedirectUri({
+      scheme: 'grokswarm',
+      path: 'auth',
+    })
   }
 }
 

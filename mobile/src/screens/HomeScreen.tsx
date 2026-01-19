@@ -1,9 +1,9 @@
 /**
  * Home Screen
- * Main screen after authentication
+ * Enhanced with React Query for data fetching
  */
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import {
   View,
   Text,
@@ -11,10 +11,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native'
-import { authService } from '../auth/AuthService'
-import { apiClient } from '../api/client'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigation } from '@react-navigation/native'
+import { authService } from '../auth/AuthService'
+import { api } from '../api/client'
+import * as Haptics from 'expo-haptics'
 
 interface Agent {
   id: string
@@ -24,36 +27,40 @@ interface Agent {
 }
 
 export default function HomeScreen() {
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const navigation = useNavigation()
   const user = authService.getCurrentUser()
 
-  useEffect(() => {
-    loadAgents()
-  }, [])
-
-  const loadAgents = async () => {
-    try {
-      const response = await apiClient.getAgents()
+  const {
+    data: agentsData,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
+      const response = await api.agents()
       if (response.success && response.data) {
-        setAgents(response.data.agents)
+        return response.data.agents
       }
-    } catch (error) {
-      console.error('Failed to load agents:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      throw new Error(response.error?.message || 'Failed to load agents')
+    },
+  })
+
+  const agents: Agent[] = agentsData || []
 
   const handleRefresh = async () => {
-    setRefreshing(true)
-    await loadAgents()
-    setRefreshing(false)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    await refetch()
+  }
+
+  const handleAgentPress = (agent: Agent) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    navigation.navigate('Chat' as never, { agentId: agent.id } as never)
   }
 
   const handleLogout = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     await authService.logout()
     navigation.reset({
       index: 0,
@@ -61,37 +68,62 @@ export default function HomeScreen() {
     })
   }
 
+  const handleChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    navigation.navigate('Chat' as never)
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcome}>Welcome, {user?.name || user?.email}</Text>
+        <View>
+          <Text style={styles.welcome}>Welcome, {user?.name || user?.email}</Text>
+          <Text style={styles.subtitle}>Select an agent to get started</Text>
+        </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Available Agents</Text>
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.chatButton} onPress={handleChat}>
+          <Text style={styles.chatButtonText}>💬 Start Chat</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Available Agents ({agents.length})</Text>
       
       {isLoading ? (
         <View style={styles.center}>
+          <ActivityIndicator size="large" color="#6841e7" />
           <Text style={styles.loadingText}>Loading agents...</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Failed to load agents</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={agents}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.agentCard}>
+            <TouchableOpacity
+              style={styles.agentCard}
+              onPress={() => handleAgentPress(item)}
+            >
               <Text style={styles.agentEmoji}>{item.emoji}</Text>
               <View style={styles.agentInfo}>
                 <Text style={styles.agentName}>{item.name}</Text>
                 <Text style={styles.agentDescription}>{item.description}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={isRefetching}
               onRefresh={handleRefresh}
               tintColor="#6841e7"
             />
@@ -124,6 +156,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#9ca3af',
   },
   logoutButton: {
     paddingHorizontal: 16,
@@ -135,20 +172,53 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
+  actions: {
+    padding: 16,
+  },
+  chatButton: {
+    backgroundColor: '#6841e7',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  chatButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 32,
   },
   loadingText: {
     color: '#9ca3af',
     fontSize: 16,
+    marginTop: 16,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#6841e7',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 6,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   agentCard: {
     flexDirection: 'row',
