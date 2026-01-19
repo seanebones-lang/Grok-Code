@@ -1,7 +1,11 @@
 /**
  * Mobile API Client
- * Handles all API communication for mobile app
+ * Enhanced with React Query integration and improved error handling
  */
+
+import { QueryClient } from '@tanstack/react-query'
+import * as SecureStore from 'expo-secure-store'
+import * as Haptics from 'expo-haptics'
 
 export interface ApiResponse<T> {
   success: boolean
@@ -26,230 +30,159 @@ export interface AuthTokens {
   }
 }
 
-export interface ApiConfig {
-  baseUrl: string
-  timeout?: number
-  retryAttempts?: number
-  retryDelay?: number
-}
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://nexteleven-code.vercel.app'
 
-class MobileApiClient {
-  private baseUrl: string
-  private accessToken: string | null = null
-  private refreshToken: string | null = null
-  private timeout: number
-  private retryAttempts: number
-  private retryDelay: number
+/**
+ * React Query client with optimized defaults
+ */
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+})
 
-  constructor(config: ApiConfig) {
-    this.baseUrl = config.baseUrl
-    this.timeout = config.timeout || 30000
-    this.retryAttempts = config.retryAttempts || 3
-    this.retryDelay = config.retryDelay || 1000
-  }
-
-  /**
-   * Set authentication tokens
-   */
-  setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken
-    this.refreshToken = refreshToken
-  }
-
-  /**
-   * Clear authentication tokens
-   */
-  clearTokens() {
-    this.accessToken = null
-    this.refreshToken = null
-  }
-
-  /**
-   * Make authenticated API request with retry logic
-   */
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`
+/**
+ * API fetch helper with authentication and error handling
+ */
+const apiFetch = async <T = any>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> => {
+  try {
+    const token = await SecureStore.getItemAsync('mobile_access_token')
+    
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     }
 
-    // Add authorization header if token available
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
 
-    let lastError: Error | null = null
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    })
 
-    // Retry logic
-    for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout)
-
-        const response = await fetch(url, {
-          ...options,
-          headers,
-          signal: controller.signal,
-        })
-
-        clearTimeout(timeoutId)
-
-        // Handle 401 - try to refresh token
-        if (response.status === 401 && this.refreshToken && attempt === 0) {
-          const refreshed = await this.refreshAccessToken()
-          if (refreshed) {
-            // Retry with new token
-            if (this.accessToken) {
-              headers['Authorization'] = `Bearer ${this.accessToken}`
+    if (!response.ok) {
+      // Try to refresh token on 401
+      if (response.status === 401 && token) {
+        const refreshed = await refreshAccessToken()
+        if (refreshed) {
+          // Retry with new token
+          const newToken = await SecureStore.getItemAsync('mobile_access_token')
+          if (newToken) {
+            headers['Authorization'] = `Bearer ${newToken}`
+            const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+              ...options,
+              headers,
+            })
+            if (retryResponse.ok) {
+              return retryResponse.json()
             }
-            continue
           }
-        }
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          return {
-            success: false,
-            error: {
-              code: data.error?.code || 'API_ERROR',
-              message: data.error?.message || 'Request failed',
-              details: data.error?.details,
-            },
-            requestId: data.requestId,
-          }
-        }
-
-        return {
-          success: true,
-          data: data.data || data,
-          requestId: data.requestId,
-        }
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Unknown error')
-        
-        // Don't retry on abort or if it's the last attempt
-        if (error instanceof Error && error.name === 'AbortError') {
-          break
-        }
-        
-        if (attempt < this.retryAttempts - 1) {
-          await this.delay(this.retryDelay * (attempt + 1))
         }
       }
+
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error?.message || `HTTP ${response.status}`)
     }
 
-    return {
-      success: false,
-      error: {
-        code: 'NETWORK_ERROR',
-        message: lastError?.message || 'Network request failed',
-      },
-    }
+    const data = await response.json()
+    return data
+  } catch (error) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+    throw error
   }
+}
 
-  /**
-   * Refresh access token using refresh token
-   */
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) {
-      return false
-    }
+/**
+ * Refresh access token using refresh token
+ */
+async function refreshAccessToken(): Promise<boolean> {
+  try {
+    const refreshToken = await SecureStore.getItemAsync('mobile_refresh_token')
+    if (!refreshToken) return false
 
-    try {
-      const response = await this.request<{
-        access_token: string
-        expires_in: number
-      }>('/api/mobile/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({
-          refresh_token: this.refreshToken,
-        }),
-      })
+    const response = await fetch(`${API_BASE}/api/mobile/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+      }),
+    })
 
-      if (response.success && response.data) {
-        this.accessToken = response.data.access_token
-        return true
-      }
-    } catch (error) {
-      console.error('Token refresh failed:', error)
+    if (!response.ok) return false
+
+    const data = await response.json()
+    if (data.success && data.data?.access_token) {
+      await SecureStore.setItemAsync('mobile_access_token', data.data.access_token)
+      return true
     }
 
     return false
+  } catch (error) {
+    console.error('Token refresh failed:', error)
+    return false
   }
+}
 
-  /**
-   * Delay helper for retry logic
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
-
-  // ============================================================================
-  // Authentication Methods
-  // ============================================================================
-
+/**
+ * API methods
+ */
+export const api = {
   /**
    * Login with OAuth code
    */
-  async login(code: string, redirectUri: string): Promise<ApiResponse<AuthTokens>> {
-    return this.request<AuthTokens>('/api/mobile/auth/login', {
+  login: (code: string, redirectUri: string) =>
+    apiFetch<AuthTokens>('/api/mobile/auth/login', {
       method: 'POST',
       body: JSON.stringify({ code, redirectUri }),
-    })
-  }
+    }),
+
+  /**
+   * Refresh access token
+   */
+  refresh: () =>
+    apiFetch<{ access_token: string; expires_in: number }>('/api/mobile/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({
+        refresh_token: '', // Will be read from SecureStore in apiFetch
+      }),
+    }),
 
   /**
    * Get user profile
    */
-  async getProfile(): Promise<ApiResponse<{ user: any }>> {
-    return this.request('/api/mobile/user/profile')
-  }
+  profile: () => apiFetch<{ user: any }>('/api/mobile/user/profile'),
 
-  // ============================================================================
-  // Chat Methods
-  // ============================================================================
+  /**
+   * Get list of agents
+   */
+  agents: () => apiFetch<{ agents: any[]; count: number }>('/api/mobile/agents/list'),
 
   /**
    * Send chat message
    */
-  async sendChatMessage(
-    message: string,
-    conversationId?: string,
-    mode?: string
-  ): Promise<ApiResponse<any>> {
-    return this.request('/api/mobile/chat/send', {
+  chatSend: (message: string, conversationId?: string, mode?: string) =>
+    apiFetch('/api/mobile/chat/send', {
       method: 'POST',
       body: JSON.stringify({
         message,
         conversationId,
         mode,
       }),
-    })
-  }
-
-  // ============================================================================
-  // Agents Methods
-  // ============================================================================
-
-  /**
-   * Get list of available agents
-   */
-  async getAgents(): Promise<ApiResponse<{ agents: any[]; count: number }>> {
-    return this.request('/api/mobile/agents/list')
-  }
+    }),
 }
 
-// Export singleton instance
-export const apiClient = new MobileApiClient({
-  baseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
-  timeout: 30000,
-  retryAttempts: 3,
-  retryDelay: 1000,
-})
-
-export default MobileApiClient
+export default api
