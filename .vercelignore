@@ -9,5 +9,11 @@ coverage
 .vercel
 *.tsbuildinfo
 RAILWAY_ENV_VARS.txt
-scripts/
+# Keep scripts/ for deployment utilities but ignore local scripts
+scripts/*-env*.sh
+scripts/*-env*.js
+scripts/auto-set-env.sh
+scripts/check-*.js
+scripts/clear-npm-registry.js
+scripts/connect-github-and-deploy.js
 QUICK_DEPLOY.sh

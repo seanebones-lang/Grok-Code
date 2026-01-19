@@ -42,6 +42,12 @@ QUICK_DEPLOY.sh
 .vercel
 .vercel-token
 vercel-token.txt
+
+# railway
+.railway-token
+railway-token.txt
+
+# tokens
 *.token
 
 # typescript
