@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { authenticateRequest, getClientIdentifier, isPublicEndpoint } from '@/lib/api-auth'
+import { authenticateRequest as authenticateSessionRequest, isPublicEndpoint } from '@/lib/session-auth'
+import { getClientIdentifier } from '@/lib/api-auth'
 import { checkRateLimit } from '@/lib/ratelimit'
 
 // Security headers for all responses
@@ -18,8 +19,8 @@ export async function middleware(request: NextRequest) {
   
   // Handle API routes
   if (pathname.startsWith('/api/')) {
-    // Authenticate request (skip for public endpoints)
-    const authError = authenticateRequest(request)
+    // Authenticate request using GitHub OAuth session (skip for public endpoints)
+    const authError = await authenticateSessionRequest(request)
     if (authError) {
       // Add security headers to error response
       Object.entries(securityHeaders).forEach(([key, value]) => {
