@@ -7,9 +7,11 @@ on:
 
 jobs:
   deploy:
+    name: Deploy to Railway
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -23,26 +25,29 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost' }}
       
-      - name: Run Database Migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        continue-on-error: true
-      
-      - name: Build
+      - name: Build application
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost' }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY || 'dummy' }}
+          GITHUB_ID: ${{ secrets.GITHUB_ID || 'dummy' }}
+          GITHUB_SECRET: ${{ secrets.GITHUB_SECRET || 'dummy' }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'dummy' }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
       
       - name: Deploy to Railway
         uses: bervProject/railway-deploy@v1.0.0
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_ID }}
+        # Note: RAILWAY_TOKEN should be set in GitHub Secrets
+        # Token stored in .railway-token (gitignored) for local use
         env:
           GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
           GITHUB_ID: ${{ secrets.GITHUB_ID }}
           GITHUB_SECRET: ${{ secrets.GITHUB_SECRET }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
