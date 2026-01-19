@@ -14,14 +14,15 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
   
-  // Disable ESLint during builds (we'll fix errors separately)
+  // ESLint - enabled for production quality
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
+    dirs: ['src', 'app'],
   },
   
-  // Disable TypeScript errors during builds (we'll fix errors separately)
+  // TypeScript - enabled for production quality
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   
   // Optimize production builds
@@ -117,7 +118,53 @@ const nextConfig: NextConfig = {
       'framer-motion',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-tooltip',
+      '@tanstack/react-query',
+      'react-markdown',
     ],
+    // Enable server actions
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+    // Optimize CSS
+    optimizeCss: true,
+  },
+  
+  // Webpack optimizations
+  webpack: (config, { isServer }) => {
+    // Optimize bundle size
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunk
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20,
+            },
+            // Common chunk
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+          },
+        },
+      }
+    }
+    return config
   },
   
   // Output configuration for deployment
