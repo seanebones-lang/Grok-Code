@@ -1,0 +1,42 @@
+# CTO Eleven MCP Rules Configuration
+# All agents and tools prefixed with "CTO Eleven MCP"
+
+rules:
+  - name: "CTO Eleven MCP Prefix All"
+    description: "All MCP tools, agents, and commands are prefixed with 'CTO Eleven MCP'"
+    enabled: true
+    apply_to:
+      - mcp_tools
+      - agents
+      - commands
+      - outputs
+
+  - name: "Auto Deploy"
+    description: "Automatically deploy after successful tests and verification"
+    enabled: true
+    triggers:
+      - after_tests_pass
+      - after_verification_pass
+      - on_merge_to_main
+
+  - name: "Auto Test"
+    description: "Automatically run tests on code changes"
+    enabled: true
+    triggers:
+      - on_save
+      - on_commit
+      - before_deploy
+
+  - name: "Auto Sec"
+    description: "Automatically run security scans on code changes"
+    enabled: true
+    triggers:
+      - on_save
+      - on_commit
+      - before_deploy
+      - on_dependency_update
+
+defaults:
+  enabled: true
+  persist: true
+  git_track: true

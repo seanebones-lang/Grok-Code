@@ -1,0 +1,32 @@
+{
+  "verification": {
+    "enabled": true,
+    "auto_run": true,
+    "commands": [
+      {
+        "name": "nx_test",
+        "command": "nx test",
+        "description": "Run Nx test suite",
+        "required": true,
+        "on_failure": "warn"
+      },
+      {
+        "name": "mcp_security",
+        "command": "MCP[security]",
+        "description": "Run MCP security scan",
+        "required": true,
+        "on_failure": "error"
+      },
+      {
+        "name": "ollama_status",
+        "command": "ollama status",
+        "description": "Check Ollama service status",
+        "required": true,
+        "on_failure": "warn"
+      }
+    ],
+    "pre_commit": true,
+    "pre_deploy": true,
+    "continuous": true
+  }
+}

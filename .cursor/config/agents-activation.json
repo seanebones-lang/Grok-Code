@@ -1,0 +1,80 @@
+{
+  "agents": {
+    "all_enabled": true,
+    "default_activation": true,
+    "specialized_agents": {
+      "security": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Security"
+      },
+      "performance": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Performance"
+      },
+      "testing": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Testing"
+      },
+      "docs": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Docs"
+      },
+      "migrate": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Migrate"
+      },
+      "deps": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Deps"
+      },
+      "bugs": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Bugs"
+      },
+      "a11y": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP A11y"
+      },
+      "api": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP API"
+      },
+      "database": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Database"
+      },
+      "beta_tester": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Beta Tester"
+      }
+    },
+    "orchestrator": {
+      "enabled": true,
+      "auto_coordinate": true,
+      "prefix": "CTO Eleven MCP Orchestrator"
+    },
+    "swarm": {
+      "enabled": true,
+      "parallel_execution": true,
+      "prefix": "CTO Eleven MCP Swarm"
+    }
+  },
+  "abilities": {
+    "all_enabled": true,
+    "auto_deploy": true,
+    "auto_test": true,
+    "auto_sec": true,
+    "auto_verify": true
+  }
+}
