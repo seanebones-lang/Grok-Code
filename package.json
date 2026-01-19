@@ -20,6 +20,7 @@
     "test:all": "npm run test && npm run test:e2e",
     "analyze": "ANALYZE=true next build",
     "postinstall": "prisma generate",
+    "prepare": "prisma generate || true",
     "railway:build": "prisma generate && prisma migrate deploy && next build",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
