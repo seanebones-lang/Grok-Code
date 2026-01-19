@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default function SwarmLayout({
+export default function MetaverseLayout({
   children,
 }: {
   children: React.ReactNode
