@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import FocusTrap from 'focus-trap-react'
 import { Loader2, AlertCircle, WifiOff, Wand2, GitBranch, Bug, FileSearch, Bot, ArrowLeft, X, Trash2 } from 'lucide-react'
 import { ChatMessage } from '@/components/ChatMessage'
 import { InputBar, type ChatMode } from '@/components/InputBar'
@@ -33,6 +34,11 @@ function parseSSEChunk(data: string): SSEChunk | null {
     return null
   }
 }
+
+// Constants
+const MAX_HISTORY_MESSAGES = 20
+const SESSION_UPDATE_DEBOUNCE_MS = 500
+const MEMORY_RELEVANCE_LIMIT = 5
 
 // Mode icons for display
 const MODE_ICONS = {
@@ -96,9 +102,10 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
         window.dispatchEvent(new CustomEvent('sessionUpdated'))
       } catch (err) {
         console.error('Failed to update session:', err)
+        toast.error('Failed to save session', 'Your messages may not be persisted. Please try again.')
       }
-    }, 500),
-    []
+    }, SESSION_UPDATE_DEBOUNCE_MS),
+    [toast]
   )
 
   // Save messages to session when they change (debounced)
@@ -228,6 +235,18 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     scrollToBottom()
   }, [messages, scrollToBottom])
 
+  // Helper function to update last assistant message (DRY)
+  const updateLastAssistantMessage = useCallback((updater: (msg: Message) => Message) => {
+    setMessages((prev) => {
+      const updated = [...prev]
+      const lastIndex = updated.length - 1
+      if (lastIndex >= 0 && updated[lastIndex].role === 'assistant') {
+        updated[lastIndex] = updater(updated[lastIndex])
+      }
+      return updated
+    })
+  }, [])
+
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => {
@@ -235,26 +254,12 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     }
   }, [])
 
-  const handleSendMessage = useCallback(async (content: string, mode: ChatMode = 'default') => {
-    // If agent mode, switch to agent view
-    if (mode === 'agent') {
-      setShowAgentMode(true)
-      return
-    }
-
-    if (!isOnline) {
-      setError({ message: 'You are offline. Please check your connection.', retryable: true })
-      return
-    }
-
-    setError(null)
-    setCurrentMode(mode)
-    lastRequestRef.current = { content, mode }
-    
-    // Check if orchestrator mode is enabled and this is a new task (not already orchestrated)
+  // Prepare message content with orchestrator logic
+  const prepareMessage = useCallback((content: string, mode: ChatMode): { processedContent: string; orchestratorPrefix: string; userMessage: Message } => {
     let processedContent = content
     let orchestratorPrefix = ''
     
+    // Check if orchestrator mode is enabled and this is a new task (not already orchestrated)
     if (orchestratorMode && !content.startsWith('/agent') && messages.length === 0) {
       // Analyze the task
       const analysis = analyzeTask(content)
@@ -280,17 +285,96 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       metadata: mode !== 'default' ? { mode } : undefined,
     }
 
+    return { processedContent, orchestratorPrefix, userMessage }
+  }, [orchestratorMode, messages.length])
+
+  // Build request payload
+  const buildRequestPayload = useCallback((processedContent: string, mode: ChatMode, history: Array<{ role: string; content: string }>, memoryContext: string | undefined) => {
+    return JSON.stringify({ 
+      message: processedContent,
+      mode: mode !== 'default' ? mode : undefined,
+      history,
+      memoryContext: memoryContext || undefined,
+      repository: repository ? {
+        owner: repository.owner,
+        repo: repository.repo,
+        branch: repository.branch || 'main',
+      } : undefined,
+    })
+  }, [repository])
+
+  // Handle streaming response chunks
+  const handleStreamChunk = useCallback((parsed: SSEChunk, assistantMessage: Message, content: string): boolean => {
+    // Handle auto-detected agent mode - switch to agent view
+    if (parsed.detectedMode === 'agent') {
+      setIsLoading(false)
+      setShowAgentMode(true)
+      // Store the original message for the agent
+      lastRequestRef.current = { content, mode: 'agent' }
+      return true // Indicates early return
+    }
+
+    // Handle other detected modes (show notification but continue chat)
+    if (parsed.detectedMode && parsed.message) {
+      setCurrentMode(parsed.detectedMode)
+      // Add mode notification to assistant message
+      assistantMessage.content = parsed.message + '\n\n'
+      updateLastAssistantMessage(() => assistantMessage)
+      return false // Continue processing
+    }
+
+    if (parsed.error) {
+      // Handle streaming error
+      setError({ 
+        message: parsed.error, 
+        retryable: parsed.retryable ?? false 
+      })
+      if (!parsed.retryable) {
+        setIsLoading(false)
+        return true // Early return for non-retryable errors
+      }
+      return false // Continue for retryable errors
+    }
+
+    if (parsed.content) {
+      assistantMessage.content += parsed.content
+      updateLastAssistantMessage(() => assistantMessage)
+      return false // Continue processing
+    }
+
+    return false // No action needed
+  }, [updateLastAssistantMessage])
+
+  const handleSendMessage = useCallback(async (content: string, mode: ChatMode = 'default') => {
+    // If agent mode, switch to agent view
+    if (mode === 'agent') {
+      setShowAgentMode(true)
+      return
+    }
+
+    if (!isOnline) {
+      setError({ message: 'You are offline. Please check your connection.', retryable: true })
+      return
+    }
+
+    setError(null)
+    setCurrentMode(mode)
+    lastRequestRef.current = { content, mode }
+    
+    // Prepare message with orchestrator logic
+    const { processedContent, orchestratorPrefix, userMessage } = prepareMessage(content, mode)
+
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
 
-    // Build conversation history for context
-    const history = messages.slice(-20).map(m => ({
+    // Build conversation history for context (optimized)
+    const history = messages.slice(-MAX_HISTORY_MESSAGES).map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     }))
 
-    // Get relevant memories for context
-    const relevantMemories = agentMemory.getRelevant(content, 5)
+    // Get relevant memories for context (optimized)
+    const relevantMemories = agentMemory.getRelevant(content, MEMORY_RELEVANCE_LIMIT)
     const criticalMemories = agentMemory.getCritical()
     const allRelevantMemories = [...new Set([...criticalMemories, ...relevantMemories])]
     const memoryContext = agentMemory.formatForPrompt(allRelevantMemories)
@@ -308,17 +392,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
               'Content-Type': 'application/json',
               ...(githubToken && { 'X-Github-Token': githubToken }),
             },
-            body: JSON.stringify({ 
-              message: processedContent,
-              mode: mode !== 'default' ? mode : undefined,
-              history,
-              memoryContext: memoryContext || undefined,
-              repository: repository ? {
-                owner: repository.owner,
-                repo: repository.repo,
-                branch: repository.branch || 'main',
-              } : undefined,
-            }),
+            body: buildRequestPayload(processedContent, mode, history, memoryContext),
             signal: abortControllerRef.current.signal,
           })
 
@@ -367,54 +441,10 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
           const parsed = parseSSEChunk(data)
           if (!parsed) continue
 
-          // Handle auto-detected agent mode - switch to agent view
-          if (parsed.detectedMode === 'agent') {
-            setIsLoading(false)
-            setShowAgentMode(true)
-            // Store the original message for the agent
-            lastRequestRef.current = { content, mode: 'agent' }
-            return
-          }
-
-          // Handle other detected modes (show notification but continue chat)
-          if (parsed.detectedMode && parsed.message) {
-            setCurrentMode(parsed.detectedMode)
-            // Add mode notification to assistant message
-            assistantMessage.content = parsed.message + '\n\n'
-            setMessages((prev) => {
-              const updated = [...prev]
-              const lastIndex = updated.length - 1
-              if (lastIndex >= 0 && updated[lastIndex].role === 'assistant') {
-                updated[lastIndex] = { ...assistantMessage }
-              }
-              return updated
-            })
-            continue
-          }
-
-          if (parsed.error) {
-            // Handle streaming error
-            setError({ 
-              message: parsed.error, 
-              retryable: parsed.retryable ?? false 
-            })
-            if (!parsed.retryable) {
-              setIsLoading(false)
-              return
-            }
-            continue
-          }
-
-          if (parsed.content) {
-            assistantMessage.content += parsed.content
-            setMessages((prev) => {
-              const updated = [...prev]
-              const lastIndex = updated.length - 1
-              if (lastIndex >= 0 && updated[lastIndex].role === 'assistant') {
-                updated[lastIndex] = { ...assistantMessage }
-              }
-              return updated
-            })
+          // Handle stream chunk using helper function
+          const shouldReturn = handleStreamChunk(parsed, assistantMessage, content)
+          if (shouldReturn) {
+            return // Early return for agent mode or non-retryable errors
           }
         }
       }
@@ -457,7 +487,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       // Always cleanup AbortController
       abortControllerRef.current = null
     }
-  }, [isOnline, messages])
+  }, [isOnline, messages, prepareMessage, buildRequestPayload, handleStreamChunk, repository])
 
   const handleRetry = useCallback(() => {
     if (lastRequestRef.current) {
@@ -514,41 +544,43 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       : undefined
 
   return (
-      <div className="flex flex-col h-full bg-[#0f0f23] text-white">
-        {/* Back button */}
-        <div className="flex items-center gap-2 p-2 border-b border-[#404050]">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
+      <FocusTrap>
+        <div className="flex flex-col h-full bg-[#0f0f23] text-white">
+          {/* Back button */}
+          <div className="flex items-center gap-2 p-2 border-b border-[#404050]">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowAgentMode(false)
+                lastRequestRef.current = null
+              }}
+              className="text-[#9ca3af] hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Chat
+            </Button>
+          </div>
+          <AgentRunner
+            repository={repository}
+            initialTask={initialTask}
+            onComplete={(result) => {
+              // Add result to chat and switch back
+              const resultMessage: Message = {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: result,
+                timestamp: new Date(),
+                metadata: { mode: 'agent' },
+              }
+              setMessages(prev => [...prev, resultMessage])
               setShowAgentMode(false)
               lastRequestRef.current = null
             }}
-            className="text-[#9ca3af] hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Chat
-          </Button>
+            className="flex-1"
+          />
         </div>
-        <AgentRunner
-          repository={repository}
-          initialTask={initialTask}
-          onComplete={(result) => {
-            // Add result to chat and switch back
-            const resultMessage: Message = {
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              content: result,
-              timestamp: new Date(),
-              metadata: { mode: 'agent' },
-            }
-            setMessages(prev => [...prev, resultMessage])
-            setShowAgentMode(false)
-            lastRequestRef.current = null
-          }}
-          className="flex-1"
-        />
-      </div>
+      </FocusTrap>
     )
   }
 
@@ -681,7 +713,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
             ref={inputRef as React.RefObject<HTMLInputElement>}
             type="text"
             placeholder="Reply..."
-            className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#1a1a1a] rounded-lg text-white text-sm placeholder:text-[#9ca3af] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#1a1a1a] rounded-lg text-white text-sm placeholder:text-[#6b7280] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
