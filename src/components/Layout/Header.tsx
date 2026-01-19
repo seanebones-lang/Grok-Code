@@ -13,7 +13,9 @@ import {
   ExternalLink,
   Trash2,
   Download,
-  Github
+  Github,
+  LogOut,
+  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -52,9 +54,12 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
   const [showAbout, setShowAbout] = useState(false)
 
   const handleNewChat = useCallback(() => {
+    // Create new session event - let ChatPane handle it gracefully
+    const event = new CustomEvent('newSession', { 
+      detail: { message: '', forceNew: true } 
+    })
+    window.dispatchEvent(event)
     onNewChat?.()
-    // Reload the page to clear state
-    window.location.reload()
   }, [onNewChat])
 
   const handleClearHistory = useCallback(() => {
@@ -69,6 +74,26 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
     onExportChat?.()
     // TODO: Implement chat export
   }, [onExportChat])
+
+  const handleLogout = useCallback(async () => {
+    try {
+      // Sign out via NextAuth
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+      })
+      
+      if (response.ok) {
+        // Redirect to home after logout
+        window.location.href = '/'
+      } else {
+        console.error('Logout failed')
+      }
+    } catch (error) {
+      console.error('Error during logout:', error)
+      // Still redirect even if API call fails
+      window.location.href = '/'
+    }
+  }, [])
 
   return (
     <>
@@ -173,6 +198,16 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
               >
                 <Info className="h-4 w-4 mr-2" aria-hidden="true" />
                 About NextEleven Code
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="bg-[#1a1a1a]" />
+              
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="text-red-400 hover:bg-red-500/10 hover:text-red-400 cursor-pointer focus:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+                Sign Out
               </DropdownMenuItem>
               
               <DropdownMenuItem 
