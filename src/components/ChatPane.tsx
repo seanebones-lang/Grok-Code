@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2, AlertCircle, WifiOff, Wand2, GitBranch, Bug, FileSearch, Bot, ArrowLeft, X, Trash2 } from 'lucide-react'
 import { ChatMessage } from '@/components/ChatMessage'
@@ -12,6 +12,8 @@ import { sessionManager, type ChatSession } from '@/lib/session-manager'
 import { getAgent } from '@/lib/specialized-agents'
 import { analyzeTask, generateOrchestratorPrompt, isOrchestratorModeEnabled, formatAnalysisForDisplay } from '@/lib/orchestrator'
 import { agentMemory } from '@/lib/agent-memory'
+import { debounce } from '@/lib/utils'
+import { useToastActions } from '@/components/Toast'
 import type { Message } from '@/types'
 
 // SSE chunk schema for type-safe parsing
@@ -54,7 +56,7 @@ interface ChatPaneProps {
 export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }: ChatPaneProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null)
   const [isOnline, setIsOnline] = useState(true)
   const [currentMode, setCurrentMode] = useState<ChatMode>('default')
   const [showAgentMode, setShowAgentMode] = useState(false)
@@ -64,6 +66,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
   const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const lastRequestRef = useRef<{ content: string; mode: ChatMode } | null>(null)
+  const toast = useToastActions()
 
   // Initialize or load session
   useEffect(() => {
@@ -85,13 +88,38 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     return () => window.removeEventListener('orchestratorModeChanged', handleOrchestratorChange as EventListener)
   }, [])
 
-  // Save messages to session when they change
+  // Debounced session update to prevent race conditions
+  const debouncedUpdateSession = useMemo(
+    () => debounce((sessionId: string, msgs: Message[]) => {
+      try {
+        sessionManager.updateMessages(sessionId, msgs)
+        window.dispatchEvent(new CustomEvent('sessionUpdated'))
+      } catch (err) {
+        console.error('Failed to update session:', err)
+      }
+    }, 500),
+    []
+  )
+
+  // Save messages to session when they change (debounced)
   useEffect(() => {
     if (currentSessionId && messages.length > 0) {
-      sessionManager.updateMessages(currentSessionId, messages)
-      window.dispatchEvent(new CustomEvent('sessionUpdated'))
+      debouncedUpdateSession(currentSessionId, messages)
     }
-  }, [messages, currentSessionId])
+    return () => {
+      // Cancel debounced update on unmount or dependency change
+      debouncedUpdateSession.cancel()
+    }
+  }, [messages, currentSessionId, debouncedUpdateSession])
+
+  // Clear error on successful message
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage?.role === 'user' && error) {
+      // Clear error when user sends a new message
+      setError(null)
+    }
+  }, [messages, error])
 
   // Listen for session events
   useEffect(() => {
@@ -215,7 +243,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     }
 
     if (!isOnline) {
-      setError('You are offline. Please check your connection.')
+      setError({ message: 'You are offline. Please check your connection.', retryable: true })
       return
     }
 
@@ -366,7 +394,10 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
 
           if (parsed.error) {
             // Handle streaming error
-            setError(parsed.error)
+            setError({ 
+              message: parsed.error, 
+              retryable: parsed.retryable ?? false 
+            })
             if (!parsed.retryable) {
               setIsLoading(false)
               return
@@ -389,34 +420,52 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        // Request was cancelled by user
-        console.log('Request cancelled')
+        // Request was cancelled by user - this is expected, not an error
+        console.log('Request cancelled by user')
         return
       }
 
       console.error('Error sending message:', err)
       const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
-      setError(errorMsg)
       
-      // Add error message to chat
-      const errorMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: `I encountered an error: ${errorMsg}. Please try again.`,
-        timestamp: new Date(),
-        metadata: { error: true },
+      // Determine if error is retryable (network errors are usually retryable)
+      const isRetryable = err instanceof TypeError || 
+                         (err instanceof Error && (
+                           err.message.includes('fetch') || 
+                           err.message.includes('network') ||
+                           err.message.includes('Failed to fetch')
+                         ))
+      
+      setError({ message: errorMsg, retryable: isRetryable })
+      
+      // Only add non-retryable errors to chat (retryable errors show in banner)
+      if (!isRetryable) {
+        const errorMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `I encountered an error: ${errorMsg}. Try refreshing the page or check your connection.`,
+          timestamp: new Date(),
+          metadata: { error: true, dismissible: true },
+        }
+        setMessages((prev) => [...prev, errorMessage])
+        toast.error('Error sending message', errorMsg)
+      } else {
+        toast.warning('Network error', 'Please check your connection and try again.')
       }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      // Always cleanup AbortController
       abortControllerRef.current = null
     }
   }, [isOnline, messages])
 
   const handleRetry = useCallback(() => {
     if (lastRequestRef.current) {
-      // Remove the error message and retry
+      // Clear error state
+      setError(null)
+      // Remove error messages from chat
       setMessages(prev => prev.filter(m => !m.metadata?.error))
+      // Retry the last request
       handleSendMessage(lastRequestRef.current.content, lastRequestRef.current.mode)
     }
   }, [handleSendMessage])
@@ -428,7 +477,10 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       setCurrentMode('default')
       setShowAgentMode(false)
       lastRequestRef.current = null
+      
+      // Cleanup and abort any pending requests
       abortControllerRef.current?.abort()
+      abortControllerRef.current = null
       
       // Create new session for clean state
       const newSession = sessionManager.create({
@@ -438,8 +490,9 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       })
       setCurrentSessionId(newSession.id)
       window.dispatchEvent(new CustomEvent('sessionUpdated'))
+      toast.success('Chat cleared', 'Started a new conversation.')
     }
-  }, [repository])
+  }, [repository, toast])
 
   // Handle new session message from sidebar (⭐️ = new session)
   useEffect(() => {
@@ -523,15 +576,26 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-            <span>{error}</span>
+            <span>{error.message}</span>
           </div>
-          <button 
-            onClick={() => setError(null)}
-            className="text-red-400 hover:text-red-300 text-xs underline"
-            aria-label="Dismiss error"
-          >
-            Dismiss
-          </button>
+          <div className="flex items-center gap-2">
+            {error.retryable && lastRequestRef.current && (
+              <button 
+                onClick={handleRetry}
+                className="text-red-400 hover:text-red-300 text-xs underline font-medium"
+                aria-label="Retry request"
+              >
+                Retry
+              </button>
+            )}
+            <button 
+              onClick={() => setError(null)}
+              className="text-red-400 hover:text-red-300 text-xs underline"
+              aria-label="Dismiss error"
+            >
+              Dismiss
+            </button>
+          </div>
         </motion.div>
       )}
 

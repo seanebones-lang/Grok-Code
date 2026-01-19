@@ -9,7 +9,12 @@ const https = require('https');
 const { execSync } = require('child_process');
 const path = require('path');
 
-const RAILWAY_TOKEN = process.env.RAILWAY_TOKEN || 'a5a4fc54-13b0-4467-b90e-c1512ab9c7fc';
+const RAILWAY_TOKEN = process.env.RAILWAY_TOKEN;
+if (!RAILWAY_TOKEN) {
+  console.error('❌ Error: RAILWAY_TOKEN environment variable is required');
+  console.error('   Set it with: export RAILWAY_TOKEN=your_token');
+  process.exit(1);
+}
 const PROJECT_ID = '080b0df0-f6c7-44c6-861f-c85c8256905b';
 
 console.log('🚂 Railway Automated Migration Runner\n');

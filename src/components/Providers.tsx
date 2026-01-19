@@ -1,6 +1,7 @@
 'use client'
 
 import { ThemeProvider } from '@/components/theme-provider'
+import { ToastProvider } from '@/components/Toast'
 import { CommandPalette } from '@/components/CommandPalette'
 import { KeyboardShortcuts } from '@/components/KeyboardShortcuts'
 
@@ -17,9 +18,11 @@ export function Providers({ children }: ProvidersProps) {
       enableSystem={false}
       disableTransitionOnChange
     >
-      {children}
-      <CommandPalette />
-      <KeyboardShortcuts />
+      <ToastProvider>
+        {children}
+        <CommandPalette />
+        <KeyboardShortcuts />
+      </ToastProvider>
     </ThemeProvider>
   )
 }

@@ -8,7 +8,15 @@ import { z } from 'zod'
  */
 
 const createRepoSchema = z.object({
-  name: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/i, 'Repository name must contain only alphanumeric characters and hyphens'),
+  name: z.string()
+    .min(1, 'Repository name cannot be empty')
+    .max(100, 'Repository name too long (max 100 characters)')
+    .regex(/^[a-zA-Z0-9._-]+$/, 'Repository name must contain only alphanumeric characters, dots, hyphens, and underscores')
+    .refine(name => !name.startsWith('.') && !name.endsWith('.'), 'Repository name cannot start or end with a period')
+    .refine(name => !name.startsWith('-') && !name.endsWith('-'), 'Repository name cannot start or end with a hyphen')
+    .refine(name => !name.startsWith('_') && !name.endsWith('_'), 'Repository name cannot start or end with an underscore')
+    .refine(name => name.toLowerCase() !== 'git', 'Repository name cannot be "git"')
+    .refine(name => !name.includes('..'), 'Repository name cannot contain consecutive periods'),
   description: z.string().optional(),
   private: z.boolean().default(false),
   autoInit: z.boolean().default(true),

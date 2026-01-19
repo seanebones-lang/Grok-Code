@@ -34,6 +34,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { formatShortcut } from '@/hooks/useKeyboardShortcuts'
+import { sessionManager } from '@/lib/session-manager'
+import { useToastActions } from '@/components/Toast'
 
 interface HeaderProps {
   onNewChat?: () => void
@@ -52,6 +54,7 @@ const KEYBOARD_SHORTCUTS = [
 function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const toast = useToastActions()
 
   const handleNewChat = useCallback(() => {
     // Create new session event - let ChatPane handle it gracefully
@@ -71,11 +74,49 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
   }, [onClearHistory])
 
   const handleExportChat = useCallback(() => {
-    onExportChat?.()
-    // TODO: Implement chat export
-  }, [onExportChat])
+    try {
+      const currentSession = sessionManager.getCurrent()
+      if (!currentSession || currentSession.messages.length === 0) {
+        toast.warning('No messages to export', 'Start a conversation to export chat.')
+        return
+      }
+
+      const exportData = {
+        messages: currentSession.messages,
+        session: {
+          id: currentSession.id,
+          title: currentSession.title,
+          agentId: currentSession.agentId,
+          agentName: currentSession.agentName,
+          createdAt: currentSession.createdAt.toISOString(),
+          updatedAt: currentSession.updatedAt.toISOString(),
+        },
+        metadata: currentSession.metadata,
+        exportedAt: new Date().toISOString(),
+      }
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: 'application/json' 
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `chat-${currentSession.id || 'session'}-${Date.now()}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Chat exported!', `Exported ${currentSession.messages.length} messages.`)
+      onExportChat?.()
+    } catch (error) {
+      console.error('Export failed:', error)
+      toast.error('Export failed', 'Unable to export chat. Please try again.')
+    }
+  }, [onExportChat, toast])
 
   const handleLogout = useCallback(async () => {
+    let success = false
     try {
       // Sign out via NextAuth
       const response = await fetch('/api/auth/signout', {
@@ -83,17 +124,42 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
       })
       
       if (response.ok) {
-        // Redirect to home after logout
-        window.location.href = '/'
+        success = true
+        // Clear local session data
+        try {
+          localStorage.removeItem('nexteleven_sessionId')
+          sessionManager.clearAllSessions()
+        } catch (e) {
+          console.error('Failed to clear local session:', e)
+        }
       } else {
-        console.error('Logout failed')
+        const errorText = await response.text().catch(() => 'Unknown error')
+        throw new Error(`Logout API failed: ${response.status} - ${errorText}`)
       }
     } catch (error) {
-      console.error('Error during logout:', error)
-      // Still redirect even if API call fails
-      window.location.href = '/'
+      console.error('Logout error:', error)
+      // Clear local session even if API fails
+      try {
+        localStorage.removeItem('nexteleven_sessionId')
+        sessionManager.clearAllSessions()
+        toast.error('Logged out locally', 'Server logout failed. Please refresh to confirm auth state.')
+      } catch (e) {
+        console.error('Failed to clear local session:', e)
+        toast.error('Logout incomplete', 'Unable to clear local session. Please refresh the page.')
+        return
+      }
     }
-  }, [])
+
+    if (success) {
+      // Only redirect on successful logout
+      toast.success('Logged out', 'You have been successfully logged out.')
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 500) // Small delay to show toast
+    } else {
+      toast.info('Logout incomplete', 'Check your authentication state. You may need to refresh.')
+    }
+  }, [toast])
 
   return (
     <>
