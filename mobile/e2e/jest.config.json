@@ -1,0 +1,8 @@
+{
+  "preset": "react-native",
+  "testEnvironment": "node",
+  "testMatch": ["**/e2e/**/*.spec.ts"],
+  "setupFilesAfterEnv": ["<rootDir>/e2e/setup.ts"],
+  "maxWorkers": 1,
+  "testTimeout": 120000
+}
