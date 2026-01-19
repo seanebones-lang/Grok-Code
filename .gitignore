@@ -40,6 +40,9 @@ QUICK_DEPLOY.sh
 
 # vercel
 .vercel
+.vercel-token
+vercel-token.txt
+*.token
 
 # typescript
 *.tsbuildinfo

@@ -71,20 +71,36 @@ async function main() {
   // Load environment variables
   const env = await loadEnvFile();
   
-  // Check if logged in
-  console.log('🔐 Checking Vercel login...');
-  try {
-    exec('npx vercel whoami', { silent: true });
-  } catch {
-    console.log('Please login to Vercel...');
-    exec('npx vercel login');
+  // Check for stored token
+  const tokenPath = path.join(process.cwd(), '.vercel-token');
+  let vercelToken = null;
+  if (fs.existsSync(tokenPath)) {
+    vercelToken = fs.readFileSync(tokenPath, 'utf8').trim();
+    console.log('✅ Using stored Vercel API token');
+    process.env.VERCEL_TOKEN = vercelToken;
+  }
+
+  // Check if logged in or token available
+  console.log('🔐 Checking Vercel authentication...');
+  if (vercelToken) {
+    console.log('✅ Using stored Vercel token');
+  } else {
+    try {
+      exec('npx vercel whoami', { silent: true });
+    } catch {
+      console.log('Please login to Vercel...');
+      exec('npx vercel login');
+    }
   }
   
   // Deploy
   console.log('\n📦 Deploying to Vercel...');
   let deployOutput;
   try {
-    deployOutput = exec('npx vercel --yes', { silent: false });
+    const deployCmd = vercelToken 
+      ? `npx vercel --token "${vercelToken}" --yes`
+      : 'npx vercel --yes';
+    deployOutput = exec(deployCmd, { silent: false });
   } catch (error) {
     console.log('Deployment may have succeeded. Continuing...');
   }
