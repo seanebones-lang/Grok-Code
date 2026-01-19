@@ -1,0 +1,30 @@
+{
+  "keybindings": {
+    "Cmd+E": {
+      "command": "swarm",
+      "description": "Activate swarm mode with all agents",
+      "enabled": true
+    },
+    "Cmd+Shift+E": {
+      "command": "orchestrate",
+      "description": "Activate orchestrator mode",
+      "enabled": true
+    },
+    "Cmd+Shift+S": {
+      "command": "security",
+      "description": "Activate security agent",
+      "enabled": true
+    },
+    "Cmd+Shift+P": {
+      "command": "performance",
+      "description": "Activate performance agent",
+      "enabled": true
+    },
+    "Cmd+Shift+T": {
+      "command": "testing",
+      "description": "Activate testing agent",
+      "enabled": true
+    }
+  },
+  "persist": true
+}
