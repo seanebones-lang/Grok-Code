@@ -9,14 +9,32 @@ import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import type { ChatMode } from '@/components/InputBar'
 
+/**
+ * Props for the StreamingIndicator component
+ */
 export interface StreamingIndicatorProps {
+  /** Whether a request is currently loading */
   isLoading: boolean
+  /** Current chat mode for displaying appropriate message */
   mode: ChatMode
+  /** Optional cancel handler */
   onCancel?: () => void
 }
 
 /**
- * Component for displaying streaming/loading state
+ * Component for displaying streaming/loading state with mode-specific messages
+ * 
+ * @param props - Component props
+ * @returns JSX element or null if not loading
+ * 
+ * @example
+ * ```tsx
+ * <StreamingIndicator 
+ *   isLoading={isLoading}
+ *   mode="agent"
+ *   onCancel={() => abort()}
+ * />
+ * ```
  */
 export function StreamingIndicator({ isLoading, mode, onCancel }: StreamingIndicatorProps) {
   if (!isLoading) return null

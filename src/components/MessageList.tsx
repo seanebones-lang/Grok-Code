@@ -9,14 +9,32 @@ import { AnimatePresence } from 'framer-motion'
 import { ChatMessage } from '@/components/ChatMessage'
 import type { Message } from '@/types'
 
+/**
+ * Props for the MessageList component
+ */
 export interface MessageListProps {
+  /** Array of messages to display */
   messages: Message[]
+  /** Optional retry handler for failed messages */
   onRetry?: () => void
+  /** Ref to the end of messages for auto-scroll */
   messagesEndRef: React.RefObject<HTMLDivElement>
 }
 
 /**
- * Component for rendering chat messages
+ * Component for rendering chat messages with animations
+ * 
+ * @param props - Component props
+ * @returns JSX element
+ * 
+ * @example
+ * ```tsx
+ * <MessageList 
+ *   messages={messages}
+ *   onRetry={handleRetry}
+ *   messagesEndRef={messagesEndRef}
+ * />
+ * ```
  */
 export function MessageList({ messages, onRetry, messagesEndRef }: MessageListProps) {
   return (
