@@ -151,57 +151,57 @@ export function isToolExecutionResult(value: unknown): value is ToolExecutionRes
  */
 export function validateToolCallArguments(
   toolName: ToolName,
-  arguments: ToolCallArguments
+  args: ToolCallArguments
 ): { valid: boolean; error?: string } {
   switch (toolName) {
     case 'read_file':
     case 'delete_file':
-      if (!arguments.path || typeof arguments.path !== 'string') {
+      if (!args.path || typeof args.path !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'path' argument` }
       }
       break
 
     case 'write_file':
-      if (!arguments.path || typeof arguments.path !== 'string') {
+      if (!args.path || typeof args.path !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'path' argument` }
       }
-      if (arguments.content === undefined) {
+      if (args.content === undefined) {
         return { valid: false, error: `Tool '${toolName}' requires a 'content' argument` }
       }
       break
 
     case 'run_command':
-      if (!arguments.command || typeof arguments.command !== 'string') {
+      if (!args.command || typeof args.command !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'command' argument` }
       }
       break
 
     case 'search_code':
-      if (!arguments.query && !arguments.pattern) {
+      if (!args.query && !args.pattern) {
         return { valid: false, error: `Tool '${toolName}' requires either 'query' or 'pattern' argument` }
       }
       break
 
     case 'move_file':
-      if (!arguments.old_path || typeof arguments.old_path !== 'string') {
+      if (!args.old_path || typeof args.old_path !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires an 'old_path' argument` }
       }
-      if (!arguments.new_path || typeof arguments.new_path !== 'string') {
+      if (!args.new_path || typeof args.new_path !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'new_path' argument` }
       }
       break
 
     case 'create_branch':
-      if (!arguments.branch || typeof arguments.branch !== 'string') {
+      if (!args.branch || typeof args.branch !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'branch' argument` }
       }
       break
 
     case 'create_pull_request':
-      if (!arguments.title || typeof arguments.title !== 'string') {
+      if (!args.title || typeof args.title !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'title' argument` }
       }
-      if (!arguments.head || typeof arguments.head !== 'string') {
+      if (!args.head || typeof args.head !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'head' argument` }
       }
       break
@@ -213,49 +213,49 @@ export function validateToolCallArguments(
       break
 
     case 'web_search':
-      if (!arguments.query || typeof arguments.query !== 'string') {
+      if (!args.query || typeof args.query !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'query' argument` }
       }
       break
 
     case 'web_browse':
-      if (!arguments.url || typeof arguments.url !== 'string') {
+      if (!args.url || typeof args.url !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'url' argument` }
       }
       // Validate URL format
       try {
-        new URL(arguments.url)
+        new URL(args.url)
       } catch {
         return { valid: false, error: `Tool '${toolName}' requires a valid URL` }
       }
       break
 
     case 'browser_automation':
-      if (!arguments.url || typeof arguments.url !== 'string') {
+      if (!args.url || typeof args.url !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'url' argument` }
       }
       // Validate URL format
       try {
-        new URL(arguments.url)
+        new URL(args.url)
       } catch {
         return { valid: false, error: `Tool '${toolName}' requires a valid URL` }
       }
       break
 
     case 'deploy':
-      if (!arguments.platform || typeof arguments.platform !== 'string') {
+      if (!args.platform || typeof args.platform !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'platform' argument (vercel/netlify)` }
       }
       break
 
     case 'transcribe_audio':
-      if (!arguments.audio_file || typeof arguments.audio_file !== 'string') {
+      if (!args.audio_file || typeof args.audio_file !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires an 'audio_file' argument` }
       }
       break
 
     case 'github_pr_manage':
-      if (!arguments.action || typeof arguments.action !== 'string') {
+      if (!args.action || typeof args.action !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires an 'action' argument (create/list/review/merge)` }
       }
       break
