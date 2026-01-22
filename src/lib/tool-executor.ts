@@ -204,6 +204,137 @@ export async function executeLocalTool(
       }
     }
 
+    case 'web_search': {
+      const query = toolCall.arguments.query as string
+      const maxResults = (toolCall.arguments.max_results as number) || 5
+      try {
+        // Use DuckDuckGo Instant Answer API (free, no API key required)
+        // Fallback to a simple search API endpoint if available
+        const response = await fetch(`${baseUrl}/api/agent/web-search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            max_results: maxResults,
+          }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          return { 
+            success: true, 
+            output: data.results || data.output || 'No search results found' 
+          }
+        }
+        
+        // Fallback: Use DuckDuckGo HTML search (simple scraping)
+        // This is a basic implementation - can be enhanced with proper search API
+        const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+        const ddgResponse = await fetch(ddgUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; GrokCode/1.0)',
+          },
+        })
+        
+        if (ddgResponse.ok) {
+          const html = await ddgResponse.text()
+          // Simple extraction - in production, use proper HTML parsing
+          const results: string[] = []
+          const linkRegex = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/g
+          let match
+          let count = 0
+          while ((match = linkRegex.exec(html)) !== null && count < maxResults) {
+            results.push(`${count + 1}. ${match[2].trim()}\n   URL: ${match[1]}`)
+            count++
+          }
+          
+          if (results.length > 0) {
+            return {
+              success: true,
+              output: `Search results for "${query}":\n\n${results.join('\n\n')}`,
+            }
+          }
+        }
+        
+        return {
+          success: false,
+          output: '',
+          error: 'Web search failed - no results found',
+        }
+      } catch (error) {
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Web search failed',
+        }
+      }
+    }
+
+    case 'web_browse': {
+      const url = toolCall.arguments.url as string
+      try {
+        // Use API route for server-side web browsing (handles CORS, parsing, etc.)
+        const response = await fetch(`${baseUrl}/api/agent/web-browse`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          return {
+            success: true,
+            output: data.content || data.output || 'No content extracted',
+          }
+        }
+        
+        // Fallback: Simple fetch (may fail due to CORS)
+        const pageResponse = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; GrokCode/1.0)',
+          },
+        })
+        
+        if (pageResponse.ok) {
+          const contentType = pageResponse.headers.get('content-type') || ''
+          if (contentType.includes('text/html')) {
+            const html = await pageResponse.text()
+            // Simple text extraction - remove script and style tags
+            const text = html
+              .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .slice(0, 10000) // Limit to 10KB of text
+            
+            return {
+              success: true,
+              output: `Content from ${url}:\n\n${text}`,
+            }
+          } else {
+            const text = await pageResponse.text()
+            return {
+              success: true,
+              output: `Content from ${url}:\n\n${text.slice(0, 10000)}`,
+            }
+          }
+        }
+        
+        return {
+          success: false,
+          output: '',
+          error: `Failed to browse URL: ${pageResponse.status} ${pageResponse.statusText}`,
+        }
+      } catch (error) {
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Web browse failed',
+        }
+      }
+    }
+
     default:
       return { 
         success: false, 
