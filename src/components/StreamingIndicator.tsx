@@ -77,4 +77,4 @@ export const StreamingIndicator = memo(function StreamingIndicator({ isLoading, 
       )}
     </motion.div>
   )
-}
+})

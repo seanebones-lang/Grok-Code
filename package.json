@@ -55,7 +55,8 @@
     "react-resizable-panels": "^4.3.2",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "^3.4.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "jsonwebtoken": "^9.0.2"
   },
   "optionalDependencies": {
     "openai": "^4.20.0"
@@ -69,6 +70,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/jsonwebtoken": "^9.0.7",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.1",
