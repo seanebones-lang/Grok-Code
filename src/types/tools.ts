@@ -20,6 +20,11 @@ export type ToolName =
   | 'get_commit_history'
   | 'web_search'
   | 'web_browse'
+  | 'browser_automation'
+  | 'deploy'
+  | 'transcribe_audio'
+  | 'github_pr_manage'
+  | 'nx_affected'
 
 /**
  * Tool call arguments structure
@@ -41,6 +46,16 @@ export interface ToolCallArguments {
   cwd?: string
   url?: string
   max_results?: number
+  action?: string
+  selector?: string
+  text?: string
+  screenshot?: boolean
+  wait_for?: string
+  platform?: string
+  audio_file?: string
+  pr_number?: number
+  state?: string
+  projects?: string[]
   [key: string]: unknown // Allow additional tool-specific arguments
 }
 
@@ -92,6 +107,11 @@ export function isToolName(value: string): value is ToolName {
     'get_commit_history',
     'web_search',
     'web_browse',
+    'browser_automation',
+    'deploy',
+    'transcribe_audio',
+    'github_pr_manage',
+    'nx_affected',
   ]
   return validToolNames.includes(value as ToolName)
 }
@@ -208,6 +228,40 @@ export function validateToolCallArguments(
       } catch {
         return { valid: false, error: `Tool '${toolName}' requires a valid URL` }
       }
+      break
+
+    case 'browser_automation':
+      if (!arguments.url || typeof arguments.url !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires a 'url' argument` }
+      }
+      // Validate URL format
+      try {
+        new URL(arguments.url)
+      } catch {
+        return { valid: false, error: `Tool '${toolName}' requires a valid URL` }
+      }
+      break
+
+    case 'deploy':
+      if (!arguments.platform || typeof arguments.platform !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires a 'platform' argument (vercel/netlify)` }
+      }
+      break
+
+    case 'transcribe_audio':
+      if (!arguments.audio_file || typeof arguments.audio_file !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires an 'audio_file' argument` }
+      }
+      break
+
+    case 'github_pr_manage':
+      if (!arguments.action || typeof arguments.action !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires an 'action' argument (create/list/review/merge)` }
+      }
+      break
+
+    case 'nx_affected':
+      // Optional arguments - can run without any
       break
 
     default:
