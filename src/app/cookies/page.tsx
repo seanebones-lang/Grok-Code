@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 
+// Force dynamic rendering to prevent static generation
+export const dynamic = 'force-dynamic'
+
 export default function CookiesPage() {
   const [mounted, setMounted] = useState(false)
 
