@@ -745,7 +745,7 @@ The tool will be executed automatically and the results will be provided to you.
                 const toolCalls = extractToolCalls(fullResponse)
                 
                 if (toolCalls.length > 0) {
-                  safeEnqueue(`data: ${JSON.stringify({ content: `\n\n🔧 Found ${toolCalls.length} tool call(s). Executing...\n\n` })}\n\n`)
+                  sendData({ content: `\n\n🔧 Found ${toolCalls.length} tool call(s). Executing...\n\n` })
                   
                   // Execute tool calls using extracted module
                   const toolResultsText = await executeToolCalls(toolCalls, {
@@ -758,7 +758,7 @@ The tool will be executed automatically and the results will be provided to you.
                   
                   // Send tool results back to Eleven for continuation
                   if (toolResultsText) {
-                    safeEnqueue(`data: ${JSON.stringify({ content: `\n📊 Tool execution complete. Getting Eleven's analysis...\n\n` })}\n\n`)
+                    sendData({ content: `\n📊 Tool execution complete. Getting Eleven's analysis...\n\n` })
                     
                     const followUpMessage = `The following tools were executed:\n\n${toolResultsText}\n\nPlease analyze the results and continue with the next steps.`
                     
@@ -817,7 +817,7 @@ The tool will be executed automatically and the results will be provided to you.
                               if (validated.success) {
                                 const content = validated.data.choices?.[0]?.delta?.content
                                 if (content) {
-                                  safeEnqueue(`data: ${JSON.stringify({ content })}\n\n`)
+                                  sendData({ content })
                                 }
                               }
                             } catch {
@@ -827,13 +827,13 @@ The tool will be executed automatically and the results will be provided to you.
                         }
                       }
                     } catch (followUpError) {
-                      console.error(`[${requestId}] Follow-up request error:`, followUpError)
-                      safeEnqueue(`data: ${JSON.stringify({ content: `\n⚠️ Could not get follow-up response. Tool results:\n\n${toolResultsText}\n\n` })}\n\n`)
+                      logError(followUpError, 'Follow-up request error', requestId)
+                      sendData({ content: `\n⚠️ Could not get follow-up response. Tool results:\n\n${toolResultsText}\n\n` })
                     }
                   }
                 }
                 
-                safeEnqueue('data: [DONE]\n\n')
+                sendData({ content: '[DONE]' })
                 safeClose()
                 const duration = performance.now() - startTime
                 console.log(`[${requestId}] Stream completed in ${duration.toFixed(0)}ms using ${workingModel}`)
