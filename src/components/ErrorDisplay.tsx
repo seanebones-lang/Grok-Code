@@ -8,17 +8,35 @@
 import { motion } from 'framer-motion'
 import { AlertCircle } from 'lucide-react'
 
+/**
+ * Props for the ErrorDisplay component
+ */
 export interface ErrorDisplayProps {
+  /** Error object with message and retryable flag, or null to hide */
   error: {
     message: string
     retryable: boolean
   } | null
+  /** Optional retry handler (shown if error is retryable) */
   onRetry?: () => void
+  /** Handler to dismiss the error */
   onDismiss: () => void
 }
 
 /**
- * Component for displaying error messages
+ * Component for displaying error messages with retry and dismiss options
+ * 
+ * @param props - Component props
+ * @returns JSX element or null if no error
+ * 
+ * @example
+ * ```tsx
+ * <ErrorDisplay 
+ *   error={error}
+ *   onRetry={handleRetry}
+ *   onDismiss={() => setError(null)}
+ * />
+ * ```
  */
 export function ErrorDisplay({ error, onRetry, onDismiss }: ErrorDisplayProps) {
   if (!error) return null

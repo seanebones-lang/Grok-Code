@@ -8,12 +8,21 @@ import { analyzeTask, formatAnalysisForDisplay, isOrchestratorModeEnabled } from
 import type { Message } from '@/types'
 import type { ChatMode } from '@/components/InputBar'
 
+/**
+ * Options for the useOrchestration hook
+ */
 export interface UseOrchestrationOptions {
+  /** Current messages array for context */
   messages: Message[]
 }
 
+/**
+ * Return type for the useOrchestration hook
+ */
 export interface UseOrchestrationReturn {
+  /** Whether orchestrator mode is currently enabled */
   orchestratorMode: boolean
+  /** Prepare a message with orchestrator logic (task analysis, agent routing) */
   prepareMessage: (content: string, mode: ChatMode) => {
     processedContent: string
     orchestratorPrefix: string
@@ -23,6 +32,17 @@ export interface UseOrchestrationReturn {
 
 /**
  * Hook for managing orchestrator mode and message preparation
+ * 
+ * Automatically analyzes tasks and routes to appropriate agents when orchestrator mode is enabled.
+ * 
+ * @param options - Configuration options
+ * @returns Object with orchestrator state and message preparation function
+ * 
+ * @example
+ * ```tsx
+ * const { orchestratorMode, prepareMessage } = useOrchestration({ messages })
+ * const { processedContent, userMessage } = prepareMessage('Build a login form', 'default')
+ * ```
  */
 export function useOrchestration(options: UseOrchestrationOptions): UseOrchestrationReturn {
   const { messages } = options

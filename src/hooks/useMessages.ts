@@ -11,9 +11,15 @@ import type { Message } from '@/types'
 
 const SESSION_UPDATE_DEBOUNCE_MS = 500
 
+/**
+ * Options for the useMessages hook
+ */
 export interface UseMessagesOptions {
+  /** Initial session ID to load */
   sessionId?: string | null
+  /** Callback when session changes */
   onSessionChange?: (sessionId: string) => void
+  /** GitHub repository context */
   repository?: {
     owner: string
     repo: string
@@ -21,20 +27,43 @@ export interface UseMessagesOptions {
   }
 }
 
+/**
+ * Return type for the useMessages hook
+ */
 export interface UseMessagesReturn {
+  /** Array of chat messages */
   messages: Message[]
+  /** Setter for messages array */
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
+  /** Add a new message to the array */
   addMessage: (message: Message) => void
+  /** Update the last message using an updater function */
   updateLastMessage: (updater: (msg: Message) => Message) => void
+  /** Clear all messages and create a new session */
   clearMessages: () => void
+  /** Ref to the messages end element for auto-scroll */
   messagesEndRef: React.RefObject<HTMLDivElement>
+  /** Function to scroll to the bottom of messages */
   scrollToBottom: () => void
+  /** Current session ID */
   currentSessionId: string | null
+  /** Setter for current session ID */
   setCurrentSessionId: (id: string | null) => void
 }
 
 /**
  * Hook for managing chat messages with session persistence
+ * 
+ * @param options - Configuration options for the hook
+ * @returns Object with message state and management functions
+ * 
+ * @example
+ * ```tsx
+ * const { messages, addMessage, clearMessages } = useMessages({
+ *   repository: { owner: 'user', repo: 'repo' },
+ *   onSessionChange: (id) => console.log('New session:', id)
+ * })
+ * ```
  */
 export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn {
   const { sessionId: initialSessionId, onSessionChange, repository } = options
