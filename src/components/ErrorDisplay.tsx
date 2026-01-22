@@ -5,6 +5,7 @@
 
 'use client'
 
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { AlertCircle } from 'lucide-react'
 
@@ -38,7 +39,11 @@ export interface ErrorDisplayProps {
  * />
  * ```
  */
-export function ErrorDisplay({ error, onRetry, onDismiss }: ErrorDisplayProps) {
+/**
+ * Memoized ErrorDisplay component
+ * Only re-renders when error object reference changes
+ */
+export const ErrorDisplay = memo(function ErrorDisplay({ error, onRetry, onDismiss }: ErrorDisplayProps) {
   if (!error) return null
 
   return (
@@ -72,4 +77,4 @@ export function ErrorDisplay({ error, onRetry, onDismiss }: ErrorDisplayProps) {
       </div>
     </motion.div>
   )
-}
+})

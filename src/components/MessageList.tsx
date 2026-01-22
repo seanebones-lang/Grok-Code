@@ -5,6 +5,7 @@
 
 'use client'
 
+import { memo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { ChatMessage } from '@/components/ChatMessage'
 import type { Message } from '@/types'
@@ -36,7 +37,11 @@ export interface MessageListProps {
  * />
  * ```
  */
-export function MessageList({ messages, onRetry, messagesEndRef }: MessageListProps) {
+/**
+ * Memoized MessageList component to prevent unnecessary re-renders
+ * Only re-renders when messages array reference changes or onRetry changes
+ */
+export const MessageList = memo(function MessageList({ messages, onRetry, messagesEndRef }: MessageListProps) {
   return (
     <div 
       className="flex-1 overflow-y-auto py-6 space-y-6 relative"
@@ -59,4 +64,12 @@ export function MessageList({ messages, onRetry, messagesEndRef }: MessageListPr
       <div ref={messagesEndRef} aria-hidden="true" />
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if messages array reference changed or length changed
+  // This prevents re-renders when messages content updates but array reference is same
+  return (
+    prevProps.messages === nextProps.messages &&
+    prevProps.messages.length === nextProps.messages.length &&
+    prevProps.onRetry === nextProps.onRetry
+  )
+})

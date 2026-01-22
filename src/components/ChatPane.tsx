@@ -104,7 +104,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     return false // No action needed
   }, [updateLastMessage])
 
-  // Build request payload
+  // Build request payload - memoized to prevent recreation
   const buildRequestPayload = useCallback((processedContent: string, mode: ChatMode, history: Array<{ role: string; content: string }>, memoryContext: string | undefined) => {
     return JSON.stringify({ 
       message: processedContent,
@@ -118,6 +118,14 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       } : undefined,
     })
   }, [repository])
+  
+  // Memoize history slice to prevent recreation on every render
+  const getHistorySlice = useCallback((msgs: Message[]) => {
+    return msgs.slice(-MAX_HISTORY_MESSAGES).map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }))
+  }, [])
 
   // Store original content for stream chunk handler
   const currentRequestContentRef = useRef<string>('')
@@ -274,11 +282,8 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     // Store original content for stream chunk handler
     currentRequestContentRef.current = content
 
-    // Build conversation history for context (optimized)
-    const history = messages.slice(-MAX_HISTORY_MESSAGES).map(m => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-    }))
+    // Build conversation history for context (optimized with memoized function)
+    const history = getHistorySlice(messages)
 
     // Get relevant memories for context (optimized)
     const relevantMemories = agentMemory.getRelevant(content, MEMORY_RELEVANCE_LIMIT)
@@ -295,7 +300,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       buildRequestPayload(processedContent, mode, history, memoryContext),
       githubToken ? { 'X-Github-Token': githubToken } : {}
     )
-  }, [isOnline, messages, prepareMessage, buildRequestPayload, addMessage, startStream])
+  }, [isOnline, messages, prepareMessage, buildRequestPayload, addMessage, startStream, getHistorySlice])
 
   const handleRetry = useCallback(() => {
     if (lastRequestRef.current) {
