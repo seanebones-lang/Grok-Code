@@ -118,6 +118,7 @@ export function extractToolCalls(responseText: string): ToolCall[] {
 
 /**
  * Execute tool calls and format results
+ * Returns formatted string for follow-up message
  */
 export async function executeToolCalls(
   toolCalls: ToolCall[],
@@ -127,10 +128,11 @@ export async function executeToolCalls(
     return ''
   }
 
-  let toolResults = '\n\n### 🔧 Tool Execution Results\n\n'
+  const toolResults: string[] = []
 
   for (const toolCall of toolCalls) {
     try {
+      const { executeTool } = await import('./tool-executor')
       const result = await executeTool(
         toolCall,
         options.repository,
@@ -138,16 +140,16 @@ export async function executeToolCalls(
       )
 
       if (result.success) {
-        toolResults += `✅ **${toolCall.name}**: ${result.output}\n\n`
+        toolResults.push(`✅ ${toolCall.name}: ${result.output}`)
       } else {
-        toolResults += `❌ **${toolCall.name}**: ${result.error || 'Failed'}\n\n`
+        toolResults.push(`❌ ${toolCall.name}: ${result.error || 'Failed'}`)
       }
     } catch (error) {
-      toolResults += `❌ **${toolCall.name}**: ${error instanceof Error ? error.message : 'Execution failed'}\n\n`
+      toolResults.push(`❌ ${toolCall.name}: ${error instanceof Error ? error.message : 'Execution failed'}`)
     }
   }
 
-  return toolResults
+  return toolResults.join('\n\n')
 }
 
 /**

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { spawn } from 'child_process'
 import { checkRateLimit } from '@/lib/ratelimit'
-import { Octokit } from '@octokit/rest'
 import { SPECIALIZED_AGENTS, findAgentsByKeywords, formatAgentsForPrompt, getAgentSystemPrompt } from '@/lib/specialized-agents'
 import { parseOrchestratorCommand, createOrchestrationPlan, formatOrchestrationPlan } from '@/lib/agent-orchestrator'
+import { executeTool, type ToolCall } from '@/lib/tool-executor'
+import { createApiError, createStreamError, handleError, logError, type StreamError } from '@/lib/error-handler'
+import { extractToolCalls, executeToolCalls, processStreamChunk, createStreamController, type StreamingOptions } from '@/lib/streaming-handler'
 
 // Input validation schema with strict sanitization
 const chatSchema = z.object({
@@ -248,648 +249,16 @@ const REQUEST_TIMEOUT = 30000
 // ============================================================================
 // Tool Execution Helpers
 // ============================================================================
+// Note: Tool execution functions are now in @/lib/tool-executor
+// Note: Tool call extraction is now in @/lib/streaming-handler
 
-interface ToolCall {
-  name: string
-  arguments: Record<string, unknown>
-}
-
+// Legacy function kept for backward compatibility (deprecated)
 function parseToolCallFromResponse(response: string): ToolCall | null {
-  // Look for JSON tool calls in code blocks (json, ```json, or just ```)
-  const codeBlockPatterns = [
-    /```json\s*([\s\S]*?)\s*```/g,
-    /```\s*([\s\S]*?)\s*```/g,
-  ]
-  
-  for (const pattern of codeBlockPatterns) {
-    const matches = [...response.matchAll(pattern)]
-    for (const match of matches) {
-      try {
-        const parsed = JSON.parse(match[1].trim())
-        if (parsed.name && parsed.arguments && typeof parsed.name === 'string') {
-          return parsed as ToolCall
-        }
-      } catch {
-        // Not valid JSON, continue
-      }
-    }
-  }
-  
-  // Try to find raw JSON object (more flexible pattern)
-  const rawJsonPatterns = [
-    /\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*(\{[^}]+\})\s*\}/,
-    /\{\s*"name"\s*:\s*'([^']+)'\s*,\s*"arguments"\s*:\s*(\{[^}]+\})\s*\}/,
-  ]
-  
-  for (const pattern of rawJsonPatterns) {
-    const match = response.match(pattern)
-    if (match) {
-      try {
-        // Reconstruct JSON
-        const jsonStr = `{"name": "${match[1]}", "arguments": ${match[2]}}`
-        const parsed = JSON.parse(jsonStr)
-        if (parsed.name && parsed.arguments) {
-          return parsed as ToolCall
-        }
-      } catch {
-        // Not valid JSON, continue
-      }
-    }
-  }
-  
-  return null
+  const toolCalls = extractToolCalls(response)
+  return toolCalls.length > 0 ? toolCalls[0] : null
 }
 
-// Local file execution for when no GitHub repository is connected
-async function executeLocalTool(
-  toolCall: ToolCall
-): Promise<{ success: boolean; output: string; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-  
-  switch (toolCall.name) {
-    case 'read_file': {
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/local`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'read',
-            path: toolCall.arguments.path as string,
-          }),
-        })
-        const data = await response.json()
-        if (!response.ok) {
-          return { success: false, output: '', error: data.error || 'Failed to read file' }
-        }
-        return { success: true, output: data.content }
-      } catch (error: any) {
-        return { success: false, output: '', error: error.message || 'Failed to read file' }
-      }
-    }
-    
-    case 'list_files': {
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/local`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'list',
-            path: (toolCall.arguments.path as string) || '.',
-          }),
-        })
-        const data = await response.json()
-        if (!response.ok) {
-          return { success: false, output: '', error: data.error || 'Failed to list files' }
-        }
-        const files = data.files || []
-        const fileList = files
-          .map((f: { type: string; name: string; size?: number }) => 
-            `${f.type === 'directory' ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
-          )
-          .join('\n')
-        return { success: true, output: fileList || 'Empty directory' }
-      } catch (error: any) {
-        return { success: false, output: '', error: error.message || 'Failed to list files' }
-      }
-    }
-    
-    case 'write_file': {
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/local`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'write',
-            path: toolCall.arguments.path as string,
-            content: toolCall.arguments.content as string,
-          }),
-        })
-        const data = await response.json()
-        if (!response.ok) {
-          return { success: false, output: '', error: data.error || 'Failed to write file' }
-        }
-        return { success: true, output: `File written: ${toolCall.arguments.path}` }
-      } catch (error: any) {
-        return { success: false, output: '', error: error.message || 'Failed to write file' }
-      }
-    }
-    
-    case 'delete_file': {
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/local`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'delete',
-            path: toolCall.arguments.path as string,
-          }),
-        })
-        const data = await response.json()
-        if (!response.ok) {
-          return { success: false, output: '', error: data.error || 'Failed to delete file' }
-        }
-        return { success: true, output: `File deleted: ${toolCall.arguments.path}` }
-      } catch (error: any) {
-        return { success: false, output: '', error: error.message || 'Failed to delete file' }
-      }
-    }
-    
-    case 'run_command': {
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/terminal`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            command: toolCall.arguments.command as string,
-            cwd: toolCall.arguments.cwd as string | undefined,
-          }),
-        })
-        const data = await response.json()
-        if (!response.ok) {
-          return { success: false, output: '', error: data.error || 'Command failed' }
-        }
-        return { 
-          success: data.exitCode === 0, 
-          output: data.output || data.stdout || '',
-          error: data.exitCode !== 0 ? (data.stderr || 'Command failed') : undefined 
-        }
-      } catch (error: any) {
-        return { success: false, output: '', error: error.message || 'Command failed' }
-      }
-    }
-    
-    case 'search_code': {
-      // For local search, use grep via terminal
-      const query = toolCall.arguments.query as string
-      const path = (toolCall.arguments.path as string) || '.'
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/terminal`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            command: `grep -rn "${query.replace(/"/g, '\\"')}" ${path} --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.json" 2>/dev/null | head -50`,
-          }),
-        })
-        const data = await response.json()
-        return { success: true, output: data.output || 'No results found' }
-      } catch (error: any) {
-        return { success: false, output: '', error: error.message || 'Search failed' }
-      }
-    }
-    
-    default:
-      return { success: false, output: '', error: `Tool '${toolCall.name}' not supported for local execution` }
-  }
-}
-
-async function executeTool(
-  toolCall: ToolCall,
-  repository?: { owner: string; repo: string; branch?: string },
-  githubToken?: string
-): Promise<{ success: boolean; output: string; error?: string }> {
-  // If no repository, use local execution
-  if (!repository) {
-    return executeLocalTool(toolCall)
-  }
-  
-  try {
-    // GitHub token should be passed in from the request
-    if (!githubToken && repository) {
-      // Fall back to local execution if no GitHub token and repo is needed
-      return executeLocalTool(toolCall)
-    }
-    
-    switch (toolCall.name) {
-      case 'read_file': {
-        const octokit = new Octokit({ auth: githubToken })
-        const ref = repository.branch || 'main'
-        try {
-          const { data } = await octokit.repos.getContent({
-            owner: repository.owner,
-            repo: repository.repo,
-            path: toolCall.arguments.path as string,
-            ref,
-          })
-          if (Array.isArray(data) || !('content' in data)) {
-            return { success: false, output: '', error: 'Path is not a file' }
-          }
-          const content = Buffer.from(data.content, 'base64').toString('utf-8')
-          return { success: true, output: content }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to read file' }
-        }
-      }
-      
-      case 'list_files': {
-        const octokit = new Octokit({ auth: githubToken })
-        const ref = repository.branch || 'main'
-        const path = (toolCall.arguments.path as string) || ''
-        try {
-          const { data } = await octokit.repos.getContent({
-            owner: repository.owner,
-            repo: repository.repo,
-            path: path || '',
-            ref,
-          })
-          const files = Array.isArray(data) ? data : [data]
-          const fileList = files
-            .map((f: { type: string; name: string; size?: number }) => 
-              `${f.type === 'dir' ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
-            )
-            .join('\n')
-          return { success: true, output: fileList || 'Empty directory' }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to list files' }
-        }
-      }
-      
-      case 'write_file': {
-        const octokit = new Octokit({ auth: githubToken })
-        const ref = repository.branch || 'main'
-        const path = toolCall.arguments.path as string
-        const content = toolCall.arguments.content as string
-        
-        try {
-          // Get existing file SHA if it exists
-          let fileSha: string | undefined
-          try {
-            const { data } = await octokit.repos.getContent({
-              owner: repository.owner,
-              repo: repository.repo,
-              path,
-              ref,
-            })
-            if (!Array.isArray(data) && 'sha' in data) {
-              fileSha = data.sha
-            }
-          } catch {
-            // File doesn't exist, that's fine
-          }
-          
-          const { data } = await octokit.repos.createOrUpdateFileContents({
-            owner: repository.owner,
-            repo: repository.repo,
-            path,
-            message: `Eleven: Update ${path}`,
-            content: Buffer.from(content).toString('base64'),
-            branch: ref,
-            ...(fileSha ? { sha: fileSha } : {}),
-          })
-          
-          return { 
-            success: true, 
-            output: `File written: ${path}\nCommit: ${data.commit?.sha?.slice(0, 7) || 'unknown'}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to write file' }
-        }
-      }
-      
-      case 'move_file': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
-        const octokit = new Octokit({ auth: githubToken })
-        const ref = repository.branch || 'main'
-        const oldPath = toolCall.arguments.old_path as string
-        const newPath = toolCall.arguments.new_path as string
-        
-        try {
-          // Get file content
-          const { data: oldFileData } = await octokit.repos.getContent({
-            owner: repository.owner,
-            repo: repository.repo,
-            path: oldPath,
-            ref,
-          })
-          
-          if (Array.isArray(oldFileData) || !('content' in oldFileData)) {
-            return { success: false, output: '', error: 'Old path is not a file' }
-          }
-          
-          const fileContent = Buffer.from(oldFileData.content, 'base64').toString('utf-8')
-          
-          // Use the move file API
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const response = await fetch(`${baseUrl}/api/agent/files`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              owner: repository.owner,
-              repo: repository.repo,
-              oldPath,
-              newPath,
-              message: `Eleven: Move ${oldPath} to ${newPath}`,
-              branch: ref,
-            }),
-          })
-          
-          const data = await response.json()
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Failed to move file' }
-          }
-          
-          return { 
-            success: true, 
-            output: `File moved: ${oldPath} → ${newPath}\nCommit: ${data.commit?.sha?.slice(0, 7)}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to move file' }
-        }
-      }
-      
-      case 'search_code': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
-        const query = toolCall.arguments.query as string
-        const language = toolCall.arguments.language as string | undefined
-        const path = toolCall.arguments.path as string | undefined
-        
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const params = new URLSearchParams({
-            owner: repository.owner,
-            repo: repository.repo,
-            query,
-            ...(language ? { language } : {}),
-            ...(path ? { path } : {}),
-          })
-          
-          const response = await fetch(`${baseUrl}/api/agent/search?${params}`)
-          const data = await response.json()
-          
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Search failed' }
-          }
-          
-          if (data.results.length === 0) {
-            return { success: true, output: 'No results found' }
-          }
-          
-          const results = data.results
-            .slice(0, 10)
-            .map((r: any) => `📄 ${r.path}\n   ${r.url}`)
-            .join('\n\n')
-          
-          return { 
-            success: true, 
-            output: `Found ${data.totalCount} result(s):\n\n${results}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to search code' }
-        }
-      }
-      
-      case 'create_repository': {
-        const name = toolCall.arguments.name as string
-        const description = toolCall.arguments.description as string | undefined
-        const isPrivate = (toolCall.arguments.private as boolean) ?? false
-        
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const response = await fetch(`${baseUrl}/api/github/create-repo`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, private: isPrivate }),
-          })
-          
-          const data = await response.json()
-          
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Repository creation failed' }
-          }
-          
-          const repo = data.repository
-          return { 
-            success: true, 
-            output: `Repository created: ${repo.fullName}\nURL: ${repo.url}\nDefault branch: ${repo.defaultBranch}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to create repository' }
-        }
-      }
-      
-      case 'create_branch': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
-        const branch = toolCall.arguments.branch as string
-        const fromBranch = toolCall.arguments.from_branch as string | undefined
-        
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const response = await fetch(`${baseUrl}/api/agent/git`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'create_branch',
-              owner: repository.owner,
-              repo: repository.repo,
-              branch,
-              fromBranch: fromBranch || repository.branch,
-            }),
-          })
-          
-          const data = await response.json()
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Failed to create branch' }
-          }
-          
-          return { 
-            success: true, 
-            output: `Branch created: ${branch}\n${data.branch?.url}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to create branch' }
-        }
-      }
-      
-      case 'create_pull_request': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
-        const title = toolCall.arguments.title as string
-        const body = toolCall.arguments.body as string | undefined
-        const head = toolCall.arguments.head as string
-        const base = toolCall.arguments.base as string
-        
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const response = await fetch(`${baseUrl}/api/agent/git`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'create_pr',
-              owner: repository.owner,
-              repo: repository.repo,
-              title,
-              body,
-              head,
-              base,
-            }),
-          })
-          
-          const data = await response.json()
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Failed to create PR' }
-          }
-          
-          return { 
-            success: true, 
-            output: `Pull Request #${data.pullRequest?.number} created: ${title}\n${data.pullRequest?.url}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to create PR' }
-        }
-      }
-      
-      case 'get_diff': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
-        const base = toolCall.arguments.base as string | undefined
-        const head = toolCall.arguments.head as string | undefined
-        const path = toolCall.arguments.path as string | undefined
-        
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const params = new URLSearchParams({
-            action: 'get_diff',
-            owner: repository.owner,
-            repo: repository.repo,
-            ...(base ? { base } : {}),
-            ...(head ? { head } : {}),
-            ...(path ? { path } : {}),
-          })
-          
-          const response = await fetch(`${baseUrl}/api/agent/git?${params}`)
-          const data = await response.json()
-          
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Failed to get diff' }
-          }
-          
-          const diffSummary = data.diff.files
-            .map((f: any) => `${f.status} ${f.filename} (+${f.additions} -${f.deletions})`)
-            .join('\n')
-          
-          return { 
-            success: true, 
-            output: `Diff: ${data.diff.ahead} ahead, ${data.diff.behind} behind\n\nFiles:\n${diffSummary}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to get diff' }
-        }
-      }
-      
-      case 'get_commit_history': {
-        if (!repository) {
-          return { success: false, output: '', error: 'Repository required' }
-        }
-        const branch = toolCall.arguments.branch as string | undefined
-        const path = toolCall.arguments.path as string | undefined
-        const limit = (toolCall.arguments.limit as number) || 10
-        
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const params = new URLSearchParams({
-            action: 'get_commit_history',
-            owner: repository.owner,
-            repo: repository.repo,
-            ...(branch ? { branch } : {}),
-            ...(path ? { path } : {}),
-            limit: limit.toString(),
-          })
-          
-          const response = await fetch(`${baseUrl}/api/agent/git?${params}`)
-          const data = await response.json()
-          
-          if (!response.ok) {
-            return { success: false, output: '', error: data.error || 'Failed to get commit history' }
-          }
-          
-          const history = data.commits
-            .map((c: any) => `${c.sha.slice(0, 7)} ${c.message.split('\n')[0]}\n   ${c.author.name} - ${c.author.date}`)
-            .join('\n\n')
-          
-          return { 
-            success: true, 
-            output: `Recent commits:\n\n${history}` 
-          }
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to get commit history' }
-        }
-      }
-      
-      case 'run_command': {
-        // Execute command directly using spawn
-        try {
-          const command = toolCall.arguments.command as string
-          const cwd = toolCall.arguments.cwd as string | undefined
-          
-          // Parse command
-          const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
-          const cmd = parts[0]
-          if (!cmd) {
-            return { success: false, output: '', error: 'Empty command' }
-          }
-          const args = parts.slice(1).map(arg => arg.replace(/^["']|["']$/g, ''))
-          
-          // Execute command with timeout
-          return new Promise((resolve) => {
-            const child = spawn(cmd, args, {
-              cwd: cwd || process.cwd(),
-              env: process.env,
-              shell: false,
-            })
-            
-            let stdout = ''
-            let stderr = ''
-            const timeout = setTimeout(() => {
-              child.kill('SIGTERM')
-              resolve({ success: false, output: stdout + (stderr ? `\nStderr:\n${stderr}` : ''), error: 'Command timed out' })
-            }, 30000) // 30 second timeout
-            
-            child.stdout?.on('data', (data: Buffer | string) => {
-              stdout += data.toString()
-            })
-            
-            child.stderr?.on('data', (data: Buffer | string) => {
-              stderr += data.toString()
-            })
-            
-            child.on('close', (code: number | null) => {
-              clearTimeout(timeout)
-              const output = [
-                stdout,
-                stderr ? `\nStderr:\n${stderr}` : '',
-                `\nExit code: ${code}`,
-              ].filter(Boolean).join('')
-              resolve({ success: code === 0, output })
-            })
-            
-            child.on('error', (error: Error) => {
-              clearTimeout(timeout)
-              resolve({ success: false, output: '', error: error.message })
-            })
-          }) as Promise<{ success: boolean; output: string; error?: string }>
-        } catch (error: any) {
-          return { success: false, output: '', error: error.message || 'Failed to execute command' }
-        }
-      }
-      
-      default:
-        return { success: false, output: '', error: `Unknown tool: ${toolCall.name}` }
-    }
-  } catch (error) {
-    return { 
-      success: false, 
-      output: '', 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }
-  }
-}
+// Legacy functions removed - use executeTool and executeLocalTool from @/lib/tool-executor directly
 
 // ============================================================================
 // Intent Detection - Automatically detect when user wants to BUILD something
@@ -986,15 +355,9 @@ function detectIntent(message: string): 'agent' | 'refactor' | 'debug' | 'review
   return null
 }
 
-interface StreamError {
-  error: string
-  code?: string
-  retryable?: boolean
-}
-
-function createErrorResponse(error: StreamError): string {
-  return `data: ${JSON.stringify(error)}\n\n`
-}
+// StreamError and createErrorResponse are now in @/lib/error-handler
+// Keeping for backward compatibility
+const createErrorResponse = createStreamError
 
 async function fetchWithTimeout(
   url: string,
@@ -1275,41 +638,21 @@ The tool will be executed automatically and the results will be provided to you.
     }
 
     // Create SSE stream with proper error handling
+    // Use extracted streaming controller helper
     const stream = new ReadableStream({
       async start(controller) {
-        const encoder = new TextEncoder()
-        let streamClosed = false
-        
-        const safeEnqueue = (data: string) => {
-          if (!streamClosed) {
-            try {
-              controller.enqueue(encoder.encode(data))
-            } catch (e) {
-              console.warn(`[${requestId}] Failed to enqueue:`, e)
-            }
-          }
-        }
-        
-        const safeClose = () => {
-          if (!streamClosed) {
-            streamClosed = true
-            try {
-              controller.close()
-            } catch (e) {
-              console.warn(`[${requestId}] Failed to close stream:`, e)
-            }
-          }
-        }
+        const streamController = createStreamController(controller)
+        const { safeEnqueue, safeClose, sendError, sendData } = streamController
 
         try {
           // Send detected mode as first message if auto-detected
           if (detectedMode && !explicitMode) {
-            safeEnqueue(`data: ${JSON.stringify({ 
+            sendData({
               detectedMode: detectedMode,
               message: detectedMode === 'agent' 
                 ? '🤖 Agent mode activated - I\'ll build this for you!'
                 : `🎯 ${detectedMode.charAt(0).toUpperCase() + detectedMode.slice(1)} mode activated`
-            })}\n\n`)
+            })
           }
 
           // Try models in order until one works
@@ -1359,22 +702,22 @@ The tool will be executed automatically and the results will be provided to you.
           }
 
           if (!response || !response.ok) {
-            safeEnqueue(createErrorResponse({
+            sendError({
               error: 'All AI models are currently unavailable. Please try again later.',
               code: 'MODEL_UNAVAILABLE',
               retryable: true,
-            }))
+            })
             safeClose()
             return
           }
 
           const reader = response.body?.getReader()
           if (!reader) {
-            safeEnqueue(createErrorResponse({
+            sendError({
               error: 'Invalid response from AI service',
               code: 'NO_RESPONSE_BODY',
               retryable: true,
-            }))
+            })
             safeClose()
             return
           }
@@ -1398,196 +741,94 @@ The tool will be executed automatically and the results will be provided to you.
               const data = trimmedLine.slice(6)
               if (data === '[DONE]') {
                 // After stream completes, check for tool calls and execute them
-                // Always try to execute tools - use local execution if no repository
-                {
-                  // Find all tool calls in the response
-                  const toolCalls: ToolCall[] = []
-                  const seen = new Set<string>()
+                // Use extracted module for tool call extraction and execution
+                const toolCalls = extractToolCalls(fullResponse)
+                
+                if (toolCalls.length > 0) {
+                  safeEnqueue(`data: ${JSON.stringify({ content: `\n\n🔧 Found ${toolCalls.length} tool call(s). Executing...\n\n` })}\n\n`)
                   
-                  // Search for all JSON code blocks
-                  const codeBlockPatterns = [
-                    /```json\s*([\s\S]*?)\s*```/g,
-                    /```\s*([\s\S]*?)\s*```/g,
-                  ]
+                  // Execute tool calls using extracted module
+                  const toolResultsText = await executeToolCalls(toolCalls, {
+                    requestId,
+                    repository,
+                    githubToken,
+                    detectedMode,
+                    explicitMode,
+                  })
                   
-                  for (const pattern of codeBlockPatterns) {
-                    const matches = [...fullResponse.matchAll(pattern)]
-                    for (const match of matches) {
-                      try {
-                        const parsed = JSON.parse(match[1].trim())
-                        if (parsed.name && parsed.arguments && typeof parsed.name === 'string') {
-                          const key = `${parsed.name}:${JSON.stringify(parsed.arguments)}`
-                          if (!seen.has(key)) {
-                            seen.add(key)
-                            toolCalls.push(parsed as ToolCall)
-                          }
-                        }
-                      } catch {
-                        // Not valid JSON, continue
-                      }
-                    }
-                  }
-                  
-                  // Also search for raw JSON objects
-                  const rawJsonPattern = /\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*(\{[^}]+\})\s*\}/g
-                  let rawMatch
-                  while ((rawMatch = rawJsonPattern.exec(fullResponse)) !== null) {
+                  // Send tool results back to Eleven for continuation
+                  if (toolResultsText) {
+                    safeEnqueue(`data: ${JSON.stringify({ content: `\n📊 Tool execution complete. Getting Eleven's analysis...\n\n` })}\n\n`)
+                    
+                    const followUpMessage = `The following tools were executed:\n\n${toolResultsText}\n\nPlease analyze the results and continue with the next steps.`
+                    
+                    // Make follow-up request
+                    const followUpMessages = [
+                      ...messages,
+                      { role: 'assistant', content: fullResponse },
+                      { role: 'user', content: followUpMessage },
+                    ]
+                    
                     try {
-                      const jsonStr = `{"name": "${rawMatch[1]}", "arguments": ${rawMatch[2]}}`
-                      const parsed = JSON.parse(jsonStr)
-                      if (parsed.name && parsed.arguments) {
-                        const key = `${parsed.name}:${JSON.stringify(parsed.arguments)}`
-                        if (!seen.has(key)) {
-                          seen.add(key)
-                          toolCalls.push(parsed as ToolCall)
-                        }
-                      }
-                    } catch {
-                      // Not valid JSON, continue
-                    }
-                  }
-                  
-                  // Also parse formatted Tool Request sections (### 🔧 Tool Request)
-                  const toolRequestPattern = /###\s*🔧\s*Tool Request\s*\n([\s\S]*?)(?=###|$)/gi
-                  let toolRequestMatch
-                  while ((toolRequestMatch = toolRequestPattern.exec(fullResponse)) !== null) {
-                    const content = toolRequestMatch[1]
-                    const toolMatch = content.match(/Tool:?\s*([^\n]+)/i)
-                    const inputMatch = content.match(/Input:?\s*([^\n]+)/i)
-                    const pathMatch = content.match(/Path:?\s*([^\n]+)/i)
-                    const commandMatch = content.match(/Command:?\s*([^\n]+)/i)
-                    const contentMatch = content.match(/Content:?\s*```[\s\S]*?\n([\s\S]*?)```/i)
-                    
-                    if (toolMatch) {
-                      const toolName = toolMatch[1].trim().toLowerCase().replace(/\s+/g, '_')
-                      const args: Record<string, unknown> = {}
-                      
-                      // Build arguments based on what we found
-                      if (pathMatch) args.path = pathMatch[1].trim()
-                      if (inputMatch && !pathMatch) args.path = inputMatch[1].trim()
-                      if (commandMatch) args.command = commandMatch[1].trim()
-                      if (contentMatch) args.content = contentMatch[1].trim()
-                      
-                      // Map common tool names
-                      const normalizedToolName = 
-                        toolName.includes('read') ? 'read_file' :
-                        toolName.includes('write') ? 'write_file' :
-                        toolName.includes('list') ? 'list_files' :
-                        toolName.includes('delete') ? 'delete_file' :
-                        toolName.includes('command') || toolName.includes('run') || toolName.includes('terminal') ? 'run_command' :
-                        toolName.includes('search') ? 'search_code' :
-                        toolName
-                      
-                      if (Object.keys(args).length > 0) {
-                        const key = `${normalizedToolName}:${JSON.stringify(args)}`
-                        if (!seen.has(key)) {
-                          seen.add(key)
-                          toolCalls.push({ name: normalizedToolName, arguments: args })
-                        }
-                      }
-                    }
-                  }
-                  
-                  // Execute all found tool calls sequentially
-                  if (toolCalls.length > 0) {
-                    safeEnqueue(`data: ${JSON.stringify({ content: `\n\n🔧 Found ${toolCalls.length} tool call(s). Executing...\n\n` })}\n\n`)
-                    
-                    const toolResults: string[] = []
-                    for (const toolCall of toolCalls) {
-                      try {
-                        safeEnqueue(`data: ${JSON.stringify({ content: `⚙️ Executing: ${toolCall.name}...\n` })}\n\n`)
-                        const toolResult = await executeTool(toolCall, repository, githubToken)
-                        
-                        if (toolResult.success) {
-                          toolResults.push(`✅ ${toolCall.name}: ${toolResult.output}`)
-                          safeEnqueue(`data: ${JSON.stringify({ content: `✅ ${toolCall.name} completed\n` })}\n\n`)
-                        } else {
-                          toolResults.push(`❌ ${toolCall.name}: ${toolResult.error}`)
-                          safeEnqueue(`data: ${JSON.stringify({ content: `❌ ${toolCall.name} failed: ${toolResult.error}\n` })}\n\n`)
-                        }
-                      } catch (toolError) {
-                        const errorMsg = toolError instanceof Error ? toolError.message : 'Unknown error'
-                        toolResults.push(`❌ ${toolCall.name}: ${errorMsg}`)
-                        safeEnqueue(`data: ${JSON.stringify({ content: `❌ ${toolCall.name} error: ${errorMsg}\n` })}\n\n`)
-                      }
-                    }
-                    
-                    // Send tool results back to Eleven for continuation
-                    if (toolResults.length > 0) {
-                      safeEnqueue(`data: ${JSON.stringify({ content: `\n📊 Tool execution complete. Getting Eleven's analysis...\n\n` })}\n\n`)
-                      
-                      const toolResultsText = toolResults.join('\n\n')
-                      const followUpMessage = `The following tools were executed:\n\n${toolResultsText}\n\nPlease analyze the results and continue with the next steps.`
-                      
-                      // Make follow-up request
-                      const followUpMessages = [
-                        ...messages,
-                        { role: 'assistant', content: fullResponse },
-                        { role: 'user', content: followUpMessage },
-                      ]
-                      
-                      try {
-                        const followUpResponse = await fetchWithTimeout(
-                          'https://api.x.ai/v1/chat/completions',
-                          {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${grokApiKey}`,
-                              'X-Request-ID': requestId + '-followup',
-                            },
-                            body: JSON.stringify({
-                              model: workingModel,
-                              messages: followUpMessages,
-                              stream: true,
-                              temperature: effectiveMode === 'refactor' || effectiveMode === 'review' ? 0.3 : 0.7,
-                              max_tokens: 8000,
-                            }),
+                      const followUpResponse = await fetchWithTimeout(
+                        'https://api.x.ai/v1/chat/completions',
+                        {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${grokApiKey}`,
+                            'X-Request-ID': requestId + '-followup',
                           },
-                          REQUEST_TIMEOUT
-                        )
+                          body: JSON.stringify({
+                            model: workingModel,
+                            messages: followUpMessages,
+                            stream: true,
+                            temperature: effectiveMode === 'refactor' || effectiveMode === 'review' ? 0.3 : 0.7,
+                            max_tokens: 8000,
+                          }),
+                        },
+                        REQUEST_TIMEOUT
+                      )
 
-                        if (followUpResponse.ok) {
-                          const followUpReader = followUpResponse.body?.getReader()
-                          if (followUpReader) {
-                            let followUpBuffer = ''
+                      if (followUpResponse.ok && followUpResponse.body) {
+                        const followUpReader = followUpResponse.body.getReader()
+                        const followUpDecoder = new TextDecoder()
+                        let followUpBuffer = ''
+
+                        while (true) {
+                          const { done, value } = await followUpReader.read()
+                          if (done) break
+
+                          followUpBuffer += followUpDecoder.decode(value, { stream: true })
+                          const lines = followUpBuffer.split('\n')
+                          followUpBuffer = lines.pop() || ''
+
+                          for (const line of lines) {
+                            const trimmedLine = line.trim()
+                            if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue
                             
-                            while (true) {
-                              const { done, value } = await followUpReader.read()
-                              if (done) break
-
-                              followUpBuffer += decoder.decode(value, { stream: true })
-                              const lines = followUpBuffer.split('\n')
-                              followUpBuffer = lines.pop() || ''
-
-                              for (const line of lines) {
-                                const trimmedLine = line.trim()
-                                if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue
-                                
-                                const data = trimmedLine.slice(6)
-                                if (data === '[DONE]') continue
-
-                                try {
-                                  const parsed = JSON.parse(data)
-                                  const validated = grokDeltaSchema.safeParse(parsed)
-                                  
-                                  if (validated.success) {
-                                    const content = validated.data.choices?.[0]?.delta?.content
-                                    if (content) {
-                                      safeEnqueue(`data: ${JSON.stringify({ content })}\n\n`)
-                                    }
-                                  }
-                                } catch {
-                                  // Ignore parse errors
+                            const data = trimmedLine.slice(6)
+                            if (data === '[DONE]') break
+                            
+                            try {
+                              const parsed = JSON.parse(data)
+                              const validated = grokDeltaSchema.safeParse(parsed)
+                              
+                              if (validated.success) {
+                                const content = validated.data.choices?.[0]?.delta?.content
+                                if (content) {
+                                  safeEnqueue(`data: ${JSON.stringify({ content })}\n\n`)
                                 }
                               }
+                            } catch {
+                              // Ignore parse errors
                             }
                           }
                         }
-                      } catch (followUpError) {
-                        console.error(`[${requestId}] Follow-up request error:`, followUpError)
-                        safeEnqueue(`data: ${JSON.stringify({ content: `\n⚠️ Could not get follow-up response. Tool results:\n\n${toolResultsText}\n\n` })}\n\n`)
                       }
+                    } catch (followUpError) {
+                      console.error(`[${requestId}] Follow-up request error:`, followUpError)
+                      safeEnqueue(`data: ${JSON.stringify({ content: `\n⚠️ Could not get follow-up response. Tool results:\n\n${toolResultsText}\n\n` })}\n\n`)
                     }
                   }
                 }
@@ -1606,18 +847,18 @@ The tool will be executed automatically and the results will be provided to you.
                 
                 if (validated.success) {
                   if (validated.data.error) {
-                    safeEnqueue(createErrorResponse({
+                    sendError({
                       error: validated.data.error.message,
                       code: 'API_ERROR',
                       retryable: false,
-                    }))
+                    })
                     continue
                   }
                   
                   const content = validated.data.choices?.[0]?.delta?.content
                   if (content) {
                     fullResponse += content // Accumulate full response for tool call detection
-                    safeEnqueue(`data: ${JSON.stringify({ content })}\n\n`)
+                    sendData({ content })
                   }
                 }
               } catch (parseError) {
@@ -1634,12 +875,12 @@ The tool will be executed automatically and the results will be provided to you.
           
           safeClose()
         } catch (error) {
-          console.error(`[${requestId}] Stream error:`, error)
-          safeEnqueue(createErrorResponse({
+          logError(error, 'Stream error', requestId)
+          sendError({
             error: 'Connection to AI service was interrupted. Please try again.',
             code: 'STREAM_ERROR',
             retryable: true,
-          }))
+          })
           safeClose()
         }
       },
@@ -1656,18 +897,19 @@ The tool will be executed automatically and the results will be provided to you.
     })
   } catch (error) {
     const duration = performance.now() - startTime
-    console.error(`[${requestId}] Request failed after ${duration.toFixed(0)}ms:`, error)
+    logError(error, `Request failed after ${duration.toFixed(0)}ms`, requestId)
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request', details: error.issues, requestId },
+        createApiError('Invalid request', 'VALIDATION_ERROR', error.issues, requestId),
         { status: 400 }
       )
     }
 
+    const errorInfo = handleError(error, 'Request processing', requestId)
     return NextResponse.json(
-      { error: 'Internal server error', requestId },
-      { status: 500 }
+      createApiError(errorInfo.message, errorInfo.code, undefined, requestId),
+      { status: errorInfo.status }
     )
   }
 }
