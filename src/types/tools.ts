@@ -18,6 +18,8 @@ export type ToolName =
   | 'create_pull_request'
   | 'get_diff'
   | 'get_commit_history'
+  | 'web_search'
+  | 'web_browse'
 
 /**
  * Tool call arguments structure
@@ -37,6 +39,8 @@ export interface ToolCallArguments {
   base?: string
   head?: string
   cwd?: string
+  url?: string
+  max_results?: number
   [key: string]: unknown // Allow additional tool-specific arguments
 }
 
@@ -86,6 +90,8 @@ export function isToolName(value: string): value is ToolName {
     'create_pull_request',
     'get_diff',
     'get_commit_history',
+    'web_search',
+    'web_browse',
   ]
   return validToolNames.includes(value as ToolName)
 }
@@ -184,6 +190,24 @@ export function validateToolCallArguments(
     case 'get_diff':
     case 'get_commit_history':
       // These tools have optional arguments
+      break
+
+    case 'web_search':
+      if (!arguments.query || typeof arguments.query !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires a 'query' argument` }
+      }
+      break
+
+    case 'web_browse':
+      if (!arguments.url || typeof arguments.url !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires a 'url' argument` }
+      }
+      // Validate URL format
+      try {
+        new URL(arguments.url)
+      } catch {
+        return { valid: false, error: `Tool '${toolName}' requires a valid URL` }
+      }
       break
 
     default:

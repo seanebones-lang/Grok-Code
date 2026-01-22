@@ -251,7 +251,32 @@ Get commit history for a branch or specific file.
 }
 \`\`\`
 
-### 12. think
+### 12. web_search
+Search the web for information using DuckDuckGo (free, no API key required).
+\`\`\`json
+{
+  "name": "web_search",
+  "arguments": {
+    "query": "string (required) - Search query",
+    "max_results": "number (optional) - Maximum number of results (default: 5)"
+  }
+}
+\`\`\`
+Returns: Formatted search results with titles, URLs, and snippets.
+
+### 13. web_browse
+Fetch and extract readable content from a web page.
+\`\`\`json
+{
+  "name": "web_browse",
+  "arguments": {
+    "url": "string (required) - URL to browse (must be http:// or https://)"
+  }
+}
+\`\`\`
+Returns: Extracted text content from the web page (up to 10KB).
+
+### 14. think
 Record your reasoning process (doesn't execute anything).
 \`\`\`json
 {
@@ -262,7 +287,7 @@ Record your reasoning process (doesn't execute anything).
 }
 \`\`\`
 
-### 13. complete
+### 15. complete
 Mark the task as complete.
 \`\`\`json
 {
