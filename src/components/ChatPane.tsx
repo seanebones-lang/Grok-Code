@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import FocusTrap from 'focus-trap-react'
-import { WifiOff, ArrowLeft, X } from 'lucide-react'
-import { AgentRunner } from '@/components/AgentRunner'
+import { WifiOff, ArrowLeft, X, Loader2 } from 'lucide-react'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Button } from '@/components/ui/button'
 import { getAgent } from '@/lib/specialized-agents'
@@ -18,6 +17,9 @@ import { useOrchestration } from '@/hooks/useOrchestration'
 import { MessageList } from '@/components/MessageList'
 import { StreamingIndicator } from '@/components/StreamingIndicator'
 import { ErrorDisplay } from '@/components/ErrorDisplay'
+
+// Lazy load AgentRunner - heavy component with agent orchestration logic
+const AgentRunner = lazy(() => import('@/components/AgentRunner').then(module => ({ default: module.AgentRunner })))
 
 // Constants
 const MAX_HISTORY_MESSAGES = 20
@@ -341,7 +343,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     }
   }, [newSessionMessage, handleSendMessage, onNewSessionHandled, clearMessages])
 
-  // If in agent mode, show the AgentRunner
+  // If in agent mode, show the AgentRunner (lazy loaded)
   if (showAgentMode) {
     // Get the initial task from the last user message or lastRequestRef
     const initialTask = lastRequestRef.current?.mode === 'agent' 
@@ -366,24 +368,35 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
               Back to Chat
             </Button>
           </div>
-          <AgentRunner
-            repository={repository}
-            initialTask={initialTask}
-            onComplete={(result) => {
-              // Add result to chat and switch back
-              const resultMessage: Message = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: result,
-                timestamp: new Date(),
-                metadata: { mode: 'agent' },
-              }
-              addMessage(resultMessage)
-              setShowAgentMode(false)
-              lastRequestRef.current = null
-            }}
-            className="flex-1"
-          />
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3 text-[#9ca3af]">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="text-sm">Loading agent runner...</span>
+                </div>
+              </div>
+            }
+          >
+            <AgentRunner
+              repository={repository}
+              initialTask={initialTask}
+              onComplete={(result) => {
+                // Add result to chat and switch back
+                const resultMessage: Message = {
+                  id: crypto.randomUUID(),
+                  role: 'assistant',
+                  content: result,
+                  timestamp: new Date(),
+                  metadata: { mode: 'agent' },
+                }
+                addMessage(resultMessage)
+                setShowAgentMode(false)
+                lastRequestRef.current = null
+              }}
+              className="flex-1"
+            />
+          </Suspense>
         </div>
       </FocusTrap>
     )

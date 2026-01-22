@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, memo, useMemo } from 'react'
+import { useState, useCallback, memo, useMemo, lazy, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { Copy, RefreshCw, Check, AlertTriangle, User, Bot, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,10 @@ import remarkGfm from 'remark-gfm'
 import type { Message } from '@/types'
 import { cn } from '@/lib/utils'
 import { useAgentOrchestrator } from '@/hooks/useAgentOrchestrator'
-import { AgentPanel } from '@/components/AgentPanel'
-import { RefactorPlan } from '@/components/RefactorPlan'
+
+// Lazy load heavy orchestration components - only load when needed
+const AgentPanel = lazy(() => import('@/components/AgentPanel').then(module => ({ default: module.AgentPanel })))
+const RefactorPlan = lazy(() => import('@/components/RefactorPlan').then(module => ({ default: module.RefactorPlan })))
 
 interface ChatMessageProps {
   message: Message
@@ -258,14 +260,18 @@ export const ChatMessage = memo(function ChatMessage({ message, onRetry }: ChatM
               </div>
             )}
 
-            {/* Refactor Plan */}
+            {/* Refactor Plan - Lazy loaded */}
             {parsedContent.refactorPlan && (
-              <RefactorPlan plan={parsedContent.refactorPlan} />
+              <Suspense fallback={<div className="p-4 text-sm text-[#9ca3af]">Loading refactor plan...</div>}>
+                <RefactorPlan plan={parsedContent.refactorPlan} />
+              </Suspense>
             )}
 
-            {/* Agent Outputs */}
+            {/* Agent Outputs - Lazy loaded */}
             {parsedContent.agents.length > 0 && (
-              <AgentPanel agents={parsedContent.agents} />
+              <Suspense fallback={<div className="p-4 text-sm text-[#9ca3af]">Loading agent panel...</div>}>
+                <AgentPanel agents={parsedContent.agents} />
+              </Suspense>
             )}
 
             {/* Tool Requests */}
