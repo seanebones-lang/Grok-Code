@@ -5,24 +5,39 @@
 
 import { Octokit } from '@octokit/rest'
 import { spawn } from 'child_process'
-
-export interface ToolCall {
-  name: string
-  arguments: Record<string, unknown>
-}
-
-export interface ToolExecutionResult {
-  success: boolean
-  output: string
-  error?: string
-}
+import type { ToolCall, ToolExecutionResult, ToolName, ToolCallArguments } from '@/types/tools'
+import { ToolExecutionError, isRetryableError, formatError } from '@/types/errors'
+import { validateToolCallArguments, isToolCall } from '@/types/tools'
 
 /**
  * Execute a tool locally (without GitHub repository)
+ * 
+ * @param toolCall - The tool call to execute
+ * @returns Promise resolving to the tool execution result
+ * @throws {ToolExecutionError} If tool execution fails
  */
 export async function executeLocalTool(
   toolCall: ToolCall
 ): Promise<ToolExecutionResult> {
+  // Validate tool call
+  if (!isToolCall(toolCall)) {
+    return {
+      success: false,
+      output: '',
+      error: 'Invalid tool call structure',
+    }
+  }
+
+  // Validate tool arguments
+  const validation = validateToolCallArguments(toolCall.name, toolCall.arguments)
+  if (!validation.valid) {
+    return {
+      success: false,
+      output: '',
+      error: validation.error || 'Invalid tool arguments',
+    }
+  }
+
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
   switch (toolCall.name) {
@@ -35,10 +50,11 @@ export async function executeLocalTool(
         }
         return { success: true, output: data.content || '' }
       } catch (error) {
+        const errorMessage = formatError(error, 'Failed to read file')
         return { 
           success: false, 
           output: '', 
-          error: error instanceof Error ? error.message : 'Failed to read file' 
+          error: errorMessage
         }
       }
     }
@@ -51,9 +67,15 @@ export async function executeLocalTool(
         if (!response.ok) {
           return { success: false, output: '', error: data.error || 'Failed to list files' }
         }
-        const files = data.files || []
+        interface FileInfo {
+          type: string
+          name: string
+          size?: number
+        }
+        
+        const files = (data.files || []) as FileInfo[]
         const fileList = files
-          .map((f: { type: string; name: string; size?: number }) => 
+          .map((f: FileInfo) => 
             `${f.type === 'dir' ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
           )
           .join('\n')
@@ -181,12 +203,35 @@ export async function executeLocalTool(
 
 /**
  * Execute a tool with GitHub repository context
+ * 
+ * @param toolCall - The tool call to execute
+ * @param repository - Optional GitHub repository context
+ * @param githubToken - Optional GitHub authentication token
+ * @returns Promise resolving to the tool execution result
  */
 export async function executeTool(
   toolCall: ToolCall,
   repository?: { owner: string; repo: string; branch?: string },
   githubToken?: string
 ): Promise<ToolExecutionResult> {
+  // Validate tool call
+  if (!isToolCall(toolCall)) {
+    return {
+      success: false,
+      output: '',
+      error: 'Invalid tool call structure',
+    }
+  }
+
+  // Validate tool arguments
+  const validation = validateToolCallArguments(toolCall.name, toolCall.arguments)
+  if (!validation.valid) {
+    return {
+      success: false,
+      output: '',
+      error: validation.error || 'Invalid tool arguments',
+    }
+  }
   // If no repository, use local execution
   if (!repository) {
     return executeLocalTool(toolCall)
