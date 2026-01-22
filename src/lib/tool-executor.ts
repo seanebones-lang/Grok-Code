@@ -5,9 +5,11 @@
 
 import { Octokit } from '@octokit/rest'
 import { spawn } from 'child_process'
-import type { ToolCall, ToolExecutionResult, ToolName, ToolCallArguments } from '@/types/tools'
-import { ToolExecutionError, isRetryableError, formatError } from '@/types/errors'
-import { validateToolCallArguments, isToolCall } from '@/types/tools'
+import type { ToolCall, ToolExecutionResult } from '@/types/tools'
+import { formatError } from '@/types/errors'
+import { validateToolCall, isToolCall } from '@/lib/utils/validation'
+import { fetchWithErrorHandling } from '@/lib/utils/fetch-helpers'
+import { createErrorResponse } from '@/lib/utils/error-handling'
 
 /**
  * Execute a tool locally (without GitHub repository)
@@ -42,21 +44,20 @@ export async function executeLocalTool(
 
   switch (toolCall.name) {
     case 'read_file': {
-      try {
-        const response = await fetch(`${baseUrl}/api/agent/files?path=${encodeURIComponent(toolCall.arguments.path as string)}`)
-        const data = await response.json()
-        if (!response.ok) {
-          return { success: false, output: '', error: data.error || 'Failed to read file' }
-        }
-        return { success: true, output: data.content || '' }
-      } catch (error) {
-        const errorMessage = formatError(error, 'Failed to read file')
-        return { 
-          success: false, 
-          output: '', 
-          error: errorMessage
+      const path = toolCall.arguments.path as string
+      const result = await fetchWithErrorHandling(
+        `${baseUrl}/api/agent/files?path=${encodeURIComponent(path)}`
+      )
+      if (result.success) {
+        // Parse the response to get content
+        try {
+          const data = JSON.parse(result.output)
+          return { success: true, output: data.content || '' }
+        } catch {
+          return { success: true, output: result.output }
         }
       }
+      return result
     }
 
     case 'list_files': {
