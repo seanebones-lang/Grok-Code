@@ -5,6 +5,7 @@
 
 'use client'
 
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import type { ChatMode } from '@/components/InputBar'
@@ -36,17 +37,22 @@ export interface StreamingIndicatorProps {
  * />
  * ```
  */
-export function StreamingIndicator({ isLoading, mode, onCancel }: StreamingIndicatorProps) {
-  if (!isLoading) return null
+// Memoize mode messages to prevent recreation on every render
+const MODE_MESSAGES: Record<ChatMode, string> = {
+  default: 'Eleven is thinking...',
+  agent: 'Agent is working autonomously...',
+  refactor: 'Analyzing and planning refactor...',
+  orchestrate: 'Orchestrating agents...',
+  debug: 'Debugging and analyzing...',
+  review: 'Reviewing code...',
+} as const
 
-  const modeMessages: Record<ChatMode, string> = {
-    default: 'Eleven is thinking...',
-    agent: 'Agent is working autonomously...',
-    refactor: 'Analyzing and planning refactor...',
-    orchestrate: 'Orchestrating agents...',
-    debug: 'Debugging and analyzing...',
-    review: 'Reviewing code...',
-  }
+/**
+ * Memoized StreamingIndicator component
+ * Only re-renders when isLoading or mode changes
+ */
+export const StreamingIndicator = memo(function StreamingIndicator({ isLoading, mode, onCancel }: StreamingIndicatorProps) {
+  if (!isLoading) return null
 
   return (
     <motion.div 
@@ -58,7 +64,7 @@ export function StreamingIndicator({ isLoading, mode, onCancel }: StreamingIndic
     >
       <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
       <span className="text-sm text-[#9ca3af]">
-        {modeMessages[mode]}
+        {MODE_MESSAGES[mode]}
       </span>
       {onCancel && (
         <button

@@ -101,12 +101,21 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
       
       const assistantMessage = onStreamStart()
       let buffer = ''
+      const MAX_BUFFER_SIZE = 64 * 1024 // 64KB limit to prevent memory issues
       
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
+        
+        // Prevent buffer from growing too large (memory optimization)
+        if (buffer.length > MAX_BUFFER_SIZE) {
+          // Keep only the last portion of the buffer
+          const lines = buffer.split('\n')
+          buffer = lines.slice(-10).join('\n') // Keep last 10 lines
+        }
+        
         const lines = buffer.split('\n')
         buffer = lines.pop() || '' // Keep incomplete line in buffer
 
