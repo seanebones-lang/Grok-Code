@@ -16,9 +16,29 @@ export interface SSEChunk {
   message?: string
 }
 
+/**
+ * Parse SSE chunk data with validation
+ * 
+ * @param data - Raw SSE data string
+ * @returns Parsed and validated SSE chunk, or null if invalid
+ */
 export function parseSSEChunk(data: string): SSEChunk | null {
   try {
-    return JSON.parse(data) as SSEChunk
+    const parsed = JSON.parse(data)
+    // Validate structure
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      (
+        'content' in parsed ||
+        'error' in parsed ||
+        'detectedMode' in parsed ||
+        'message' in parsed
+      )
+    ) {
+      return parsed as SSEChunk
+    }
+    return null
   } catch {
     return null
   }

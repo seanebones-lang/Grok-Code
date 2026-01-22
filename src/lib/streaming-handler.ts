@@ -4,8 +4,10 @@
  */
 
 import { z } from 'zod'
-import { executeTool, type ToolCall } from './tool-executor'
+import { executeTool } from './tool-executor'
 import { createStreamError, type StreamError } from './error-handler'
+import type { ToolCall } from '@/types/tools'
+import type { ChatMode } from '@/components/InputBar'
 
 // API response schema for type-safe parsing
 const grokDeltaSchema = z.object({
@@ -28,12 +30,15 @@ export interface StreamingOptions {
   requestId: string
   repository?: { owner: string; repo: string; branch?: string }
   githubToken?: string
-  detectedMode?: string
-  explicitMode?: string
+  detectedMode?: ChatMode
+  explicitMode?: ChatMode
 }
 
 /**
  * Extract tool calls from response text
+ * 
+ * @param responseText - The response text to parse for tool calls
+ * @returns Array of extracted tool calls
  */
 export function extractToolCalls(responseText: string): ToolCall[] {
   const toolCalls: ToolCall[] = []
@@ -50,11 +55,26 @@ export function extractToolCalls(responseText: string): ToolCall[] {
     for (const match of matches) {
       try {
         const parsed = JSON.parse(match[1].trim())
-        if (parsed.name && parsed.arguments && typeof parsed.name === 'string') {
-          const key = `${parsed.name}:${JSON.stringify(parsed.arguments)}`
-          if (!seen.has(key)) {
-            seen.add(key)
-            toolCalls.push(parsed as ToolCall)
+        if (
+          typeof parsed === 'object' &&
+          parsed !== null &&
+          'name' in parsed &&
+          typeof parsed.name === 'string' &&
+          'arguments' in parsed &&
+          typeof parsed.arguments === 'object' &&
+          parsed.arguments !== null
+        ) {
+          const potentialToolCall = parsed as { name: string; arguments: Record<string, unknown> }
+          // Validate it's a proper tool call structure
+          if (potentialToolCall.name && potentialToolCall.arguments) {
+            const key = `${potentialToolCall.name}:${JSON.stringify(potentialToolCall.arguments)}`
+            if (!seen.has(key)) {
+              seen.add(key)
+              toolCalls.push({
+                name: potentialToolCall.name as ToolCall['name'],
+                arguments: potentialToolCall.arguments,
+              })
+            }
           }
         }
       } catch {
@@ -70,11 +90,25 @@ export function extractToolCalls(responseText: string): ToolCall[] {
     try {
       const jsonStr = `{"name": "${rawMatch[1]}", "arguments": ${rawMatch[2]}}`
       const parsed = JSON.parse(jsonStr)
-      if (parsed.name && parsed.arguments) {
-        const key = `${parsed.name}:${JSON.stringify(parsed.arguments)}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          toolCalls.push(parsed as ToolCall)
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'name' in parsed &&
+        typeof parsed.name === 'string' &&
+        'arguments' in parsed &&
+        typeof parsed.arguments === 'object' &&
+        parsed.arguments !== null
+      ) {
+        const potentialToolCall = parsed as { name: string; arguments: Record<string, unknown> }
+        if (potentialToolCall.name && potentialToolCall.arguments) {
+          const key = `${potentialToolCall.name}:${JSON.stringify(potentialToolCall.arguments)}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            toolCalls.push({
+              name: potentialToolCall.name as ToolCall['name'],
+              arguments: potentialToolCall.arguments,
+            })
+          }
         }
       }
     } catch {
@@ -119,6 +153,10 @@ export function extractToolCalls(responseText: string): ToolCall[] {
 /**
  * Execute tool calls and format results
  * Returns formatted string for follow-up message
+ * 
+ * @param toolCalls - Array of tool calls to execute
+ * @param options - Streaming options including repository and token
+ * @returns Promise resolving to formatted tool execution results
  */
 export async function executeToolCalls(
   toolCalls: ToolCall[],
@@ -145,7 +183,8 @@ export async function executeToolCalls(
         toolResults.push(`❌ ${toolCall.name}: ${result.error || 'Failed'}`)
       }
     } catch (error) {
-      toolResults.push(`❌ ${toolCall.name}: ${error instanceof Error ? error.message : 'Execution failed'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Execution failed'
+      toolResults.push(`❌ ${toolCall.name}: ${errorMessage}`)
     }
   }
 
@@ -154,6 +193,10 @@ export async function executeToolCalls(
 
 /**
  * Process streaming response chunks
+ * 
+ * @param data - New chunk data to process
+ * @param buffer - Existing buffer with incomplete data
+ * @returns Processed chunk result with content, done flag, error, and new buffer
  */
 export function processStreamChunk(
   data: string,
@@ -199,6 +242,9 @@ export function processStreamChunk(
 
 /**
  * Create safe stream controller helpers
+ * 
+ * @param controller - The ReadableStream controller
+ * @returns Object with safe stream control methods
  */
 export function createStreamController(controller: ReadableStreamDefaultController<Uint8Array>) {
   let streamClosed = false
