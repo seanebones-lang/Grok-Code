@@ -144,12 +144,29 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
   }, [currentSessionId, messages.length, onSessionChange, repository])
 
   // Auto-scroll to bottom when messages change
+  // Use requestAnimationFrame for better performance
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    })
   }, [])
 
   useEffect(() => {
-    scrollToBottom()
+    // Only auto-scroll if we're near the bottom (within 100px)
+    // This prevents scrolling when user is reading old messages
+    const container = messagesEndRef.current?.parentElement
+    if (container) {
+      const isNearBottom = 
+        container.scrollHeight - container.scrollTop - container.clientHeight < 100
+      
+      if (isNearBottom) {
+        scrollToBottom()
+      }
+    } else {
+      // If no container yet, scroll anyway (initial load)
+      scrollToBottom()
+    }
   }, [messages, scrollToBottom])
 
   // Helper function to add a message

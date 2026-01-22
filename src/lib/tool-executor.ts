@@ -1,15 +1,26 @@
 /**
  * Tool Executor
  * Handles execution of tools (read_file, write_file, etc.) for both local and GitHub repository contexts
+ * 
+ * Performance: Octokit is only imported when needed (GitHub repository context)
  */
 
-import { Octokit } from '@octokit/rest'
 import { spawn } from 'child_process'
 import type { ToolCall, ToolExecutionResult } from '@/types/tools'
 import { formatError } from '@/types/errors'
 import { validateToolCall, isToolCall } from '@/lib/utils/validation'
 import { fetchWithErrorHandling } from '@/lib/utils/fetch-helpers'
 import { createErrorResponse } from '@/lib/utils/error-handling'
+
+// Lazy load Octokit - only needed for GitHub operations
+let Octokit: typeof import('@octokit/rest').Octokit | null = null
+async function getOctokit() {
+  if (!Octokit) {
+    const octokitModule = await import('@octokit/rest')
+    Octokit = octokitModule.Octokit
+  }
+  return Octokit
+}
 
 /**
  * Execute a tool locally (without GitHub repository)
@@ -244,7 +255,9 @@ export async function executeTool(
       return executeLocalTool(toolCall)
     }
 
-    const octokit = new Octokit({ auth: githubToken })
+    // Lazy load Octokit only when needed
+    const OctokitClass = await getOctokit()
+    const octokit = new OctokitClass({ auth: githubToken })
     const ref = repository.branch || 'main'
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
