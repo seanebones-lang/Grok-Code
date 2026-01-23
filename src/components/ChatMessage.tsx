@@ -15,11 +15,21 @@ const AgentPanel = lazy(() => import('@/components/AgentPanel').then(module => (
 const RefactorPlan = lazy(() => import('@/components/RefactorPlan').then(module => ({ default: module.RefactorPlan })))
 
 interface ChatMessageProps {
+  /** Message object to display */
   message: Message
+  /** Optional retry callback for failed messages */
   onRetry?: () => void
 }
 
-// Memoized code block component for better performance
+/**
+ * CodeBlock Component
+ * 
+ * Memoized code block component with copy functionality.
+ * Displays syntax-highlighted code with language label and copy button.
+ * 
+ * @param children - Code content to display
+ * @param className - CSS class name (typically includes language-* for syntax highlighting)
+ */
 const CodeBlock = memo(function CodeBlock({ 
   children, 
   className 
@@ -72,6 +82,28 @@ const CodeBlock = memo(function CodeBlock({
   )
 })
 
+/**
+ * ChatMessage Component
+ * 
+ * Displays a single chat message with:
+ * - User/assistant message styling
+ * - Markdown rendering with syntax highlighting
+ * - Code block copy functionality
+ * - Error message display with retry option
+ * - Agent orchestration content parsing
+ * - Accessibility features (ARIA labels, semantic HTML)
+ * 
+ * @param message - Message object to display
+ * @param onRetry - Optional callback to retry failed messages
+ * 
+ * @example
+ * ```tsx
+ * <ChatMessage
+ *   message={message}
+ *   onRetry={() => handleRetry(message.id)}
+ * />
+ * ```
+ */
 export const ChatMessage = memo(function ChatMessage({ message, onRetry }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
   const [showRaw, setShowRaw] = useState(false)

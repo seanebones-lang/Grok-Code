@@ -26,15 +26,42 @@ const MAX_HISTORY_MESSAGES = 20
 const MEMORY_RELEVANCE_LIMIT = 5
 
 interface ChatPaneProps {
+  /** GitHub repository information for context-aware responses */
   repository?: {
     owner: string
     repo: string
     branch?: string
   }
+  /** Optional message to display when starting a new session */
   newSessionMessage?: string | null
+  /** Callback invoked after new session message is handled */
   onNewSessionHandled?: () => void
 }
 
+/**
+ * ChatPane Component
+ * 
+ * Main chat interface component that handles:
+ * - Message display and management
+ * - Streaming AI responses (SSE)
+ * - Agent orchestration mode
+ * - Session persistence
+ * - Error handling and retry logic
+ * - Keyboard shortcuts
+ * - Accessibility features
+ * 
+ * @param repository - Optional GitHub repository context
+ * @param newSessionMessage - Optional message for new sessions
+ * @param onNewSessionHandled - Callback when new session is handled
+ * 
+ * @example
+ * ```tsx
+ * <ChatPane
+ *   repository={{ owner: 'user', repo: 'my-repo', branch: 'main' }}
+ *   onNewSessionHandled={() => console.log('Session started')}
+ * />
+ * ```
+ */
 export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }: ChatPaneProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null)

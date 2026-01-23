@@ -122,15 +122,24 @@ npm start
 ### API Routes
 
 #### `/api/chat`
-Main chat endpoint for AI interactions.
+Main chat endpoint for AI interactions with streaming support.
 
-**Method:** POST  
-**Body:**
+**Method:** `POST`  
+**Content-Type:** `application/json`
+
+**Request Body:**
 ```json
 {
   "message": "Your message here",
-  "mode": "default" | "refactor" | "debug" | "review" | "agent",
-  "history": [...],
+  "mode": "default" | "refactor" | "orchestrate" | "debug" | "review" | "agent",
+  "conversationId": "uuid-string (optional)",
+  "history": [
+    {
+      "role": "user" | "assistant" | "system",
+      "content": "Message content"
+    }
+  ],
+  "memoryContext": "string (optional) - Agent memory from past sessions",
   "repository": {
     "owner": "username",
     "repo": "repo-name",
@@ -139,21 +148,225 @@ Main chat endpoint for AI interactions.
 }
 ```
 
-**Response:** Server-Sent Events (SSE) stream
+**Response:** Server-Sent Events (SSE) stream with chunks:
+- `content`: Text content chunks
+- `detectedMode`: Auto-detected mode (if applicable)
+- `error`: Error message (if error occurred)
+- `tool_calls`: Tool execution results (if any)
 
-#### `/api/github/*`
-GitHub integration endpoints:
-- `/api/github/repos` - List repositories
-- `/api/github/tree` - Get repository tree
-- `/api/github/push` - Push files to GitHub
-- `/api/github/create-repo` - Create new repository
+**Example:**
+```typescript
+const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    message: 'Refactor this component',
+    mode: 'refactor',
+    repository: { owner: 'user', repo: 'my-repo' }
+  })
+})
 
-#### `/api/agent/*`
-Agent-specific endpoints:
-- `/api/agent/search` - Code search
-- `/api/agent/files` - File operations
-- `/api/agent/git` - Git operations
-- `/api/agent/local` - Local file system
+const reader = response.body?.getReader()
+// Process SSE stream...
+```
+
+#### `/api/github/push`
+Push files to a GitHub repository.
+
+**Method:** `POST`  
+**Content-Type:** `application/json`
+
+**Request Body:**
+```json
+{
+  "owner": "username",
+  "repo": "repo-name",
+  "branch": "main",
+  "files": [
+    {
+      "path": "src/file.ts",
+      "content": "file content",
+      "mode": "100644"
+    }
+  ],
+  "message": "Commit message"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "commit": {
+    "sha": "commit-sha",
+    "message": "Commit message",
+    "url": "https://github.com/..."
+  },
+  "requestId": "uuid"
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Error message",
+  "requestId": "uuid",
+  "details": []
+}
+```
+
+#### `/api/github/repos`
+List user's GitHub repositories.
+
+**Method:** `GET`  
+**Query Parameters:**
+- `per_page`: Number of repos (default: 30, max: 100)
+- `page`: Page number (default: 1)
+- `sort`: Sort by `created`, `updated`, `pushed`, `full_name` (default: `updated`)
+
+**Response:**
+```json
+{
+  "repos": [
+    {
+      "id": 123,
+      "name": "repo-name",
+      "full_name": "owner/repo-name",
+      "description": "Repo description",
+      "private": false,
+      "default_branch": "main",
+      "updated_at": "2026-01-23T00:00:00Z"
+    }
+  ],
+  "total": 50
+}
+```
+
+#### `/api/agent/files`
+File operations for agentic workflows.
+
+**Method:** `GET` | `POST` | `DELETE`
+
+**GET - Read File:**
+```
+GET /api/agent/files?action=read&owner=user&repo=repo&path=src/file.ts&branch=main
+```
+
+**GET - List Directory:**
+```
+GET /api/agent/files?action=list&owner=user&repo=repo&path=src&branch=main
+```
+
+**POST - Write File:**
+```json
+{
+  "action": "write",
+  "owner": "user",
+  "repo": "repo",
+  "path": "src/file.ts",
+  "content": "file content",
+  "message": "Update file",
+  "branch": "main",
+  "sha": "optional-sha-for-updates"
+}
+```
+
+**POST - Batch Write:**
+```json
+{
+  "action": "batch",
+  "owner": "user",
+  "repo": "repo",
+  "files": [
+    { "path": "file1.ts", "content": "..." },
+    { "path": "file2.ts", "content": "..." }
+  ],
+  "message": "Update multiple files",
+  "branch": "main"
+}
+```
+
+#### `/api/agent/search`
+Code search across repository.
+
+**Method:** `GET`  
+**Query Parameters:**
+- `owner`: Repository owner
+- `repo`: Repository name
+- `query`: Search query
+- `path`: Limit search to path (optional)
+- `branch`: Branch to search (optional)
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "path": "src/file.ts",
+      "matches": [
+        {
+          "line": 42,
+          "content": "matching line content",
+          "preview": "context before and after"
+        }
+      ]
+    }
+  ],
+  "total": 10
+}
+```
+
+#### `/api/agent/git`
+Git operations (branches, commits, history).
+
+**Method:** `GET` | `POST`
+
+**GET - List Branches:**
+```
+GET /api/agent/git?action=branches&owner=user&repo=repo
+```
+
+**GET - Get Commit History:**
+```
+GET /api/agent/git?action=history&owner=user&repo=repo&branch=main&limit=10
+```
+
+**GET - Get Diff:**
+```
+GET /api/agent/git?action=diff&owner=user&repo=repo&base=main&head=feature
+```
+
+**POST - Create Branch:**
+```json
+{
+  "action": "create-branch",
+  "owner": "user",
+  "repo": "repo",
+  "branch": "feature/new-feature",
+  "from": "main"
+}
+```
+
+#### `/api/agent/local`
+Local file system operations (development only).
+
+**Method:** `GET` | `POST` | `DELETE`
+
+**GET - Read Local File:**
+```
+GET /api/agent/local?action=read&path=/absolute/path/to/file
+```
+
+**POST - Write Local File:**
+```json
+{
+  "action": "write",
+  "path": "/absolute/path/to/file",
+  "content": "file content"
+}
+```
+
+**Note:** Local file operations require proper permissions and are only available in development mode.
 
 ## 🛠️ Development
 
