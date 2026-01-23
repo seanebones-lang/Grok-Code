@@ -338,23 +338,27 @@ export const AgentRunner = memo(function AgentRunner({
           >
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-4">
-                <label className="text-sm text-[#9ca3af]">Max Iterations:</label>
+                <label htmlFor="max-iterations" className="text-sm text-[#9ca3af]">Max Iterations:</label>
                 <input
+                  id="max-iterations"
                   type="number"
                   value={config.maxIterations}
                   onChange={(e) => setConfig({ ...config, maxIterations: parseInt(e.target.value) || 20 })}
                   className="w-20 px-2 py-1 rounded bg-[#0f0f23] border border-[#404050] text-white text-sm"
                   min={1}
                   max={50}
+                  aria-label="Maximum iterations for agent execution"
                 />
               </div>
               <div className="flex items-center gap-4">
-                <label className="text-sm text-[#9ca3af]">Auto-fix Errors:</label>
+                <label htmlFor="auto-fix" className="text-sm text-[#9ca3af]">Auto-fix Errors:</label>
                 <input
+                  id="auto-fix"
                   type="checkbox"
                   checked={config.autoFix}
                   onChange={(e) => setConfig({ ...config, autoFix: e.target.checked })}
                   className="rounded"
+                  aria-label="Automatically fix errors during execution"
                 />
               </div>
             </div>

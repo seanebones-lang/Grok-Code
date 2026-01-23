@@ -27,10 +27,18 @@ const ResizablePanel = Panel
 const ResizableHandle = ({
   withHandle,
   className,
+  'aria-label': ariaLabel,
   ...props
 }: React.ComponentProps<typeof Separator> & {
   withHandle?: boolean
+  'aria-label'?: string
 }) => {
+  // Add ARIA label for accessibility (fixes Lighthouse issue)
+  const handleProps = {
+    ...props,
+    'aria-label': ariaLabel || 'Resize panels',
+  }
+
   return (
     <Separator
       className={cn(
@@ -39,7 +47,7 @@ const ResizableHandle = ({
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
         className
       )}
-      {...props}
+      {...handleProps}
     >
       {withHandle && (
         <div className="z-10 flex h-8 w-6 items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#1a1a1a] group-hover:bg-primary/20 group-hover:border-primary/50">

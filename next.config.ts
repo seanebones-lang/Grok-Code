@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 
+// Bundle analyzer (only when ANALYZE env var is set)
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 // Validate environment on startup (in production builds only)
 if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   try {
@@ -48,6 +53,10 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
+    // Optimize images for Lighthouse
+    minimumCacheTTL: 60,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   
   // Security headers
@@ -132,7 +141,7 @@ const nextConfig: NextConfig = {
   },
   
   // Webpack optimizations
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     // Optimize bundle size
     if (!isServer) {
       config.optimization = {
@@ -141,17 +150,44 @@ const nextConfig: NextConfig = {
         runtimeChunk: 'single',
         splitChunks: {
           chunks: 'all',
+          maxInitialRequests: 25,
+          minSize: 20000,
           cacheGroups: {
             default: false,
             vendors: false,
-            // Vendor chunk
+            // Vendor chunk - large dependencies
             vendor: {
               name: 'vendor',
               chunks: 'all',
               test: /node_modules/,
               priority: 20,
+              reuseExistingChunk: true,
             },
-            // Common chunk
+            // Framer Motion chunk (can be large)
+            framerMotion: {
+              name: 'framer-motion',
+              test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+              chunks: 'all',
+              priority: 25,
+              reuseExistingChunk: true,
+            },
+            // React Markdown chunk
+            reactMarkdown: {
+              name: 'react-markdown',
+              test: /[\\/]node_modules[\\/](react-markdown|remark-gfm)[\\/]/,
+              chunks: 'all',
+              priority: 25,
+              reuseExistingChunk: true,
+            },
+            // Monaco Editor chunk (already lazy loaded, but ensure it's separate)
+            monaco: {
+              name: 'monaco-editor',
+              test: /[\\/]node_modules[\\/]@monaco-editor[\\/]/,
+              chunks: 'async',
+              priority: 30,
+              reuseExistingChunk: true,
+            },
+            // Common chunk - shared code
             common: {
               name: 'common',
               minChunks: 2,
@@ -163,6 +199,10 @@ const nextConfig: NextConfig = {
           },
         },
       }
+      
+      // Tree-shake unused exports
+      config.optimization.usedExports = true
+      config.optimization.sideEffects = false
     }
     return config
   },
@@ -176,6 +216,12 @@ const nextConfig: NextConfig = {
   
   // Compress responses
   compress: true,
+  
+  // Production source maps (enable for better debugging, but increases bundle size)
+  // Note: Lighthouse flags missing source maps, but they increase bundle size
+  // Set to true if you need production debugging, false for smaller bundles
+  productionBrowserSourceMaps: process.env.ENABLE_SOURCE_MAPS === 'true',
 };
 
-export default nextConfig;
+// Export with bundle analyzer wrapper
+export default withBundleAnalyzer(nextConfig);

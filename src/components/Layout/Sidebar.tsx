@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import { motion } from '@/lib/motion-optimized'
 import { 
   FileText, 
   ChevronRight, 
@@ -32,6 +33,7 @@ import {
   Gauge,
   Zap,
   Play,
+  LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -50,12 +52,10 @@ import { sessionManager, type SessionSummary } from '@/lib/session-manager'
 import { isOrchestratorModeEnabled, setOrchestratorMode } from '@/lib/orchestrator'
 import { healthDashboard, type HealthReport, formatTimeAgo } from '@/lib/health-dashboard'
 import { cn } from '@/lib/utils'
-
-const STORAGE_KEY = 'nexteleven_fileTree'
-const REPO_KEY = 'nexteleven_connectedRepo'
-const MODEL_KEY = 'nexteleven_selectedModel'
-const ENVIRONMENT_KEY = 'nexteleven_environment'
-const PINNED_AGENTS_KEY = 'nexteleven_pinnedAgents'
+import { getStorageItem, setStorageItem, removeStorageItem } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/lib/storage-keys'
+import type { RepoInfo } from '@/lib/utils/repo'
+import { formatRelativeTimeSafe, useIsMounted } from '@/lib/hydration'
 
 interface Repository {
   id: number
@@ -75,7 +75,8 @@ interface SidebarProps {
   onNewSession?: (message: string) => void
 }
 
-export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: SidebarProps) {
+function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: SidebarProps) {
+  const { data: session, status } = useSession()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [files, setFiles] = useState<FileNode[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,7 +85,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [repos, setRepos] = useState<Repository[]>([])
   const [repoSearch, setRepoSearch] = useState('')
   const [loadingRepos, setLoadingRepos] = useState(false)
-  const [connectedRepo, setConnectedRepo] = useState<{ owner: string; repo: string; branch: string } | null>(null)
+  const [connectedRepo, setConnectedRepo] = useState<RepoInfo | null>(null)
   const [newSessionInput, setNewSessionInput] = useState('')
   const [selectedModel, setSelectedModel] = useState<string>('grok-4.1-fast')
   const [showModelMenu, setShowModelMenu] = useState(false)
@@ -97,78 +98,21 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const [healthReport, setHealthReport] = useState<HealthReport | null>(null)
   const [healthExpanded, setHealthExpanded] = useState(false)
 
-  // Load saved repo, model, and pinned agents from localStorage
   useEffect(() => {
-    // Safety check for client-side
     if (typeof window === 'undefined') return
-    
-    try {
-      const savedRepo = localStorage.getItem(REPO_KEY)
-      if (savedRepo) {
-        try {
-          const parsed = JSON.parse(savedRepo)
-          setConnectedRepo(parsed)
-          // Safely call callback
-          try {
-            onRepoConnect?.(parsed)
-          } catch (callbackError) {
-            console.error('Error in onRepoConnect callback during load:', callbackError)
-            // Continue anyway - callback error shouldn't block loading
-          }
-        } catch (e) {
-          console.error('Failed to parse saved repo:', e)
-          // Clear corrupted data
-          try {
-            localStorage.removeItem(REPO_KEY)
-          } catch (removeError) {
-            console.error('Failed to remove corrupted repo data:', removeError)
-          }
-        }
-      }
-      
-      try {
-        const savedModel = localStorage.getItem(MODEL_KEY)
-        if (savedModel && savedModel in GROK_MODELS) {
-          setSelectedModel(savedModel)
-        }
-      } catch (e) {
-        console.error('Failed to load model:', e)
-      }
-      
-      try {
-        const savedEnv = localStorage.getItem(ENVIRONMENT_KEY)
-        if (savedEnv === 'other' || savedEnv === 'cloud') {
-          setEnvironment(savedEnv)
-        }
-      } catch (e) {
-        console.error('Failed to load environment:', e)
-      }
-      
-      try {
-        const savedPinned = localStorage.getItem(PINNED_AGENTS_KEY)
-        if (savedPinned) {
-          setPinnedAgents(new Set(JSON.parse(savedPinned)))
-        }
-      } catch (e) {
-        console.error('Failed to load pinned agents:', e)
-      }
-      
-      // Load orchestrator mode
-      try {
-        setOrchestratorModeState(isOrchestratorModeEnabled())
-      } catch (e) {
-        console.error('Failed to load orchestrator mode:', e)
-      }
-      
-      // Load health report
-      try {
-        setHealthReport(healthDashboard.load())
-      } catch (e) {
-        console.error('Failed to load health report:', e)
-      }
-    } catch (e) {
-      console.error('Failed to load saved data:', e)
+    const repo = getStorageItem<RepoInfo | null>(STORAGE_KEYS.connectedRepo, null)
+    if (repo?.owner && repo?.repo) {
+      setConnectedRepo(repo)
+      onRepoConnect?.(repo)
     }
+    const model = getStorageItem<string>(STORAGE_KEYS.selectedModel, '')
+    if (model && model in GROK_MODELS) setSelectedModel(model)
+    const env = getStorageItem<string>(STORAGE_KEYS.environment, 'cloud')
+    if (env === 'other' || env === 'cloud') setEnvironment(env)
+    const pinned = getStorageItem<string[]>(STORAGE_KEYS.pinnedAgents, [])
+    if (Array.isArray(pinned)) setPinnedAgents(new Set(pinned))
+    setOrchestratorModeState(isOrchestratorModeEnabled())
+    setHealthReport(healthDashboard.load())
   }, [onRepoConnect])
 
   // Toggle orchestrator mode
@@ -210,17 +154,13 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     }
   }
 
-  // Toggle agent pinning
   const togglePinAgent = useCallback((agentId: string) => {
     setPinnedAgents(prev => {
-      const newPinned = new Set(prev)
-      if (newPinned.has(agentId)) {
-        newPinned.delete(agentId)
-      } else {
-        newPinned.add(agentId)
-      }
-      localStorage.setItem(PINNED_AGENTS_KEY, JSON.stringify([...newPinned]))
-      return newPinned
+      const next = new Set(prev)
+      if (next.has(agentId)) next.delete(agentId)
+      else next.add(agentId)
+      setStorageItem(STORAGE_KEYS.pinnedAgents, [...next])
+      return next
     })
   }, [])
 
@@ -278,37 +218,24 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     window.dispatchEvent(new CustomEvent('sessionUpdated'))
   }, [])
 
-  // Format relative time
+  const isMounted = useIsMounted()
+  
+  // Format relative time - safe for SSR
   const formatRelativeTime = useCallback((date: Date) => {
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-    
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
+    // Validate date
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      return 'Invalid date'
+    }
+
+    // Use safe formatter that handles SSR
+    return formatRelativeTimeSafe(date)
   }, [])
 
-  // Load files from localStorage with error handling
   const loadSavedFiles = useCallback(() => {
-    try {
-      const savedFiles = localStorage.getItem(STORAGE_KEY)
-      if (savedFiles) {
-        const parsed = JSON.parse(savedFiles)
-        if (Array.isArray(parsed)) {
-          setFiles(parsed)
-          setError(null)
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load saved files:', e)
-      setError('Failed to load saved files')
-      // Clear corrupted data
-      localStorage.removeItem(STORAGE_KEY)
+    const stored = getStorageItem<FileNode[]>(STORAGE_KEYS.fileTree, [])
+    if (Array.isArray(stored) && stored.length > 0) {
+      setFiles(stored)
+      setError(null)
     }
   }, [])
 
@@ -316,84 +243,62 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     loadSavedFiles()
   }, [loadSavedFiles])
 
-  // Save files to localStorage when they change
+  // Use ref to track previous files and only save when actually changed
+  const previousFilesRef = useRef<FileNode[]>([])
+  
   useEffect(() => {
+    // Only save if files actually changed (not just loaded)
     if (files.length > 0) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(files))
-      } catch (e) {
-        console.error('Failed to save files:', e)
+      const filesChanged = JSON.stringify(files) !== JSON.stringify(previousFilesRef.current)
+      if (filesChanged) {
+        setStorageItem(STORAGE_KEYS.fileTree, files)
+        previousFilesRef.current = files
       }
+    } else {
+      previousFilesRef.current = []
     }
   }, [files])
 
-  // Fetch user's repositories
+  // Fetch user's repositories (uses OAuth session via feature-user-auth)
   const fetchRepos = useCallback(async () => {
     setLoadingRepos(true)
     try {
-      // Get GitHub token from localStorage
-      const githubToken = localStorage.getItem('nexteleven_github_token')
-      
       const response = await fetch('/api/github/repos', {
-        headers: {
-          Accept: 'application/vnd.github.v3+json',
-          ...(githubToken && { 'X-Github-Token': githubToken }),
-        },
+        headers: { Accept: 'application/json' },
       })
-      
       if (!response.ok) {
-        throw new Error('Failed to fetch repositories')
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error ?? 'Failed to fetch repositories')
       }
-      
       const data = await response.json()
-      setRepos(data)
+      setRepos(data.repos ?? [])
     } catch (e) {
       console.error('Failed to fetch repos:', e)
-      setError('Failed to fetch repositories')
+      setError(e instanceof Error ? e.message : 'Failed to fetch repositories')
     } finally {
       setLoadingRepos(false)
     }
   }, [])
 
-  // Fetch file tree for a repository
+  // Fetch file tree (uses OAuth session via feature-user-auth)
   const fetchFileTree = useCallback(async (owner: string, repo: string, branch: string) => {
     setLoading(true)
     setError(null)
-    
     try {
-      // Get GitHub token from localStorage with error handling
-      let githubToken: string | null = null
-      try {
-        githubToken = localStorage.getItem('nexteleven_github_token')
-      } catch (storageError) {
-        console.error('Failed to access localStorage:', storageError)
-        throw new Error('Failed to access GitHub token. Please check browser settings.')
+      const response = await fetch(
+        `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      
+      interface TreeResponse {
+        tree?: Array<{ path: string; type: string; [key: string]: unknown }>
+        error?: string
+        details?: string
       }
       
-      if (!githubToken) {
-        throw new Error('GitHub token not found. Please configure it in the setup screen.')
-      }
-      
-      // Use API route that handles GitHub token
-      let response: Response
+      let data: TreeResponse
       try {
-        response = await fetch(
-          `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
-          {
-            headers: {
-              Accept: 'application/vnd.github.v3+json',
-              'X-Github-Token': githubToken,
-            },
-          }
-        )
-      } catch (fetchError) {
-        console.error('Network error fetching file tree:', fetchError)
-        throw new Error('Network error. Please check your connection and try again.')
-      }
-      
-      let data: any
-      try {
-        data = await response.json()
+        data = await response.json() as TreeResponse
       } catch (jsonError) {
         console.error('Failed to parse response:', jsonError)
         throw new Error('Invalid response from server. Please try again.')
@@ -479,33 +384,13 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   }, [])
 
   const handleConnectRepo = useCallback(async () => {
+    setShowRepoModal(true)
+    setError(null)
     try {
-      // Check if we have a GitHub token before showing modal
-      let githubToken: string | null = null
-      try {
-        githubToken = localStorage.getItem('nexteleven_github_token')
-      } catch (storageError) {
-        console.error('Failed to access localStorage:', storageError)
-      }
-      
-      if (!githubToken) {
-        setError('Please configure your GitHub token in the setup screen first')
-        return
-      }
-      
-      setShowRepoModal(true)
-      setError(null) // Clear any previous errors
-      
-      // Fetch repos with error handling
-      try {
-        await fetchRepos()
-      } catch (reposError) {
-        console.error('Failed to fetch repositories:', reposError)
-        setError('Failed to load repositories. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error in handleConnectRepo:', error)
-      setError('An unexpected error occurred. Please try again.')
+      await fetchRepos()
+    } catch (e) {
+      console.error('Failed to fetch repositories:', e)
+      setError(e instanceof Error ? e.message : 'Failed to load repositories.')
     }
   }, [fetchRepos])
 
@@ -527,14 +412,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
         console.error('Failed to update repo state:', stateError)
       }
       
-      // Safely save to localStorage
-      try {
-        localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
-      } catch (storageError) {
-        console.error('Failed to save repo to localStorage:', storageError)
-        // Continue anyway - localStorage might be full or disabled
-      }
-      
+      setStorageItem(STORAGE_KEYS.connectedRepo, repoInfo)
+
       // Safely call callback
       try {
         onRepoConnect?.(repoInfo)
@@ -572,8 +451,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
   const handleDisconnectRepo = useCallback(() => {
     setConnectedRepo(null)
     setFiles([])
-    localStorage.removeItem(REPO_KEY)
-    localStorage.removeItem(STORAGE_KEY)
+    removeStorageItem(STORAGE_KEYS.connectedRepo)
+    removeStorageItem(STORAGE_KEYS.fileTree)
   }, [])
 
   const handleRefresh = useCallback(async () => {
@@ -613,13 +492,13 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
 
   const handleModelSelect = useCallback((modelId: string) => {
     setSelectedModel(modelId)
-    localStorage.setItem(MODEL_KEY, modelId)
+    setStorageItem(STORAGE_KEYS.selectedModel, modelId)
     setShowModelMenu(false)
   }, [])
 
   const handleEnvironmentChange = useCallback((env: 'cloud' | 'other') => {
     setEnvironment(env)
-    localStorage.setItem(ENVIRONMENT_KEY, env)
+    setStorageItem(STORAGE_KEYS.environment, env)
     // Dispatch event for other components
     const event = new CustomEvent('environmentChange', { detail: { environment: env } })
     window.dispatchEvent(event)
@@ -663,29 +542,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
             </div>
             
             <div className="p-4 border-b border-[#404050] space-y-3">
-              <div>
-                <label className="block text-xs text-[#9ca3af] mb-2">GitHub Personal Access Token</label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    className="w-full px-3 py-2 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-[#6841e7] text-sm"
-                    onBlur={(e) => {
-                      const token = e.target.value.trim()
-                      if (token) {
-                        // Store token suggestion (they still need to add to Vercel, but show instructions)
-                        localStorage.setItem('github_token_suggestion', token)
-                      }
-                    }}
-                  />
-                </div>
-                <p className="text-[10px] text-[#606070] mt-1">
-                  Get token from: <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">github.com/settings/tokens</a>
-                </p>
-                <p className="text-[10px] text-[#606070] mt-1">
-                  Add this to Vercel env vars as <code className="bg-[#2a2a3e] px-1 rounded">GITHUB_TOKEN</code> and redeploy
-                </p>
-              </div>
+              <p className="text-xs text-[#9ca3af]">Using your GitHub account. Select a repository below.</p>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
                 <input
@@ -706,7 +563,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
               ) : filteredRepos.length === 0 ? (
                 <div className="text-center py-8 text-[#9ca3af]">
                   <p>No repositories found</p>
-                  <p className="text-xs text-[#606070] mt-2">Set GITHUB_TOKEN in Vercel to see your repos</p>
+                  <p className="text-xs text-[#606070] mt-2">You must be signed in with GitHub to list repos.</p>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -749,6 +606,69 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
           <div className="mb-4">
             <h1 className="text-lg font-semibold text-white mb-1">NextEleven Code</h1>
             <span className="text-xs text-[#9ca3af] bg-[#2a2a3e] px-2 py-0.5 rounded">Research preview</span>
+          </div>
+
+          {/* User / Sign-in (feature-user-auth) */}
+          <div className="mb-4">
+            {status === 'loading' ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-[#9ca3af]" />
+                <span className="text-xs text-[#9ca3af]">Loading...</span>
+              </div>
+            ) : session?.user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-[#2a2a3e] hover:bg-[#333348] border border-[#404050] transition-colors text-left"
+                    aria-label="User menu"
+                  >
+                    {session.user.image ? (
+                      <img
+                        src={session.user.image}
+                        alt=""
+                        className="h-8 w-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Github className="h-4 w-4 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {(session.user as { githubUsername?: string }).githubUsername ?? session.user.name ?? 'User'}
+                      </p>
+                      <p className="text-[10px] text-[#9ca3af] truncate">Signed in with GitHub</p>
+                    </div>
+                    <ChevronDown className="h-3 w-3 text-[#606070] flex-shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="w-56 bg-[#1a1a2e] text-white border-[#404050]"
+                >
+                  <DropdownMenuLabel className="text-[#9ca3af]">Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-[#404050]" />
+                  <DropdownMenuItem
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full text-white border-[#404050] bg-[#2a2a3e] hover:bg-[#333348]"
+                onClick={() => signIn('github', { callbackUrl: '/' })}
+              >
+                <Github className="h-4 w-4 mr-2" />
+                Sign in with GitHub
+              </Button>
+            )}
           </div>
           
           {/* New Session Input Box - Taller with icons */}
@@ -1041,14 +961,14 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                 {/* Last scan info */}
                 {healthReport?.lastFullScan && (
                   <p className="text-[10px] text-[#606070] pt-1 border-t border-[#404050]">
-                    Last scan: {formatTimeAgo(healthReport.lastFullScan)}
+                    Last scan: {isMounted ? formatTimeAgo(healthReport.lastFullScan) : 'Recently'}
                   </p>
                 )}
                 
                 {/* Run Scan Button */}
                 <button
                   onClick={() => handleRunScan('full')}
-                  className="w-full mt-2 p-2 rounded bg-primary/20 hover:bg-primary/30 text-primary text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full mt-2 p-2 rounded bg-primary/20 hover:bg-primary/30 text-[#7c5cff] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Play className="h-3 w-3" />
                   Run Full Audit
@@ -1099,6 +1019,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                         <button
                           onClick={(e) => { e.stopPropagation(); togglePinAgent(agent.id) }}
                           className="text-yellow-400 hover:text-yellow-300 p-1"
+                          title="Unpin agent"
+                          aria-label="Unpin agent"
                         >
                           <Star className="h-3 w-3 fill-current" />
                         </button>
@@ -1127,6 +1049,8 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                     <button
                       onClick={(e) => { e.stopPropagation(); togglePinAgent(agent.id) }}
                       className="text-[#404050] hover:text-yellow-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Pin agent"
+                      aria-label="Pin agent"
                     >
                       <Star className="h-3 w-3" />
                     </button>
@@ -1233,7 +1157,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-[#606070] flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />
-                            {formatRelativeTime(session.updatedAt)}
+                            {isMounted ? formatRelativeTime(session.updatedAt) : 'Just now'}
                           </span>
                           <span className="text-[10px] text-[#606070]">
                             {session.messageCount} msgs
@@ -1244,6 +1168,7 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
                         onClick={(e) => handleDeleteSession(session.id, e)}
                         className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-[#606070] hover:text-red-400 transition-all"
                         title="Delete session"
+                        aria-label="Delete session"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -1259,3 +1184,5 @@ export default function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onN
     </>
   )
 }
+
+export default memo(Sidebar)

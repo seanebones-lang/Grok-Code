@@ -1,0 +1,35 @@
+{
+  "url": "http://localhost:3000/",
+  "scores": {
+    "performance": 91,
+    "accessibility": 85,
+    "best-practices": 96,
+    "seo": 100
+  },
+  "metrics": {
+    "first-contentful-paint": {
+      "value": "0.8\u00a0s",
+      "score": 100
+    },
+    "largest-contentful-paint": {
+      "value": "3.2\u00a0s",
+      "score": 72
+    },
+    "speed-index": {
+      "value": "1.5\u00a0s",
+      "score": 100
+    },
+    "total-blocking-time": {
+      "value": "160\u00a0ms",
+      "score": 94
+    },
+    "cumulative-layout-shift": {
+      "value": "0.012",
+      "score": 100
+    },
+    "interactive": {
+      "value": "3.2\u00a0s",
+      "score": 94
+    }
+  }
+}
