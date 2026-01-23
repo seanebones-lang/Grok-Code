@@ -65,6 +65,32 @@ const MAX_MESSAGE_LENGTH = 50000
 const MIN_HEIGHT = 60
 const MAX_HEIGHT = 200
 
+/**
+ * InputBar Component
+ * 
+ * A sophisticated input component for chat messages with:
+ * - Auto-resizing textarea
+ * - Command palette integration
+ * - Mode selection (default, refactor, debug, etc.)
+ * - Keyboard shortcuts support
+ * - Character count and validation
+ * - Accessibility features (ARIA labels, keyboard navigation)
+ * 
+ * @param onSend - Callback function called when message is sent
+ * @param isLoading - Whether a request is currently in progress
+ * @param disabled - Whether the input is disabled
+ * @param placeholder - Placeholder text for the input
+ * @param maxLength - Maximum allowed message length (default: 50000)
+ * 
+ * @example
+ * ```tsx
+ * <InputBar
+ *   onSend={(message, mode) => handleSend(message, mode)}
+ *   isLoading={isLoading}
+ *   placeholder="Type your message..."
+ * />
+ * ```
+ */
 export const InputBar = forwardRef<HTMLTextAreaElement, InputBarProps>(
   ({ 
     onSend, 

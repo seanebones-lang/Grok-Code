@@ -287,7 +287,20 @@ export async function getRepoFiles(
 }
 
 /**
- * Get file content from a repository
+ * Get file content from a GitHub repository
+ * 
+ * @param token - GitHub personal access token
+ * @param owner - Repository owner username
+ * @param repo - Repository name
+ * @param path - File path relative to repository root
+ * @param branch - Branch name (optional, defaults to default branch)
+ * @returns Promise resolving to file content and SHA
+ * @throws {GitHubAPIError} If file is not found or path is invalid
+ * 
+ * @example
+ * ```typescript
+ * const { content, sha } = await getFileContent(token, 'user', 'repo', 'src/file.ts', 'main')
+ * ```
  */
 export async function getFileContent(
   token: string,
@@ -323,6 +336,19 @@ export async function getFileContent(
 
 /**
  * Build a file tree from repository contents
+ * 
+ * @param token - GitHub personal access token
+ * @param owner - Repository owner username
+ * @param repo - Repository name
+ * @param branch - Branch name (optional, defaults to default branch)
+ * @param maxDepth - Maximum directory depth to traverse (default: 3)
+ * @returns Promise resolving to hierarchical file tree structure
+ * 
+ * @example
+ * ```typescript
+ * const tree = await buildFileTree(token, 'user', 'repo', 'main', 2)
+ * // Returns: [{ name: 'src', type: 'folder', children: [...] }]
+ * ```
  */
 export async function buildFileTree(
   token: string,
@@ -371,6 +397,22 @@ export async function buildFileTree(
 
 /**
  * Push files to a GitHub repository
+ * 
+ * @param token - GitHub personal access token
+ * @param options - Push options including owner, repo, branch, files, and commit message
+ * @returns Promise resolving to push result with commit SHA and URL
+ * @throws {GitHubAPIError} If the push operation fails
+ * 
+ * @example
+ * ```typescript
+ * const result = await pushToGitHub(token, {
+ *   owner: 'username',
+ *   repo: 'my-repo',
+ *   branch: 'main',
+ *   files: [{ path: 'src/file.ts', content: 'code' }],
+ *   message: 'Update file'
+ * })
+ * ```
  */
 export async function pushToGitHub(
   token: string,

@@ -59,3 +59,41 @@ github-token.txt
 next-env.d.ts
 .env*
 .venv/
+
+# Duplicate files (files with " 2" suffix)
+* 2.*
+* 2.ts
+* 2.tsx
+* 2.js
+* 2.json
+* 2.css
+
+# Build artifacts and reports
+*.report.json
+*_REPORT.md
+*_COMPLETE.md
+*_SUMMARY.md
+*_STATUS.md
+*_FIX*.md
+*_AUDIT.md
+lighthouse-report.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
