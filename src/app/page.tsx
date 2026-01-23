@@ -1,35 +1,49 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
+import { useSession } from 'next-auth/react'
 import { ChatPane } from '@/components/ChatPane'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { SetupScreen } from '@/components/SetupScreen'
+import { useSetupState } from '@/hooks/useSetupState'
+import { useSearchStore } from '@/lib/stores/search-store'
+import { getSessionManager } from '@/lib/session-manager'
 import { Loader2 } from 'lucide-react'
 
-// Client Component - dynamic rendering handled by root layout
+// Lazy load components that are conditionally rendered
+const ErrorBoundary = lazy(() => import('@/components/ErrorBoundary').then(module => ({ default: module.ErrorBoundary })))
+const SetupScreen = lazy(() => import('@/components/SetupScreen').then(module => ({ default: module.SetupScreen })))
+const SignInView = lazy(() => import('@/components/SignInView').then(module => ({ default: module.SignInView })))
+const SessionSearch = lazy(() => import('@/components/SessionSearch').then(module => ({ default: module.SessionSearch })))
 
-// Loading fallback for chat pane
 function ChatPaneLoading() {
   return (
-    <div className="flex items-center justify-center h-full bg-[#0a0a0a]">
+    <div 
+      className="flex items-center justify-center h-full bg-[#0a0a0a]"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading chat interface"
+    >
       <div className="flex flex-col items-center gap-3 text-[#9ca3af]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
         <span className="text-sm">Loading chat...</span>
       </div>
     </div>
   )
 }
 
-// Error fallback component
 function ErrorFallback() {
   return (
-    <div className="flex items-center justify-center h-full bg-[#0a0a0a] text-white p-8">
-      <div className="text-center">
-        <h2 className="text-xl font-semibold mb-2">Failed to load component</h2>
+    <div 
+      className="flex items-center justify-center h-full bg-[#0a0a0a] text-white p-8"
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="text-center max-w-md">
+        <h1 className="text-xl font-semibold mb-2">Failed to load component</h1>
         <p className="text-[#9ca3af] mb-4">Please refresh the page to try again.</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg transition-colors"
+          className="px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#0a0a0a]"
+          aria-label="Refresh page to retry loading"
         >
           Refresh Page
         </button>
@@ -38,177 +52,177 @@ function ErrorFallback() {
   )
 }
 
-const GROK_TOKEN_KEY = 'nexteleven_grok_token'
-const GITHUB_TOKEN_KEY = 'nexteleven_github_token'
-const REPO_KEY = 'nexteleven_connectedRepo'
+function LoadingSpinner() {
+  return (
+    <div 
+      className="h-full w-full flex items-center justify-center bg-[#0a0a0a]"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading application"
+    >
+      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+      <span className="sr-only">Loading application...</span>
+    </div>
+  )
+}
 
 export default function Home() {
-  const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null)
-  const [repository, setRepository] = useState<{ owner: string; repo: string; branch: string } | null>(null)
+  const { status } = useSession()
+  const {
+    isLoading: setupLoading,
+    isSetupComplete,
+    repository,
+    setRepository,
+    markComplete,
+  } = useSetupState()
   const [newSessionMessage, setNewSessionMessage] = useState<string | null>(null)
+  const { isOpen: isSearchOpen } = useSearchStore()
 
-  // Check if setup is complete on mount
-  useEffect(() => {
-    // Safety check for localStorage availability
-    if (typeof window === 'undefined') return
-    
-    try {
-      // GROK_API_KEY is server-side only (Vercel env vars)
-      // Setup is complete if we have a setup flag (even if empty)
-      // GitHub token and repo are optional - can be added later
-      const hasSetupFlag = localStorage.getItem('nexteleven_setup_complete') === 'true'
-      const githubToken = localStorage.getItem(GITHUB_TOKEN_KEY)
-      const savedRepo = localStorage.getItem(REPO_KEY)
-      
-      // If already marked as complete, we're good
-      if (hasSetupFlag) {
-        if (savedRepo) {
-          try {
-            const parsedRepo = JSON.parse(savedRepo)
-            setRepository(parsedRepo)
-          } catch {
-            // Ignore parse errors
-          }
-        }
-        setIsSetupComplete(true)
-        return
-      }
-      
-      // Legacy check: if we have token/repo, mark as complete
-      if (githubToken || savedRepo) {
-        if (savedRepo) {
-          try {
-            const parsedRepo = JSON.parse(savedRepo)
-            setRepository(parsedRepo)
-          } catch {
-            // Ignore parse errors
-          }
-        }
-        localStorage.setItem('nexteleven_setup_complete', 'true')
-        setIsSetupComplete(true)
-      } else {
-        setIsSetupComplete(false)
-      }
-    } catch (error) {
-      // Handle localStorage errors gracefully
-      console.error('Error accessing localStorage:', error)
-      setIsSetupComplete(false)
-    }
-  }, [])
-
-  // Listen for new session events from sidebar
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    try {
-      const handleNewSession = (e: Event) => {
-        try {
-          const customEvent = e as CustomEvent<{ 
-            message: string
-            repository?: { owner: string; repo: string; branch: string }
-          }>
-          setNewSessionMessage(customEvent.detail?.message || null)
-          // Update repository if provided in the event
-          if (customEvent.detail?.repository) {
-            setRepository(customEvent.detail.repository)
-          }
-        } catch (e) {
-          console.error('Error handling newSession event:', e)
+    const onNewSession = (e: Event) => {
+      try {
+        const ev = e as CustomEvent<{ message?: string; repository?: { owner: string; repo: string; branch: string } }>
+        const message = ev.detail?.message
+        setNewSessionMessage(typeof message === 'string' ? message : null)
+        
+        const repo = ev.detail?.repository
+        if (repo && typeof repo === 'object' && repo.owner && repo.repo) {
+          setRepository({
+            owner: String(repo.owner),
+            repo: String(repo.repo),
+            branch: String(repo.branch || 'main'),
+          })
+        }
+      } catch (error) {
+        // Log error in development, use proper logging service in production
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Home] Error handling newSession event:', error)
         }
       }
-      window.addEventListener('newSession', handleNewSession)
-      return () => {
-        try {
-          window.removeEventListener('newSession', handleNewSession)
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      }
-    } catch (e) {
-      console.error('Error setting up newSession listener:', e)
     }
-  }, [])
+    
+    window.addEventListener('newSession', onNewSession)
+    return () => window.removeEventListener('newSession', onNewSession)
+  }, [setRepository])
 
-  // Listen for repo connect events from sidebar
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    try {
-      const handleRepoConnect = (e: Event) => {
-        try {
-          const customEvent = e as CustomEvent<{ repo: { owner: string; repo: string; branch: string } }>
-          if (customEvent.detail?.repo) {
-            setRepository(customEvent.detail.repo)
-          }
-        } catch (e) {
-          console.error('Error handling repoConnect event:', e)
+    const onRepoConnect = (e: Event) => {
+      try {
+        const ev = e as CustomEvent<{ repo?: { owner: string; repo: string; branch?: string } }>
+        const repo = ev.detail?.repo
+        
+        if (repo && typeof repo === 'object' && repo.owner && repo.repo) {
+          setRepository({
+            owner: String(repo.owner),
+            repo: String(repo.repo),
+            branch: String(repo.branch || 'main'),
+          })
+        }
+      } catch (error) {
+        // Log error in development, use proper logging service in production
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Home] Error handling repoConnect event:', error)
         }
       }
-      window.addEventListener('repoConnect', handleRepoConnect)
-      return () => {
-        try {
-          window.removeEventListener('repoConnect', handleRepoConnect)
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      }
-    } catch (e) {
-      console.error('Error setting up repoConnect listener:', e)
     }
-  }, [])
+    
+    window.addEventListener('repoConnect', onRepoConnect)
+    return () => window.removeEventListener('repoConnect', onRepoConnect)
+  }, [setRepository])
 
-  // Show loading while checking setup
-  if (isSetupComplete === null) {
+  if (status === 'loading') return <LoadingSpinner />
+  if (status === 'unauthenticated') {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-[#0a0a0a]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <Suspense fallback={<LoadingSpinner />}>
+        <SignInView />
+      </Suspense>
     )
   }
 
-  // Show setup screen if not configured
+  if (setupLoading || isSetupComplete === null) return <LoadingSpinner />
   if (!isSetupComplete) {
     return (
-      <SetupScreen 
-        onComplete={() => {
-          try {
-            if (typeof window !== 'undefined') {
-              const savedRepo = localStorage.getItem(REPO_KEY)
-              if (savedRepo) {
-                try {
-                  setRepository(JSON.parse(savedRepo))
-                } catch {
-                  // Ignore parse errors
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error reading repository from localStorage:', error)
-          }
-          setIsSetupComplete(true)
-        }}
-      />
+      <Suspense fallback={<LoadingSpinner />}>
+        <SetupScreen onComplete={markComplete} />
+      </Suspense>
     )
+  }
+
+  const handleSelectSession = (sessionId: string) => {
+    if (!sessionId || typeof sessionId !== 'string') {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Home] Invalid sessionId provided to handleSelectSession:', sessionId)
+      }
+      return
+    }
+    
+    try {
+      const sessionManager = getSessionManager()
+      const session = sessionManager.switchSession(sessionId)
+      
+      if (!session) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[Home] Session ${sessionId} not found`)
+        }
+        return
+      }
+      
+      // Validate session before loading
+      if (!session.id || !Array.isArray(session.messages)) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[Home] Invalid session structure for ${sessionId}`, session)
+        }
+        return
+      }
+      
+      // Load session messages into chat
+      const event = new CustomEvent('loadSession', {
+        detail: { session },
+      })
+      window.dispatchEvent(event)
+    } catch (error) {
+      // Log error in development, use proper logging service in production
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`[Home] Failed to load session ${sessionId}:`, error)
+      }
+    }
   }
 
   return (
     <div className="h-full w-full">
-      <ErrorBoundary 
+      <ErrorBoundary
         fallback={<ErrorFallback />}
-        onError={(error, errorInfo) => {
-          console.error('Page error:', error, errorInfo)
+        onError={(err, info) => {
+          // Use proper error logging in production
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Page error:', err, info)
+          }
         }}
       >
         <Suspense fallback={<ChatPaneLoading />}>
           <ErrorBoundary fallback={<ErrorFallback />}>
-            <ChatPane 
-              repository={repository || undefined}
+            <ChatPane
+              repository={repository ?? undefined}
               newSessionMessage={newSessionMessage}
               onNewSessionHandled={() => setNewSessionMessage(null)}
             />
           </ErrorBoundary>
         </Suspense>
       </ErrorBoundary>
+      
+      {/* Session Search Modal */}
+      {isSearchOpen && (
+        <Suspense fallback={null}>
+          <SessionSearch
+            onSelectSession={handleSelectSession}
+            onClose={() => {}}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

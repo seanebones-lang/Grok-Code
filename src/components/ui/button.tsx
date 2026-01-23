@@ -5,25 +5,25 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
-        default: "bg-primary text-white hover:bg-primary/90 hover:text-white",
+        default: "bg-[#6841e7] text-white shadow-md hover:bg-[#7c5cff] hover:shadow-lg active:scale-[0.98] focus-visible:ring-primary/50",
         destructive:
-          "bg-[#ef4444] text-white hover:bg-[#dc2626] hover:text-white",
+          "bg-[#ef4444] text-white shadow-md hover:bg-[#dc2626] hover:shadow-lg active:scale-[0.98]",
         outline:
-          "border border-border bg-[#1a1a1a] hover:bg-[#1a1a1a]/80 text-white hover:text-white",
+          "border border-[#404050] bg-[#1a1a2e] text-white shadow-sm hover:bg-[#2a2a3e] hover:border-[#505060] active:scale-[0.98]",
         secondary:
-          "bg-[#1a1a1a] text-white hover:bg-[#1a1a1a]/80 hover:text-white",
-        ghost: "text-white hover:bg-[#1a1a1a] hover:text-white",
-        link: "text-primary underline-offset-4 hover:underline hover:text-primary/80",
+          "bg-[#1a1a2e] text-white shadow-sm hover:bg-[#2a2a3e] active:scale-[0.98]",
+        ghost: "text-white hover:bg-[#1a1a2e] active:bg-[#2a2a3e]",
+        link: "text-[#6841e7] underline-offset-4 hover:underline hover:text-[#7c5cff]",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        default: "h-10 px-4 py-2",      // 40px height, 16px horizontal padding
+        sm: "h-8 rounded-md px-3 py-1.5",  // 32px height, 12px horizontal padding
+        lg: "h-12 rounded-lg px-6 py-3",   // 48px height, 24px horizontal padding
+        icon: "h-10 w-10",              // 40px square
       },
     },
     defaultVariants: {
