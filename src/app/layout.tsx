@@ -10,7 +10,6 @@ import { Loader2 } from 'lucide-react'
 
 // Lazy load Sidebar - large component with many dependencies
 const Sidebar = dynamic(() => import('@/components/Layout/Sidebar'), {
-  ssr: false,
   loading: () => (
     <div className="w-64 bg-[#1a1a2e] border-r border-[#2a2a3e] flex items-center justify-center">
       <Loader2 className="h-6 w-6 animate-spin text-[#6841e7]" />
@@ -20,7 +19,6 @@ const Sidebar = dynamic(() => import('@/components/Layout/Sidebar'), {
 
 // Lazy load ErrorBoundary
 const ErrorBoundary = dynamic(() => import('@/components/ErrorBoundary').then(mod => mod.ErrorBoundary), {
-  ssr: false,
 })
 
 // Primary font for UI
