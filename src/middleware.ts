@@ -1,11 +1,12 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { checkRateLimit } from './lib/ratelimit';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function middleware(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? req.ip ?? '1.1.1.1';
-  const { success } = await checkRateLimit(ip);
-  if (!success) return NextResponse.json({ error: 'Rate limited' }, { status: 429 });
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (pathname === '/' || pathname.startsWith('/dashboard') || pathname.match(/^\/_next|favicon.ico/)) {
+    return NextResponse.next();
+  }
   return NextResponse.next();
 }
 
-export const config = { matcher: '/api/:path*' };
+export const config = { matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)' };
