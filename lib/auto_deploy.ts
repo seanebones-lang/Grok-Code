@@ -3,7 +3,53 @@
 
 // const docker = new Docker();
 
-// Docker deployment function commented out for web-only deployment
+/**
+ * Deploy to Docker (removed for web-only deployment)
+ */
+/*
+async function deployToDocker(): Promise<string> {
+  const imageName = 'empire-self:latest'
+  const containerName = 'empire-self'
+
+  try {
+    // Build Docker image
+    await docker.buildImage(
+      {
+        context: '.',
+        src: ['.'],
+      },
+      { t: imageName }
+    )
+
+    // Remove existing container if it exists
+    try {
+      const existingContainer = docker.getContainer(containerName)
+      await existingContainer.remove({ force: true })
+    } catch {
+      // Container doesn't exist, that's fine
+    }
+
+    // Create and start container
+    const container = await docker.createContainer({
+      Image: imageName,
+      name: containerName,
+      ExposedPorts: { '3000/tcp': {} },
+      HostConfig: {
+        PortBindings: {
+          '3000/tcp': [{ HostPort: '3000' }],
+        },
+      },
+    })
+
+    await container.start()
+    const containerId = container.id.slice(0, 12)
+
+    return `http://localhost:3000 (Docker: ${containerId})`
+  } catch (error: any) {
+    throw new Error(`Docker deployment failed: ${error.message || error}`)
+  }
+}
+*/
 
 export interface DeploymentResult {
   url: string | null
