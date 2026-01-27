@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Static deploy: Skip binary targets for Vercel
 }
 
 datasource db {
