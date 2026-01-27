@@ -3,6 +3,8 @@
 
 // const docker = new Docker();
 
+// Docker deployment function commented out for web-only deployment
+
 export interface DeploymentResult {
   url: string | null
   platform: 'vercel' | 'railway' | 'aws' | 'docker' | null
