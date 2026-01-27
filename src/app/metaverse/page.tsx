@@ -73,8 +73,8 @@ export default function Metaverse() {
           3D visualization coming soon. This is a placeholder for the agent metaverse interface.
         </p>
         <div className="flex gap-4">
-          <a 
-            href="/" 
+          <Link
+            href="/"
             className="px-8 py-4 bg-white/10 backdrop-blur rounded-xl hover:bg-white/20 transition-all"
           >
             Back to Home
