@@ -1,6 +1,27 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Loader2 } from 'lucide-react';
+import { Providers } from '@/components/Providers';
+
+// Lazy load the Editor and ChatPane components
+const Editor = dynamic(() => import('@/components/Editor').then(mod => ({ default: mod.Editor })), {
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+      <Loader2 className="h-8 w-8 animate-spin text-[#6841e7]" />
+    </div>
+  ),
+});
+
+const ChatPane = dynamic(() => import('@/components/ChatPane').then(mod => ({ default: mod.ChatPane })), {
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-[#0f0f23]">
+      <Loader2 className="h-8 w-8 animate-spin text-[#6841e7]" />
+    </div>
+  ),
+});
 
 export default function Dashboard() {
   const router = useRouter();
@@ -10,73 +31,95 @@ export default function Dashboard() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      <div className="container mx-auto px-4 py-8">
+    <Providers>
+      <div className="h-screen w-full bg-[#0a0a0a] text-white">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="h-14 bg-[#1a1a2e] border-b border-[#404050] flex items-center justify-between px-6">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Grok Code Dashboard</h1>
-            <p className="text-white/70">AI coding workspace ready</p>
+            <h1 className="text-xl font-bold text-white">Grok Code</h1>
+            <p className="text-sm text-[#9ca3af]">AI-Powered Development Workspace</p>
           </div>
           <button
             onClick={() => { localStorage.removeItem('grokcode_token'); router.push('/'); }}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors"
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
           >
             Logout
           </button>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* New Project Card */}
-          <div className="glass backdrop-blur-xl bg-white/10 rounded-2xl p-6 shadow-xl border border-white/10">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🚀</div>
-              <h3 className="text-2xl font-bold text-white mb-2">New Project</h3>
-              <p className="text-white/70 mb-6">Start a new AI coding project</p>
-              <button className="w-full px-6 py-3 bg-white text-gray-900 font-bold rounded-xl hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg">
-                Create Project
-              </button>
-            </div>
-          </div>
+        {/* Main Content - Split Layout */}
+        <div className="h-[calc(100vh-3.5rem)]">
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="h-full"
+            autoSaveId="dashboard-layout"
+          >
+            {/* Left Panel - Monaco Editor */}
+            <ResizablePanel
+              defaultSize={50}
+              minSize={20}
+              className="h-full"
+            >
+              <div className="h-full border-r border-[#404050]">
+                <Suspense fallback={
+                  <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#6841e7]" />
+                  </div>
+                }>
+                  <Editor
+                    filePath="welcome.ts"
+                    content={`// Welcome to Grok Code!
+// This is your AI-powered coding workspace
 
-          {/* AI Code Gen Card */}
-          <div className="glass backdrop-blur-xl bg-white/10 rounded-2xl p-6 shadow-xl border border-white/10">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🤖</div>
-              <h3 className="text-2xl font-bold text-white mb-2">AI Code Gen</h3>
-              <p className="text-white/70 mb-6">Prompt → Production code</p>
-              <button className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg">
-                Generate Code
-              </button>
-            </div>
-          </div>
+interface Welcome {
+  message: string;
+  features: string[];
+}
 
-          {/* Deploy Card */}
-          <div className="glass backdrop-blur-xl bg-white/10 rounded-2xl p-6 shadow-xl border border-white/10">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🚀</div>
-              <h3 className="text-2xl font-bold text-white mb-2">Deploy</h3>
-              <p className="text-white/70 mb-6">One-click Vercel deployment</p>
-              <button className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg">
-                Deploy Now
-              </button>
-            </div>
-          </div>
-        </div>
+const welcome: Welcome = {
+  message: "Hello! I'm your AI coding assistant.",
+  features: [
+    "🤖 AI-powered code generation",
+    "🚀 One-click deployments",
+    "💬 Interactive chat interface",
+    "📝 Multi-language support"
+  ]
+};
 
-        {/* Workspace Placeholder */}
-        <div className="mt-8 glass backdrop-blur-xl bg-white/10 rounded-2xl p-8 shadow-xl border border-white/10">
-          <h2 className="text-2xl font-bold text-white mb-4">Your AI Coding Workspace</h2>
-          <p className="text-white/70 mb-6">
-            Ready for code generation, reviews, and deployments. Powered by Grok API.
-          </p>
-          <div className="bg-gray-800 rounded-xl p-6 text-center">
-            <div className="text-6xl mb-4">💻</div>
-            <p className="text-gray-400">Monaco Editor / Chat UI will be integrated here</p>
-          </div>
+console.log(welcome.message);
+export default welcome;`}
+                  />
+                </Suspense>
+              </div>
+            </ResizablePanel>
+
+            {/* Resizable Handle */}
+            <ResizableHandle
+              withHandle
+              className="w-1 bg-[#404050] hover:bg-[#6841e7] transition-colors"
+            />
+
+            {/* Right Panel - Chat Interface */}
+            <ResizablePanel
+              defaultSize={50}
+              minSize={20}
+              className="h-full"
+            >
+              <div className="h-full">
+                <Suspense fallback={
+                  <div className="flex items-center justify-center h-full bg-[#0f0f23]">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#6841e7]" />
+                  </div>
+                }>
+                  <ChatPane
+                    newSessionMessage="Hello! I'm your AI coding assistant. How can I help you with your project today?"
+                  />
+                </Suspense>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       </div>
-    </div>
+    </Providers>
   );
 }
