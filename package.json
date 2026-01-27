@@ -29,7 +29,7 @@
     "analyze": "ANALYZE=true next build",
     "lighthouse": "npx lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json --chrome-flags=\"--headless --no-sandbox\"",
     "lighthouse:ci": "npx @lhci/cli@latest autorun --config=.lighthouserc.js",
-    "postinstall": "prisma generate",
+    "postinstall": "echo 'Static deploy - Prisma skipped'",
     "prepare": "prisma generate || true",
     "railway:build": "prisma generate && prisma migrate deploy && next build",
     "db:push": "prisma db push",
