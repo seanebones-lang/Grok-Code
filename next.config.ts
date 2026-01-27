@@ -5,6 +5,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 })
 
+import { validateEnvironment } from './src/lib/env-validator'
+
 // Validate environment - warn only, don't fail build
 const validationResult = validateEnvironment()
 if (!validationResult.valid) {
