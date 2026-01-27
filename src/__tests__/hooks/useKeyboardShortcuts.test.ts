@@ -1,9 +1,17 @@
 import { renderHook } from '@testing-library/react'
+import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { useKeyboardShortcuts, formatShortcut } from '@/hooks/useKeyboardShortcuts'
+
+// Global mock for ResizeObserver (common in React Testing Library)
+global.ResizeObserver = vi.fn(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}))
 
 describe('useKeyboardShortcuts', () => {
   it('should call handler when shortcut is pressed', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     
     renderHook(() => useKeyboardShortcuts([
       { key: 'k', metaKey: true, handler },
@@ -20,7 +28,7 @@ describe('useKeyboardShortcuts', () => {
   })
 
   it('should not call handler when wrong key is pressed', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     
     renderHook(() => useKeyboardShortcuts([
       { key: 'k', metaKey: true, handler },
@@ -37,7 +45,7 @@ describe('useKeyboardShortcuts', () => {
   })
 
   it('should not call handler when modifier is missing', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     
     renderHook(() => useKeyboardShortcuts([
       { key: 'k', metaKey: true, handler },

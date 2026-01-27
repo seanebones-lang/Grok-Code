@@ -7,12 +7,19 @@ import {
   setStorageItemWithExpiry,
   getStorageItemWithExpiry,
 } from '@/lib/storage'
+import { vi, describe, beforeEach, it, expect } from 'vitest'
+
+global.ResizeObserver = vi.fn(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}))
 
 describe('Storage utilities', () => {
   beforeEach(() => {
     // Clear localStorage before each test
     localStorage.clear()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('getStorageItem', () => {
@@ -22,20 +29,20 @@ describe('Storage utilities', () => {
     })
 
     it('should return stored value when item exists', () => {
-      localStorage.setItem('grokcode_test', JSON.stringify('stored value'))
+      localStorage.setItem('test', JSON.stringify('stored value'))
       const result = getStorageItem('test', 'default')
       expect(result).toBe('stored value')
     })
 
     it('should handle complex objects', () => {
       const obj = { foo: 'bar', nested: { baz: 123 } }
-      localStorage.setItem('grokcode_complex', JSON.stringify(obj))
+      localStorage.setItem('complex', JSON.stringify(obj))
       const result = getStorageItem('complex', {})
       expect(result).toEqual(obj)
     })
 
     it('should return default value on parse error', () => {
-      localStorage.setItem('grokcode_invalid', 'not valid json')
+      localStorage.setItem('invalid', 'not valid json')
       const result = getStorageItem('invalid', 'default')
       expect(result).toBe('default')
     })
@@ -123,7 +130,7 @@ describe('Storage utilities', () => {
 
     it('should return default if expired', () => {
       const pastExpiry = Date.now() - 60000
-      localStorage.setItem('grokcode_test', JSON.stringify({
+      localStorage.setItem('test', JSON.stringify({
         value: 'stored',
         _expiry: pastExpiry,
       }))
@@ -134,7 +141,7 @@ describe('Storage utilities', () => {
 
     it('should remove expired item', () => {
       const pastExpiry = Date.now() - 60000
-      localStorage.setItem('grokcode_test', JSON.stringify({
+      localStorage.setItem('test', JSON.stringify({
         value: 'stored',
         _expiry: pastExpiry,
       }))
