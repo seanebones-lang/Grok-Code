@@ -35,7 +35,7 @@ interface ValidationResult {
 }
 
 // Cache validation results to avoid repeated warnings during build
-let validationCache: { timestamp: number; result: ValidationResult } | null = null
+const validationCache: { timestamp: number; result: ValidationResult } | null = null
 const CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutes
 let warningsLogged = false // Only log warnings once per process
 

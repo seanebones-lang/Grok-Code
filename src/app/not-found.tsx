@@ -13,7 +13,7 @@ export default function NotFound() {
         <p className="text-[#9ca3af] mb-8">
           The page you're looking for doesn't exist.
         </p>
-        <a
+        <Link
           href="/"
           className="px-6 py-3 bg-primary hover:bg-primary/80 rounded-lg transition-colors inline-block"
         >
