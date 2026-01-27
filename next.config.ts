@@ -5,14 +5,10 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 })
 
-// Validate environment on startup (in production builds only)
-if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-  try {
-    require('./src/app/startup')
-  } catch (error) {
-    // Environment validation failed - config will still be created but error is logged
-    console.error('Environment validation error during config:', error)
-  }
+// Validate environment - warn only, don't fail build
+const validationResult = validateEnvironment()
+if (!validationResult.valid) {
+  console.warn('⚠️ Environment validation warnings during build:', validationResult.errors)
 }
 
 const nextConfig: NextConfig = {

@@ -59,19 +59,19 @@ export class GitHubAPIError extends Error {
     super(message)
     this.name = 'GitHubAPIError'
   }
-  
+
   get isNotFound(): boolean {
     return this.status === 404
   }
-  
+
   get isUnauthorized(): boolean {
     return this.status === 401
   }
-  
+
   get isForbidden(): boolean {
     return this.status === 403
   }
-  
+
   get isRateLimited(): boolean {
     return this.status === 403 && this.message.includes('rate limit')
   }
