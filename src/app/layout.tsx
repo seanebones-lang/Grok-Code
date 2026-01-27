@@ -114,37 +114,6 @@ export default function RootLayout({
               Skip to main content
             </a>
             
-            {/* Mobile Menu - Only visible on small screens */}
-            <MobileMenu
-              sidebar={
-                <ErrorBoundary 
-                  fallback={
-                    <div 
-                      className="h-full p-4 bg-[#1a1a2e] flex flex-col items-center justify-center text-white"
-                      role="alert"
-                      aria-live="assertive"
-                    >
-                      <div className="max-w-md text-center space-y-4">
-                        <h2 className="text-lg font-semibold text-red-400">Sidebar Error</h2>
-                        <p className="text-sm text-[#9ca3af]">
-                          The sidebar encountered an error. Try refreshing the page.
-                        </p>
-                        <button
-                          onClick={() => window.location.reload()}
-                          className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#1a1a2e]"
-                          aria-label="Reload page to fix sidebar error"
-                        >
-                          Reload Page
-                        </button>
-                      </div>
-                    </div>
-                  }
-                >
-                  <Sidebar />
-                </ErrorBoundary>
-              }
-            />
-            
             {/* Full-screen resizable split layout - two halves like Claude Code */}
             <ResizablePanelGroup 
               direction="horizontal" 
@@ -170,23 +139,12 @@ export default function RootLayout({
                           <p className="text-sm text-[#9ca3af]">
                             The sidebar encountered an error. Try refreshing the page or disconnecting and reconnecting your repository.
                           </p>
-                          <button
-                            onClick={() => window.location.reload()}
-                            className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#1a1a2e]"
-                            aria-label="Reload page to fix sidebar error"
-                          >
-                            Reload Page
-                          </button>
+                        <p className="text-sm text-[#9ca3af] mt-2">
+                          Please refresh the page to reload the sidebar.
+                        </p>
                         </div>
                       </div>
                     }
-                    onError={(error, errorInfo) => {
-                      // Use proper error logging
-                      if (process.env.NODE_ENV === 'development') {
-                        console.error('[Sidebar] Error caught by boundary:', error)
-                        console.error('[Sidebar] Error info:', errorInfo)
-                      }
-                    }}
                   >
                     <Sidebar />
                   </ErrorBoundary>
