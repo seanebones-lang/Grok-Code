@@ -79,7 +79,7 @@ export default function Metaverse() {
             className="px-8 py-4 bg-white/10 backdrop-blur rounded-xl hover:bg-white/20 transition-all"
           >
             Back to Home
-          </a>
+          </Link>
           <a 
             href="/swarm" 
             className="px-8 py-4 bg-purple-600 rounded-xl hover:bg-purple-700 transition-all"

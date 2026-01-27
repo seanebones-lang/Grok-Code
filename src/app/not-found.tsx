@@ -20,7 +20,7 @@ export default function NotFound() {
           className="px-6 py-3 bg-primary hover:bg-primary/80 rounded-lg transition-colors inline-block"
         >
           Go Home
-        </a>
+        </Link>
       </div>
     </div>
   )
