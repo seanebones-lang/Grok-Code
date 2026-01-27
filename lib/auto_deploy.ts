@@ -72,21 +72,12 @@ export async function autoDeploy(
     }
   }
 
-  // Fallback: Local Docker
-  try {
-    const dockerUrl = await deployToDocker()
-    return {
-      url: dockerUrl,
-      platform: 'docker',
-      status: 'success',
-    }
-  } catch (dockerErr: any) {
-    return {
-      url: null,
-      platform: null,
-      status: 'failed',
-      error: `All deployments failed: ${dockerErr.message || dockerErr}`,
-    }
+  // Fallback: Docker deployment removed for web-only
+  return {
+    url: null,
+    platform: null,
+    status: 'failed',
+    error: 'Docker deployment not available in web-only mode',
   }
 }
 
@@ -155,9 +146,8 @@ async function deployToAWS(
   return null
 }
 
-/**
- * Deploy to local Docker as fallback
- */
+// Docker deployment function removed for web-only deployment
+/*
 async function deployToDocker(): Promise<string> {
   const imageName = 'empire-self:latest'
   const containerName = 'empire-self'
@@ -200,3 +190,4 @@ async function deployToDocker(): Promise<string> {
     throw new Error(`Docker deployment failed: ${error.message || error}`)
   }
 }
+*/
