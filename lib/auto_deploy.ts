@@ -1,6 +1,7 @@
-import Docker from 'dockerode';
+// Docker auto-deployment functionality removed for web-only refactor
+// import Docker from 'dockerode';
 
-const docker = new Docker();
+// const docker = new Docker();
 
 export interface DeploymentResult {
   url: string | null
