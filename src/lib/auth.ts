@@ -8,14 +8,14 @@ import { Octokit } from '@octokit/rest'
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-secret-change-in-production'
-const JWT_EXPIRY = '7d' // 7 days for mobile tokens
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d'
 
 // GitHub OAuth Configuration
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || process.env.GITHUB_ID || ''
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || process.env.GITHUB_SECRET || ''
 
 /**
- * Sign JWT token for mobile authentication
+ * Sign JWT token for authentication
  */
 export function signJWT(payload: { userId: string; email?: string; name?: string }): string {
   return jwt.sign(
@@ -124,7 +124,7 @@ export async function completeOAuthFlow(code: string): Promise<{
   // Step 2: Get user info from GitHub
   const githubUser = await githubOAuth.getUserFromToken(access_token)
   
-  // Step 3: Sign JWT for mobile app
+  // Step 3: Sign JWT
   const token = signJWT({
     userId: githubUser.id,
     email: githubUser.email,

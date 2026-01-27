@@ -17,6 +17,7 @@ import { useOrchestration } from '@/hooks/useOrchestration'
 import { MessageList } from '@/components/MessageList'
 import { StreamingIndicator } from '@/components/StreamingIndicator'
 import { ErrorDisplay } from '@/components/ErrorDisplay'
+import { InputBar } from '@/components/InputBar'
 
 // Lazy load AgentRunner - heavy component with agent orchestration logic
 const AgentRunner = lazy(() => import('@/components/AgentRunner').then(module => ({ default: module.AgentRunner })))
@@ -68,7 +69,6 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
   const [isOnline, setIsOnline] = useState(true)
   const [currentMode, setCurrentMode] = useState<ChatMode>('default')
   const [showAgentMode, setShowAgentMode] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
   const lastRequestRef = useRef<{ content: string; mode: ChatMode } | null>(null)
   const toast = useToastActions()
 
@@ -487,27 +487,11 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
       </div>
       
       {/* Bottom reply input - simple like Claude Code */}
-      <div className="border-t border-[#1a1a1a] bg-[#0f0f23] px-4 py-3">
-        <div className="relative">
-          <input
-            ref={inputRef as React.RefObject<HTMLInputElement>}
-            type="text"
-            placeholder="Reply..."
-            className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#1a1a1a] rounded-lg text-white text-sm placeholder:text-[#6b7280] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                const value = (e.target as HTMLInputElement).value.trim()
-                if (value && !isLoading) {
-                  handleSendMessage(value, 'default')
-                  ;(e.target as HTMLInputElement).value = ''
-                }
-              }
-            }}
-            disabled={isLoading || !isOnline}
-          />
-        </div>
-      </div>
+      <InputBar
+        isLoading={isLoading}
+        isOnline={isOnline}
+        onSendMessage={handleSendMessage}
+      />
     </div>
   )
 }

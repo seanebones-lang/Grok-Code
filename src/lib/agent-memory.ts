@@ -329,7 +329,7 @@ export function rememberLearning(learning: string, context?: string): MemoryEntr
 function extractTags(text: string): string[] {
   const techTerms = [
     'react', 'next', 'typescript', 'javascript', 'node', 'api', 'database',
-    'auth', 'security', 'performance', 'testing', 'mobile', 'ui', 'ux',
+    'auth', 'security', 'performance', 'testing', 'ui', 'ux',
     'prisma', 'postgres', 'mongodb', 'redis', 'docker', 'aws', 'vercel',
     'tailwind', 'css', 'component', 'hook', 'state', 'redux', 'zustand',
     'graphql', 'rest', 'websocket', 'oauth', 'jwt', 'stripe', 'payment'

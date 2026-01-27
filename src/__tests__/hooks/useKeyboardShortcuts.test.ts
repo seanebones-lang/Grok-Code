@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react'
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { useKeyboardShortcuts, formatShortcut } from '@/hooks/useKeyboardShortcuts'
 
@@ -62,7 +63,7 @@ describe('useKeyboardShortcuts', () => {
   })
 
   it('should handle Escape key', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     
     renderHook(() => useKeyboardShortcuts([
       { key: 'Escape', handler },
@@ -96,7 +97,7 @@ describe('useKeyboardShortcuts', () => {
   })
 
   it('should respect enabled option', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     
     renderHook(() => useKeyboardShortcuts(
       [{ key: 'k', metaKey: true, handler }],
@@ -109,7 +110,7 @@ describe('useKeyboardShortcuts', () => {
   })
 
   it('should cleanup on unmount', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     
     const { unmount } = renderHook(() => useKeyboardShortcuts([
       { key: 'k', metaKey: true, handler },

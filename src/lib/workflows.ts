@@ -21,7 +21,7 @@ export interface Workflow {
   name: string
   emoji: string
   description: string
-  category: 'development' | 'quality' | 'devops' | 'mobile' | 'data'
+  category: 'development' | 'quality' | 'devops' | 'data'
   steps: WorkflowStep[]
   estimatedTime: string
   tags: string[]
@@ -432,6 +432,5 @@ export const WORKFLOW_CATEGORIES = [
   { id: 'development', name: 'Development', emoji: '💻' },
   { id: 'quality', name: 'Quality', emoji: '✨' },
   { id: 'devops', name: 'DevOps', emoji: '🚀' },
-  { id: 'mobile', name: 'Mobile', emoji: '📱' },
   { id: 'data', name: 'Data & AI', emoji: '📊' },
 ] as const

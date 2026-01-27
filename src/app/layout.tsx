@@ -4,7 +4,6 @@ import '@/styles/globals.css'
 import { Providers } from '@/components/Providers'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { SkipLinks } from '@/components/SkipLinks'
-import { MobileMenu } from '@/components/ui/mobile-menu'
 import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 
@@ -152,7 +151,7 @@ export default function RootLayout({
               className="h-screen w-full bg-[#0a0a0a]"
               autoSaveId="nexteleven-layout"
             >
-              {/* Left Panel - Sidebar (hidden on mobile, shown via MobileMenu) */}
+              {/* Left Panel - Sidebar */}
               <ResizablePanel 
                 defaultSize={50}
                 minSize={10}
@@ -194,7 +193,7 @@ export default function RootLayout({
                 </aside>
               </ResizablePanel>
               
-              {/* Resizable Handle - Hidden on mobile */}
+              {/* Resizable Handle */}
               <ResizableHandle 
                 withHandle 
                 className="hidden sm:block" 

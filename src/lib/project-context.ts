@@ -209,7 +209,6 @@ paths:
 agents:
   preferred:
     - fullstack
-    - mobile
     - testing
   instructions:
     security: "Pay special attention to API route security and token validation"

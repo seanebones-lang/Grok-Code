@@ -18,8 +18,6 @@ module.exports = {
       ],
       // Settings
       settings: {
-        // Use mobile emulation
-        emulatedFormFactor: 'mobile',
         // Throttling
         throttling: {
           rttMs: 40,
@@ -28,7 +26,6 @@ module.exports = {
         },
         // Screen emulation
         screenEmulation: {
-          mobile: true,
           width: 412,
           height: 732,
           deviceScaleFactor: 2.625,
