@@ -52,7 +52,6 @@ const SHORTCUTS: ShortcutGroup[] = [
       { keys: ['/agent'], description: 'Start agent command' },
       { keys: ['/agent', 'swarm'], description: 'Run all agents' },
       { keys: ['/agent', 'security'], description: 'Security scan' },
-      { keys: ['/agent', 'mobile'], description: 'Mobile agent' },
     ],
   },
   {

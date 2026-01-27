@@ -7,7 +7,7 @@
     "All API endpoints (/api/chat, /api/github/*, /api/agent/*, /api/system/*, /api/workflow/*)",
     "UI components (sidebar, command palette, keyboard shortcuts, file tree)",
     "All page routes (swarm, community, marketplace, web3, federate, domination, metaverse, singularity, self-evolve)",
-    "Responsive design (mobile/tablet/desktop)",
+    "Responsive design (desktop)",
     "Accessibility (keyboard navigation, ARIA labels)",
     "Performance (load times, API response times)",
     "Security (hardcoded tokens, input validation, XSS prevention, CSRF protection)",

@@ -43,7 +43,6 @@ export type TaskType =
   | 'testing' 
   | 'documentation' 
   | 'deployment' 
-  | 'mobile' 
   | 'api' 
   | 'database' 
   | 'ui' 
@@ -65,7 +64,6 @@ const TASK_KEYWORDS: Record<TaskType, string[]> = {
   testing: ['test', 'testing', 'coverage', 'unit test', 'e2e', 'integration test', 'spec'],
   documentation: ['document', 'docs', 'readme', 'api docs', 'comment', 'explain'],
   deployment: ['deploy', 'release', 'production', 'ci/cd', 'pipeline', 'docker', 'kubernetes'],
-  mobile: ['mobile', 'ios', 'android', 'react native', 'flutter', 'app', 'phone', 'tablet'],
   api: ['api', 'endpoint', 'rest', 'graphql', 'route', 'request', 'response'],
   database: ['database', 'db', 'sql', 'query', 'schema', 'migration', 'postgres', 'mongodb'],
   ui: ['ui', 'ux', 'design', 'style', 'css', 'component', 'layout', 'responsive', 'dark mode'],
@@ -85,7 +83,6 @@ const TASK_TO_AGENT: Record<TaskType, string[]> = {
   testing: ['testing'],
   documentation: ['documentation'],
   deployment: ['devops', 'security'],
-  mobile: ['mobile', 'uiux', 'testing'],
   api: ['api', 'database', 'documentation'],
   database: ['database', 'api'],
   ui: ['uiux', 'accessibility'],
@@ -186,7 +183,6 @@ function getAgentReason(agentId: string, taskType: TaskType): string {
     codeReview: 'Ensures code quality and best practices',
     optimization: 'Improves code efficiency',
     fullstack: 'Handles end-to-end implementation',
-    mobile: 'Expert in mobile development patterns',
     api: 'Designs robust, scalable APIs',
     database: 'Optimizes data structures and queries',
     uiux: 'Creates beautiful, intuitive interfaces',

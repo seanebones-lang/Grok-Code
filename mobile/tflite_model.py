@@ -1,1 +1,0 @@
-import tensorflow as tf; model = tf.lite.model_builder.TFLiteModel(); model.add(tf.keras.layers.Dense(1)); converter = tf.lite.TFLiteConverter.from_keras_model(model); tflite_model = converter.convert()
