@@ -41,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       // Send properties to the client
       if (session.user) {
-        session.user.id = token.sub
+        session.user.id = token.sub || ''
         session.user.accessToken = token.accessToken as string
         session.user.githubUsername = token.githubUsername as string
       }
