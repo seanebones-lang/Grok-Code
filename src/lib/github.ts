@@ -428,7 +428,7 @@ export async function pushToGitHub(
 
   // Wrap with circuit breaker + retry
   return githubCircuitBreaker.execute(async () => {
-    return withRetry(async () => {
+  return withRetry(async () => {
       const octokit = createOctokit(token)
 
     // Get current commit SHA
