@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import Link from 'next/link'
 
 // Client Component - already dynamic by nature, no route segment config needed
 
