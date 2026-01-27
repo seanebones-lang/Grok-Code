@@ -6,6 +6,21 @@
 import NextAuth from "next-auth"
 import GitHub from "next-auth/providers/github"
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      accessToken?: string
+      githubUsername?: string
+    } & DefaultSession["user"]
+  }
+
+  interface JWT {
+    accessToken?: string
+    githubUsername?: string
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     GitHub({
