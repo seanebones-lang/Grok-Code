@@ -30,10 +30,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       
       if (profile) {
-        token.name = profile.name || profile.login
-        token.email = profile.email
-        token.image = profile.avatar_url
-        token.githubUsername = profile.login
+        token.name = (profile as any).name || (profile as any).login
+        token.email = (profile as any).email
+        token.image = (profile as any).avatar_url
+        token.githubUsername = (profile as any).login
       }
       
       return token
