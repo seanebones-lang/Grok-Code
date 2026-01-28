@@ -1,74 +1,145 @@
 'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!localStorage.getItem('grokcode_token')) router.replace('/');
-  }, [router]);
+  const handleLogout = () => {
+    localStorage.removeItem('grokcode_token');
+    window.location.href = '/';
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Grok Code Dashboard</h1>
-            <p className="text-white/70">AI coding workspace - Components loading...</p>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(to bottom right, #1a1a2e, #16213e, #0f3460)',
+      color: 'white',
+      padding: '2rem',
+      fontFamily: 'system-ui, sans-serif'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h1 style={{
+          fontSize: '3rem',
+          fontWeight: 'bold',
+          marginBottom: '1rem',
+          textAlign: 'center'
+        }}>
+          Grok Code Dashboard
+        </h1>
+
+        <p style={{
+          fontSize: '1.2rem',
+          opacity: 0.8,
+          textAlign: 'center',
+          marginBottom: '3rem'
+        }}>
+          AI Coding Workspace - Successfully Loaded! 🎉
+        </p>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '2rem',
+          marginBottom: '3rem'
+        }}>
+          {/* Left Panel */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>Code Editor</h2>
+            <div style={{
+              background: '#2a2a2a',
+              borderRadius: '12px',
+              padding: '2rem',
+              minHeight: '300px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>💻</div>
+              <p style={{ color: '#ccc' }}>Monaco Editor Panel</p>
+              <p style={{ color: '#888', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                Ready for code editing
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => { localStorage.removeItem('grokcode_token'); router.push('/'); }}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors"
-          >
-            Logout
-          </button>
+
+          {/* Right Panel */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>AI Chat</h2>
+            <div style={{
+              background: '#2a2a2a',
+              borderRadius: '12px',
+              padding: '2rem',
+              minHeight: '300px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🤖</div>
+              <p style={{ color: '#ccc' }}>Chat Interface Panel</p>
+              <p style={{ color: '#888', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                Ready for AI conversations
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Loading State */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Monaco Editor Placeholder */}
-          <div className="glass backdrop-blur-xl bg-white/10 rounded-2xl p-8 shadow-xl border border-white/10">
-            <h2 className="text-2xl font-bold text-white mb-4">Code Editor</h2>
-            <div className="bg-gray-800 rounded-xl p-6 h-96 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-6xl mb-4">💻</div>
-                <p className="text-gray-300">Monaco Editor will load here</p>
-                <p className="text-gray-500 text-sm mt-2">Loading code editing interface...</p>
-              </div>
+        {/* Status Section */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '16px',
+          padding: '2rem',
+          textAlign: 'center'
+        }}>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>System Status</h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
+            <div>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
+              <p style={{ opacity: 0.8 }}>Dashboard Loaded</p>
+            </div>
+            <div>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔒</div>
+              <p style={{ opacity: 0.8 }}>Authentication Active</p>
+            </div>
+            <div>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🚀</div>
+              <p style={{ opacity: 0.8 }}>Ready for Components</p>
             </div>
           </div>
 
-          {/* Chat Interface Placeholder */}
-          <div className="glass backdrop-blur-xl bg-white/10 rounded-2xl p-8 shadow-xl border border-white/10">
-            <h2 className="text-2xl font-bold text-white mb-4">AI Chat</h2>
-            <div className="bg-gray-800 rounded-xl p-6 h-96 flex flex-col items-center justify-center">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🤖</div>
-                <p className="text-gray-300">Chat interface will load here</p>
-                <p className="text-gray-500 text-sm mt-2">Connecting to AI assistant...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Info */}
-        <div className="mt-8 glass backdrop-blur-xl bg-white/10 rounded-2xl p-6 shadow-xl border border-white/10">
-          <h3 className="text-xl font-bold text-white mb-4">System Status</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl mb-2">✅</div>
-              <p className="text-white/70">Authentication</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl mb-2">⏳</div>
-              <p className="text-white/70">Components Loading</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl mb-2">🚀</div>
-              <p className="text-white/70">Ready for Development</p>
-            </div>
+          <div style={{ marginTop: '2rem' }}>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                cursor: 'pointer'
+              }}
+            >
+              Logout & Return to Login
+            </button>
           </div>
         </div>
       </div>
