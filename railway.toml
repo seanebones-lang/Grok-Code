@@ -5,7 +5,7 @@
 builder = "NIXPACKS"
 buildCommand = "npm ci && npm run build"
 watchPatterns = ["src/**", "package.json"]
-ignorePaths = ["sandbox/**", "*.py", "requirements*.txt", "__pycache__/**"]
+ignorePaths = ["sandbox/**", "*.py", "requirements*.txt", "__pycache__/**", "Dockerfile*"]
 
 [deploy]
 startCommand = "npm start"
