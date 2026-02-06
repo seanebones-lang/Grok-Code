@@ -42,16 +42,14 @@ const options = {
   },
 };
 
-// Update service source to GitHub repo
-const updateServiceQuery = {
+// Connect GitHub repo to service
+const connectRepoQuery = {
   query: `
     mutation {
-      serviceUpdate(input: {
-        id: "${serviceId}",
-        source: {
-          repo: "${repo}",
-          branch: "${branch}"
-        }
+      serviceConnectRepo(input: {
+        serviceId: "${serviceId}",
+        repo: "${repo}",
+        branch: "${branch}"
       }) {
         id
         name
@@ -102,5 +100,5 @@ req.on('error', (e) => {
   console.error(`Error: ${e.message}`);
 });
 
-req.write(JSON.stringify(updateServiceQuery));
+req.write(JSON.stringify(connectRepoQuery));
 req.end();
