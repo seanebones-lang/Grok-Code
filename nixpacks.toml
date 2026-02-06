@@ -1,11 +1,12 @@
 [phases.setup]
 nixPkgs = ["nodejs-22_x", "npm"]
+providers = ["node"]
 
 [phases.install]
 cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["npx prisma generate", "npm run build"]
+cmds = ["npm run build"]
 
 # Note: Prisma migrations should run during deployment, not build
 # Railway will handle migrations via railway.toml deploy hooks if configured
