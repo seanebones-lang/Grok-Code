@@ -1,0 +1,10 @@
+sandbox/
+*.py
+requirements*.txt
+__pycache__/
+*.pyc
+.python-version
+requirements.in
+requirements-langchain.txt
+requirements-nas.txt
+requirements-omni.txt
