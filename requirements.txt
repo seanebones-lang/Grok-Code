@@ -58,6 +58,8 @@ tiktoken>=0.7.0          # OpenAI tokenizer
 transformers>=4.40.0     # HuggingFace models
 ccxt>=4.4.0              # Cryptocurrency exchange trading (100+ exchanges)
 python-chess>=1.10.0     # Chess library with move generation
+yfinance>=0.2.0          # Yahoo Finance API for stock data
+ta>=0.11.0               # Technical Analysis Library
 
 # ----------------------------------------------------------------------------- 
 # Vector Databases (RAG)

@@ -2,10 +2,9 @@
 # This is the primary configuration file for Railway deployments
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
-watchPatterns = ["src/**", "package.json"]
-ignorePaths = ["sandbox/**", "*.py", "requirements*.txt", "__pycache__/**", "Dockerfile*"]
+builder = "DOCKERFILE"
+buildCommand = ""
+watchPatterns = ["src/**", "package.json", "sandbox/**"]
 
 [deploy]
 startCommand = "npm start"
