@@ -22,11 +22,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Generate Prisma Client
-        run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost' }}
-      
       - name: Build application
         run: npm run build
         env:
@@ -41,9 +36,9 @@ jobs:
         uses: bervProject/railway-deploy@v1.0.0
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: ${{ secrets.RAILWAY_SERVICE_ID }}
-        # Note: RAILWAY_TOKEN should be set in GitHub Secrets
-        # Token stored in .railway-token (gitignored) for local use
+          service: ${{ secrets.RAILWAY_SERVICE_ID || 'ffb262a0-298a-4c68-ac53-01f4d20c5401' }}
+        # Note: RAILWAY_TOKEN and RAILWAY_SERVICE_ID should be set in GitHub Secrets
+        # Service ID: ffb262a0-298a-4c68-ac53-01f4d20c5401 (Grok-Code service)
         env:
           GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
           GITHUB_ID: ${{ secrets.GITHUB_ID }}
