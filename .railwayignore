@@ -1,7 +1,0 @@
-# Ignore Python files - this is a Node.js project
-sandbox/
-*.py
-requirements*.txt
-__pycache__/
-*.pyc
-.python-version
