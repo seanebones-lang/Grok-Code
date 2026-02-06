@@ -1,6 +1,7 @@
 [phases.setup]
 nixPkgs = ["nodejs-22_x", "npm"]
 providers = ["node"]
+python = null
 
 [phases.install]
 cmds = ["npm ci"]
