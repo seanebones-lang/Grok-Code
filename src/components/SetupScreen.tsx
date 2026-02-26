@@ -5,8 +5,8 @@ import { motion } from 'framer-motion'
 import { Github, Key, ArrowRight, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-const GITHUB_TOKEN_KEY = 'nexteleven_github_token'
-const REPO_KEY = 'nexteleven_connectedRepo'
+import { STORAGE_KEYS } from '@/lib/storage-keys'
+import { getStorageItem, setStorageItem } from '@/lib/storage'
 
 interface SetupScreenProps {
   onComplete: () => void
@@ -25,20 +25,15 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
     if (typeof window === 'undefined') return
     
     try {
-      const savedToken = localStorage.getItem(GITHUB_TOKEN_KEY) || ''
-      const savedRepo = localStorage.getItem(REPO_KEY)
+      const savedToken = getStorageItem<string>(STORAGE_KEYS.githubToken, '') || ''
+      const savedRepo = getStorageItem<{ owner: string; repo: string; branch: string } | null>(STORAGE_KEYS.connectedRepo, null)
       
       if (savedToken) {
         setGithubToken(savedToken)
       }
       
-      if (savedRepo) {
-        try {
-          const repo = JSON.parse(savedRepo)
-          setRepoUrl(`${repo.owner}/${repo.repo}`)
-        } catch {
-          // Ignore parse errors
-        }
+      if (savedRepo?.owner && savedRepo?.repo) {
+        setRepoUrl(`${savedRepo.owner}/${savedRepo.repo}`)
       }
       
       setMounted(true)
@@ -110,7 +105,7 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
       
       // Always save GitHub token if provided
       if (githubToken.trim()) {
-        localStorage.setItem(GITHUB_TOKEN_KEY, githubToken.trim())
+        setStorageItem(STORAGE_KEYS.githubToken, githubToken.trim())
       }
       
       // Parse and validate repo if provided
@@ -133,12 +128,12 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
         }
 
         // Store repo info
-        localStorage.setItem(REPO_KEY, JSON.stringify(repoInfo))
+        setStorageItem(STORAGE_KEYS.connectedRepo, repoInfo)
       }
       
       // Always save token (even if empty)
       if (!githubToken.trim()) {
-        localStorage.setItem(GITHUB_TOKEN_KEY, '')
+        setStorageItem(STORAGE_KEYS.githubToken, '')
       }
 
       // Mark setup as complete - this persists forever

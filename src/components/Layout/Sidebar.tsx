@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
-import { useSession, signIn, signOut } from 'next-auth/react'
-import { motion } from '@/lib/motion-optimized'
+import { motion } from 'framer-motion'
 import { 
+  Code2,
   FileText, 
+  ChevronLeft,
   ChevronRight, 
   ChevronDown,
   Github,
@@ -33,7 +34,6 @@ import {
   Gauge,
   Zap,
   Play,
-  LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -76,7 +76,6 @@ interface SidebarProps {
 }
 
 function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: SidebarProps) {
-  const { data: session, status } = useSession()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [files, setFiles] = useState<FileNode[]>([])
   const [loading, setLoading] = useState(false)
@@ -97,6 +96,8 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
   const [orchestratorMode, setOrchestratorModeState] = useState(false)
   const [healthReport, setHealthReport] = useState<HealthReport | null>(null)
   const [healthExpanded, setHealthExpanded] = useState(false)
+  const [githubTokenInput, setGithubTokenInput] = useState('')
+  const [showTokenInput, setShowTokenInput] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -259,35 +260,47 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
     }
   }, [files])
 
-  // Fetch user's repositories (uses OAuth session via feature-user-auth)
+  // Fetch user's repositories (uses GitHub token from localStorage or env)
   const fetchRepos = useCallback(async () => {
     setLoadingRepos(true)
+    setError(null)
     try {
-      const response = await fetch('/api/github/repos', {
-        headers: { Accept: 'application/json' },
-      })
+      const token = typeof window !== 'undefined' 
+        ? (getStorageItem<string>(STORAGE_KEYS.githubToken, '') || localStorage.getItem('nexteleven_github_token') || '')
+        : ''
+      const headers: Record<string, string> = { Accept: 'application/json' }
+      if (token) headers['X-Github-Token'] = token
+      const response = await fetch('/api/github/repos', { headers })
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(err.error ?? 'Failed to fetch repositories')
+        const msg = data?.error ?? 'Failed to fetch repositories'
+        if (response.status === 401) setShowTokenInput(true)
+        setError(msg)
+        return
       }
-      const data = await response.json()
-      setRepos(data.repos ?? [])
+      setRepos(data?.repos ?? [])
     } catch (e) {
-      console.error('Failed to fetch repos:', e)
-      setError(e instanceof Error ? e.message : 'Failed to fetch repositories')
+      const msg = e instanceof Error ? e.message : 'Failed to fetch repositories'
+      setError(msg)
+      setShowTokenInput(true)
     } finally {
       setLoadingRepos(false)
     }
   }, [])
 
-  // Fetch file tree (uses OAuth session via feature-user-auth)
+  // Fetch file tree (uses GitHub token from localStorage or env)
   const fetchFileTree = useCallback(async (owner: string, repo: string, branch: string) => {
     setLoading(true)
     setError(null)
     try {
+      const token = typeof window !== 'undefined'
+        ? (getStorageItem<string>(STORAGE_KEYS.githubToken, '') || localStorage.getItem('nexteleven_github_token') || '')
+        : ''
+      const headers: Record<string, string> = { Accept: 'application/json' }
+      if (token) headers['X-Github-Token'] = token
       const response = await fetch(
         `/api/github/tree?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}`,
-        { headers: { Accept: 'application/json' } }
+        { headers }
       )
       
       interface TreeResponse {
@@ -386,12 +399,12 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
   const handleConnectRepo = useCallback(async () => {
     setShowRepoModal(true)
     setError(null)
-    try {
-      await fetchRepos()
-    } catch (e) {
-      console.error('Failed to fetch repositories:', e)
-      setError(e instanceof Error ? e.message : 'Failed to load repositories.')
-    }
+    const savedToken = typeof window !== 'undefined'
+      ? (getStorageItem<string>(STORAGE_KEYS.githubToken, '') || localStorage.getItem('nexteleven_github_token') || '')
+      : ''
+    setGithubTokenInput(savedToken)
+    setShowTokenInput(!savedToken)
+    await fetchRepos()
   }, [fetchRepos])
 
   const handleSelectRepo = useCallback(async (repo: Repository) => {
@@ -542,17 +555,70 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
             </div>
             
             <div className="p-4 border-b border-[#404050] space-y-3">
-              <p className="text-xs text-[#9ca3af]">Using your GitHub account. Select a repository below.</p>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
-                <input
-                  type="text"
-                  placeholder="Search repositories..."
-                  value={repoSearch}
-                  onChange={(e) => setRepoSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-[#6841e7]"
-                />
-              </div>
+              {showTokenInput || !getStorageItem<string>(STORAGE_KEYS.githubToken, '') ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-[#9ca3af]">GitHub Personal Access Token</label>
+                  <input
+                    type="password"
+                    placeholder="ghp_xxxxxxxxxxxx (from github.com/settings/tokens)"
+                    value={githubTokenInput}
+                    onChange={(e) => setGithubTokenInput(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white text-sm placeholder-[#6b7280] focus:outline-none focus:border-[#6841e7]"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={async () => {
+                        setStorageItem(STORAGE_KEYS.githubToken, githubTokenInput.trim())
+                        setShowTokenInput(false)
+                        setError(null)
+                        await fetchRepos()
+                      }}
+                      disabled={!githubTokenInput.trim() || loadingRepos}
+                    >
+                      {loadingRepos ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save & Load Repos'}
+                    </Button>
+                    {getStorageItem<string>(STORAGE_KEYS.githubToken, '') && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowTokenInput(false)}
+                        className="text-[#9ca3af]"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#606070]">
+                    Create a token at github.com/settings/tokens with <code className="bg-[#2a2a3e] px-1 rounded">repo</code> scope
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-[#9ca3af]">Connected with GitHub. Select a repository below.</p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowTokenInput(true)}
+                      className="text-xs text-[#6841e7] hover:text-[#8b5cf6]"
+                    >
+                      Change token
+                    </Button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
+                    <input
+                      type="text"
+                      placeholder="Search repositories..."
+                      value={repoSearch}
+                      onChange={(e) => setRepoSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-[#2a2a3e] border border-[#404050] rounded-lg text-white placeholder-[#9ca3af] focus:outline-none focus:border-[#6841e7]"
+                    />
+                  </div>
+                </>
+              )}
             </div>
             
             <div className="flex-1 overflow-y-auto p-2">
@@ -592,83 +658,48 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
         </div>
       )}
 
-      <motion.aside
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className={`h-full w-full flex flex-col bg-[#1a1a2e] border-r border-[#404050] transition-all duration-300 text-white ${
-          isCollapsed ? 'hidden' : ''
-        }`}
-        role="complementary"
-        aria-label="File explorer"
-      >
+      <div className="flex h-full w-full">
+        {/* Collapsed: show expand button strip */}
+        {isCollapsed ? (
+          <button
+            onClick={toggleCollapse}
+            className="flex-shrink-0 w-10 h-full flex items-center justify-center bg-[#1a1a2e] border-r border-[#404050] hover:bg-[#2a2a3e] text-[#9ca3af] hover:text-white transition-colors"
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        ) : (
+          <>
+            <aside
+              className="h-full flex-1 min-w-0 flex flex-col bg-[#1a1a2e] border-r border-[#404050] text-white"
+              role="complementary"
+              aria-label="File explorer"
+            >
         {/* Brand Header - Fixed */}
         <div className="flex-shrink-0 p-4 border-b border-[#404050]">
-          <div className="mb-4">
-            <h1 className="text-lg font-semibold text-white mb-1">NextEleven Code</h1>
-            <span className="text-xs text-[#9ca3af] bg-[#2a2a3e] px-2 py-0.5 rounded">Research preview</span>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <div>
+              <h1 className="text-lg font-semibold text-white mb-1">Grok Code</h1>
+              <span className="text-xs text-[#9ca3af] bg-[#2a2a3e] px-2 py-0.5 rounded">Research preview</span>
+            </div>
+            <button
+              onClick={toggleCollapse}
+              className="p-1.5 rounded hover:bg-[#2a2a3e] text-[#9ca3af] hover:text-white transition-colors flex-shrink-0"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* User / Sign-in (feature-user-auth) */}
-          <div className="mb-4">
-            {status === 'loading' ? (
-              <div className="flex items-center gap-2 py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-[#9ca3af]" />
-                <span className="text-xs text-[#9ca3af]">Loading...</span>
-              </div>
-            ) : session?.user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-[#2a2a3e] hover:bg-[#333348] border border-[#404050] transition-colors text-left"
-                    aria-label="User menu"
-                  >
-                    {session.user.image ? (
-                      <img
-                        src={session.user.image}
-                        alt=""
-                        className="h-8 w-8 rounded-full"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Github className="h-4 w-4 text-primary" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
-                        {(session.user as { githubUsername?: string }).githubUsername ?? session.user.name ?? 'User'}
-                      </p>
-                      <p className="text-[10px] text-[#9ca3af] truncate">Signed in with GitHub</p>
-                    </div>
-                    <ChevronDown className="h-3 w-3 text-[#606070] flex-shrink-0" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="w-56 bg-[#1a1a2e] text-white border-[#404050]"
-                >
-                  <DropdownMenuLabel className="text-[#9ca3af]">Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-[#404050]" />
-                  <DropdownMenuItem
-                    onClick={() => signOut({ callbackUrl: '/' })}
-                    className="text-white hover:bg-[#2a2a3e] hover:text-white cursor-pointer"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full text-white border-[#404050] bg-[#2a2a3e] hover:bg-[#333348]"
-                onClick={() => signIn('github', { callbackUrl: '/' })}
-              >
-                <Github className="h-4 w-4 mr-2" />
-                Sign in with GitHub
-              </Button>
-            )}
+          {/* Private workspace - no auth */}
+          <div className="mb-4 flex items-center gap-2 px-2 py-2 rounded-lg bg-[#2a2a3e] border border-[#404050]">
+            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <Code2 className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate">Private workspace</p>
+              <p className="text-[10px] text-[#9ca3af] truncate">Grok Code</p>
+            </div>
           </div>
           
           {/* New Session Input Box - Taller with icons */}
@@ -1180,7 +1211,10 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
           </div>
         </div>
         
-      </motion.aside>
+          </aside>
+          </>
+        )}
+      </div>
     </>
   )
 }

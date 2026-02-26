@@ -7,8 +7,8 @@
 
 import { spawn } from 'child_process'
 import type { ToolCall, ToolExecutionResult } from '@/types/tools'
+import { isToolCall, validateToolCallArguments } from '@/types/tools'
 import { formatError } from '@/types/errors'
-import { validateToolCall, isToolCall } from '@/lib/utils/validation'
 import { fetchWithErrorHandling } from '@/lib/utils/fetch-helpers'
 import { createErrorResponse } from '@/lib/utils/error-handling'
 
@@ -55,26 +55,32 @@ export async function executeLocalTool(
 
   switch (toolCall.name) {
     case 'read_file': {
-      const path = toolCall.arguments.path as string
-      const result = await fetchWithErrorHandling(
-        `${baseUrl}/api/agent/files?path=${encodeURIComponent(path)}`
-      )
-      if (result.success) {
-        // Parse the response to get content
-        try {
-          const data = JSON.parse(result.output)
-          return { success: true, output: data.content || '' }
-        } catch {
-          return { success: true, output: result.output }
+      const pathArg = toolCall.arguments.path as string
+      try {
+        const response = await fetch(
+          `${baseUrl}/api/agent/local?action=read&path=${encodeURIComponent(pathArg)}`
+        )
+        const data = await response.json()
+        if (!response.ok) {
+          return { success: false, output: '', error: data.error || 'Failed to read file' }
+        }
+        const content = data.file?.content ?? data.content ?? ''
+        return { success: true, output: content }
+      } catch (error) {
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Failed to read file',
         }
       }
-      return result
     }
 
     case 'list_files': {
       try {
-        const path = (toolCall.arguments.path as string) || '.'
-        const response = await fetch(`${baseUrl}/api/agent/files?path=${encodeURIComponent(path)}`)
+        const pathArg = (toolCall.arguments.path as string) || '.'
+        const response = await fetch(
+          `${baseUrl}/api/agent/local?action=list&path=${encodeURIComponent(pathArg)}`
+        )
         const data = await response.json()
         if (!response.ok) {
           return { success: false, output: '', error: data.error || 'Failed to list files' }
@@ -84,53 +90,54 @@ export async function executeLocalTool(
           name: string
           size?: number
         }
-        
         const files = (data.files || []) as FileInfo[]
         const fileList = files
-          .map((f: FileInfo) => 
-            `${f.type === 'dir' ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
-          )
+          .map((f: FileInfo) => {
+            const isDir = f.type === 'dir' || f.type === 'directory'
+            return `${isDir ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
+          })
           .join('\n')
         return { success: true, output: fileList || 'Empty directory' }
       } catch (error) {
-        return { 
-          success: false, 
-          output: '', 
-          error: error instanceof Error ? error.message : 'Failed to list files' 
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Failed to list files',
         }
       }
     }
 
     case 'write_file': {
       try {
-        const response = await fetch(`${baseUrl}/api/agent/files`, {
+        const response = await fetch(`${baseUrl}/api/agent/local`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             path: toolCall.arguments.path as string,
             content: toolCall.arguments.content as string,
+            createDirs: true,
           }),
         })
         const data = await response.json()
         if (!response.ok) {
           return { success: false, output: '', error: data.error || 'Failed to write file' }
         }
-        return { 
-          success: true, 
-          output: `File written: ${toolCall.arguments.path as string}` 
+        return {
+          success: true,
+          output: `File written: ${toolCall.arguments.path as string}`,
         }
       } catch (error) {
-        return { 
-          success: false, 
-          output: '', 
-          error: error instanceof Error ? error.message : 'Failed to write file' 
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Failed to write file',
         }
       }
     }
 
     case 'delete_file': {
       try {
-        const response = await fetch(`${baseUrl}/api/agent/files`, {
+        const response = await fetch(`${baseUrl}/api/agent/local`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -141,15 +148,15 @@ export async function executeLocalTool(
         if (!response.ok) {
           return { success: false, output: '', error: data.error || 'Failed to delete file' }
         }
-        return { 
-          success: true, 
-          output: `File deleted: ${toolCall.arguments.path as string}` 
+        return {
+          success: true,
+          output: `File deleted: ${toolCall.arguments.path as string}`,
         }
       } catch (error) {
-        return { 
-          success: false, 
-          output: '', 
-          error: error instanceof Error ? error.message : 'Failed to delete file' 
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Failed to delete file',
         }
       }
     }
@@ -416,12 +423,13 @@ export async function executeTool(
       }
 
       case 'list_files': {
-        const path = (toolCall.arguments.path as string) || ''
+        const pathArg = (toolCall.arguments.path as string) || ''
+        const githubPath = pathArg === '.' || pathArg === '' ? '' : pathArg
         try {
           const { data } = await octokit.repos.getContent({
             owner: repository.owner,
             repo: repository.repo,
-            path: path || '',
+            path: githubPath,
             ref,
           })
           const files = Array.isArray(data) ? data : [data]

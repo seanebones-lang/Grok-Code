@@ -18,6 +18,8 @@ import { MessageList } from '@/components/MessageList'
 import { StreamingIndicator } from '@/components/StreamingIndicator'
 import { ErrorDisplay } from '@/components/ErrorDisplay'
 import { InputBar } from '@/components/InputBar'
+import { getStorageItem } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/lib/storage-keys'
 
 // Lazy load AgentRunner - heavy component with agent orchestration logic
 const AgentRunner = lazy(() => import('@/components/AgentRunner').then(module => ({ default: module.AgentRunner })))
@@ -321,7 +323,7 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
     const memoryContext = agentMemory.formatForPrompt(allRelevantMemories)
 
     // Get GitHub token from localStorage
-    const githubToken = localStorage.getItem('nexteleven_github_token')
+    const githubToken = getStorageItem<string>(STORAGE_KEYS.githubToken, '') || ''
     
     // Start streaming
     await startStream(
@@ -472,11 +474,23 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
           </motion.div>
         )}
 
-        <MessageList 
-          messages={messages}
-          onRetry={handleRetry}
-          messagesEndRef={messagesEndRef}
-        />
+        {messages.length === 0 ? (
+          <div className="flex min-h-[200px] items-center justify-center px-6">
+            <div className="text-center max-w-md">
+              <h2 className="text-xl font-semibold text-white mb-2">Grok Code</h2>
+              <p className="text-[#9ca3af] text-sm mb-4">
+                Ask anything about your codebase. Try an agent like /agent security or /agent codeReview.
+              </p>
+              <p className="text-[#6b7280] text-xs">Press ⌘K for the command palette</p>
+            </div>
+          </div>
+        ) : (
+          <MessageList 
+            messages={messages}
+            onRetry={handleRetry}
+            messagesEndRef={messagesEndRef}
+          />
+        )}
         
         {/* Loading indicator */}
         <StreamingIndicator 

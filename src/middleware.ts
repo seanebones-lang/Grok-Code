@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  if (pathname === '/' || pathname.startsWith('/dashboard') || pathname.match(/^\/_next|favicon.ico/)) {
-    return NextResponse.next();
-  }
+  // Private coding space - no auth gating, allow all routes
   return NextResponse.next();
 }
 

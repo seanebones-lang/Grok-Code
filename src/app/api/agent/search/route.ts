@@ -24,12 +24,12 @@ const codeSearchSchema = z.object({
 // Helper Functions
 // ============================================================================
 
-function getOctokit() {
-  const githubToken = process.env.GITHUB_TOKEN
-  if (!githubToken) {
+function getOctokit(request?: NextRequest): Octokit {
+  const token = request?.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+  if (!token) {
     throw new Error('GITHUB_TOKEN not configured')
   }
-  return new Octokit({ auth: githubToken })
+  return new Octokit({ auth: token })
 }
 
 // ============================================================================
@@ -38,12 +38,12 @@ function getOctokit() {
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
-  
+  const token = request.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+
   try {
-    // Check GITHUB_TOKEN is configured
-    if (!process.env.GITHUB_TOKEN) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Service configuration error', requestId },
+        { error: 'Service configuration error: GitHub token required.', requestId },
         { status: 503 }
       )
     }
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { owner, repo, query, language, path, limit = 10 } = parsed.data
-    const octokit = getOctokit()
+    const octokit = getOctokit(request)
 
     // Build search query
     let searchQuery = `${query} repo:${owner}/${repo}`

@@ -68,12 +68,12 @@ const moveFileSchema = z.object({
 // Helper Functions
 // ============================================================================
 
-function getOctokit() {
-  const githubToken = process.env.GITHUB_TOKEN
-  if (!githubToken) {
+function getOctokit(request?: NextRequest): Octokit {
+  const token = request?.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+  if (!token) {
     throw new Error('GITHUB_TOKEN not configured')
   }
-  return new Octokit({ auth: githubToken })
+  return new Octokit({ auth: token })
 }
 
 async function getDefaultBranch(octokit: Octokit, owner: string, repo: string): Promise<string> {
@@ -87,19 +87,19 @@ async function getDefaultBranch(octokit: Octokit, owner: string, repo: string): 
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
-  
+  const token = request.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+
   try {
-    if (!process.env.GITHUB_TOKEN) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Service configuration error', requestId },
+        { error: 'Service configuration error: GitHub token required. Set GITHUB_TOKEN in .env or connect repo with token in Sidebar.', requestId },
         { status: 503 }
       )
     }
 
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'read'
-    
-    const octokit = getOctokit()
+    const octokit = getOctokit(request)
 
     if (action === 'list') {
       // List directory contents
@@ -226,17 +226,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID()
-  
+  const token = request.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+
   try {
-    if (!process.env.GITHUB_TOKEN) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Service configuration error', requestId },
+        { error: 'Service configuration error: GitHub token required.', requestId },
         { status: 503 }
       )
     }
 
     const body = await request.json()
-    const octokit = getOctokit()
+    const octokit = getOctokit(request)
 
     // Check if batch write
     if (body.files && Array.isArray(body.files)) {
@@ -395,11 +396,12 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const requestId = crypto.randomUUID()
-  
+  const token = request.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+
   try {
-    if (!process.env.GITHUB_TOKEN) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Service configuration error', requestId },
+        { error: 'Service configuration error: GitHub token required.', requestId },
         { status: 503 }
       )
     }
@@ -415,7 +417,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { owner, repo, oldPath, newPath, message, branch } = parsed.data
-    const octokit = getOctokit()
+    const octokit = getOctokit(request)
     const ref = branch || await getDefaultBranch(octokit, owner, repo)
 
     // Get current commit SHA
@@ -530,11 +532,12 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const requestId = crypto.randomUUID()
-  
+  const token = request.headers.get('X-Github-Token')?.trim() || process.env.GITHUB_TOKEN
+
   try {
-    if (!process.env.GITHUB_TOKEN) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Service configuration error', requestId },
+        { error: 'Service configuration error: GitHub token required.', requestId },
         { status: 503 }
       )
     }
@@ -550,15 +553,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { owner, repo, path, message, branch, sha } = parsed.data
-    
-    if (!process.env.GITHUB_TOKEN) {
-      return NextResponse.json(
-        { error: 'Service configuration error', requestId },
-        { status: 503 }
-      )
-    }
-    
-    const octokit = getOctokit()
+    const octokit = getOctokit(request)
     const ref = branch || await getDefaultBranch(octokit, owner, repo)
 
     const { data } = await octokit.repos.deleteFile({

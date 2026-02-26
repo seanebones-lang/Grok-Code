@@ -10,9 +10,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * Public API endpoints that don't require authentication
+ * For private/single-user deployments, core coding routes are always accessible.
  */
 const PUBLIC_ENDPOINTS = [
-  '/api/system/env-status',  // Health check
+  '/api/system/env-status',
+  '/api/agent/health',
+  '/api/agent/',
+  '/api/chat',
+  '/api/github/',
 ] as const
 
 /**

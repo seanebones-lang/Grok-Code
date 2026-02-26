@@ -14,8 +14,6 @@ import {
   Trash2,
   Download,
   Github,
-  LogOut,
-  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -115,52 +113,6 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
     }
   }, [onExportChat, toast])
 
-  const handleLogout = useCallback(async () => {
-    let success = false
-    try {
-      // Sign out via NextAuth
-      const response = await fetch('/api/auth/signout', {
-        method: 'POST',
-      })
-      
-      if (response.ok) {
-        success = true
-        // Clear local session data
-        try {
-          localStorage.removeItem('nexteleven_sessionId')
-          sessionManager.clearAllSessions()
-        } catch (e) {
-          console.error('Failed to clear local session:', e)
-        }
-      } else {
-        const errorText = await response.text().catch(() => 'Unknown error')
-        throw new Error(`Logout API failed: ${response.status} - ${errorText}`)
-      }
-    } catch (error) {
-      console.error('Logout error:', error)
-      // Clear local session even if API fails
-      try {
-        localStorage.removeItem('nexteleven_sessionId')
-        sessionManager.clearAllSessions()
-        toast.error('Logged out locally', 'Server logout failed. Please refresh to confirm auth state.')
-      } catch (e) {
-        console.error('Failed to clear local session:', e)
-        toast.error('Logout incomplete', 'Unable to clear local session. Please refresh the page.')
-        return
-      }
-    }
-
-    if (success) {
-      // Only redirect on successful logout
-      toast.success('Logged out', 'You have been successfully logged out.')
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 500) // Small delay to show toast
-    } else {
-      toast.info('Logout incomplete', 'Check your authentication state. You may need to refresh.')
-    }
-  }, [toast])
-
   return (
     <>
       <motion.header
@@ -174,13 +126,13 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
           <Link 
             href="/" 
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity group"
-            aria-label="NextEleven Code Home"
+            aria-label="Grok Code Home"
           >
             <div className="relative">
               <Code2 className="h-6 w-6 text-primary group-hover:text-primary/80 transition-colors" aria-hidden="true" />
               <div className="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <span className="text-base font-semibold text-white hidden sm:inline">NextEleven Code</span>
+            <span className="text-base font-semibold text-white hidden sm:inline">Grok Code</span>
           </Link>
         </div>
 
@@ -263,18 +215,10 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
                 className="text-white hover:bg-[#1a1a1a] hover:text-white cursor-pointer focus:bg-[#1a1a1a]"
               >
                 <Info className="h-4 w-4 mr-2" aria-hidden="true" />
-                About NextEleven Code
+                About Grok Code
               </DropdownMenuItem>
               
               <DropdownMenuSeparator className="bg-[#1a1a1a]" />
-              
-              <DropdownMenuItem 
-                onClick={handleLogout}
-                className="text-red-400 hover:bg-red-500/10 hover:text-red-400 cursor-pointer focus:bg-red-500/10"
-              >
-                <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
-                Sign Out
-              </DropdownMenuItem>
               
               <DropdownMenuItem 
                 asChild
@@ -330,12 +274,12 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Code2 className="h-5 w-5 text-primary" />
-              About NextEleven Code
+              About Grok Code
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <p className="text-sm text-[#9ca3af]">
-              NextEleven Code is an AI-powered development interface that helps you write, 
+              Grok Code is an AI-powered development interface that helps you write, 
               edit, and understand code with intelligent assistance.
             </p>
             <div className="space-y-2 text-sm">
@@ -345,7 +289,7 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
               </div>
               <div className="flex justify-between py-2 border-b border-[#1a1a1a]">
                 <span className="text-[#9ca3af]">AI Model</span>
-                <span className="text-white">Eleven (powered by NextEleven)</span>
+                <span className="text-white">Grok (xAI)</span>
               </div>
               <div className="flex justify-between py-2 border-b border-[#1a1a1a]">
                 <span className="text-[#9ca3af]">Framework</span>
@@ -357,7 +301,7 @@ function Header({ onNewChat, onClearHistory, onExportChat }: HeaderProps) {
               </div>
             </div>
             <p className="text-xs text-[#9ca3af] text-center pt-4 border-t border-[#1a1a1a]">
-              © 2026 NextEleven Code. All rights reserved.
+              © 2026 Grok Code. All rights reserved.
             </p>
           </div>
         </DialogContent>

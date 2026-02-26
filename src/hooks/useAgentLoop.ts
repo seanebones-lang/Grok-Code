@@ -18,6 +18,15 @@ import {
   isTaskComplete,
   TOOL_DEFINITIONS,
 } from '@/lib/agent-loop'
+import { getStorageItem } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/lib/storage-keys'
+
+function getGitHubHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined'
+    ? (getStorageItem<string>(STORAGE_KEYS.githubToken, '') || localStorage.getItem('nexteleven_github_token') || '')
+    : ''
+  return token ? { 'X-Github-Token': token } : {}
+}
 
 // ============================================================================
 // Types
@@ -70,7 +79,9 @@ async function executeReadFile(
         ...(repository.branch ? { branch: repository.branch } : {}),
       })
 
-      const response = await fetch(`/api/agent/files?${params}`)
+      const response = await fetch(`/api/agent/files?${params}`, {
+        headers: getGitHubHeaders(),
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -126,7 +137,7 @@ async function executeWriteFile(
     if (repository) {
       const response = await fetch('/api/agent/files', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getGitHubHeaders() },
         body: JSON.stringify({
           owner: repository.owner,
           repo: repository.repo,
@@ -183,7 +194,8 @@ async function executeListFiles(
   args: Record<string, unknown>,
   repository?: { owner: string; repo: string; branch?: string }
 ): Promise<ToolResult> {
-  const path = (args.path as string) || ''
+  const pathArg = (args.path as string) || ''
+  const path = pathArg === '.' ? '' : pathArg
   const startTime = Date.now()
 
   try {
@@ -196,7 +208,9 @@ async function executeListFiles(
         ...(repository.branch ? { branch: repository.branch } : {}),
       })
 
-      const response = await fetch(`/api/agent/files?${params}`)
+      const response = await fetch(`/api/agent/files?${params}`, {
+        headers: getGitHubHeaders(),
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -283,7 +297,20 @@ async function executeRunCommand(
       body: JSON.stringify({ command, cwd }),
     })
 
-    const data = await response.json()
+    const text = await response.text()
+    let data: Record<string, unknown>
+    try {
+      data = JSON.parse(text) as Record<string, unknown>
+    } catch {
+      return {
+        id: crypto.randomUUID(),
+        name: 'run_command',
+        success: false,
+        output: '',
+        error: `Command API returned invalid response${!response.ok ? ` (${response.status})` : ''}. Is /api/agent/terminal available?`,
+        duration: Date.now() - startTime,
+      }
+    }
 
     if (!response.ok) {
       return {
@@ -327,26 +354,73 @@ async function executeSearchCode(
   args: Record<string, unknown>,
   repository?: { owner: string; repo: string; branch?: string }
 ): Promise<ToolResult> {
-  const pattern = args.pattern as string
+  const query = (args.query as string) || (args.pattern as string) || ''
   const path = (args.path as string) || ''
   const startTime = Date.now()
 
-  // For now, use grep via terminal
-  if (repository) {
-    // GitHub code search would require different API
-    return {
-      id: crypto.randomUUID(),
-      name: 'search_code',
-      success: false,
-      output: '',
-      error: 'Code search in GitHub repositories is not yet implemented. Use list_files and read_file instead.',
-      duration: Date.now() - startTime,
+  if (repository && query) {
+    try {
+      const params = new URLSearchParams({
+        owner: repository.owner,
+        repo: repository.repo,
+        query,
+        ...(path ? { path } : {}),
+        limit: '20',
+      })
+      const response = await fetch(`/api/agent/search?${params}`, {
+        headers: getGitHubHeaders(),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        return {
+          id: crypto.randomUUID(),
+          name: 'search_code',
+          success: false,
+          output: '',
+          error: data.error || data.details || 'Search failed',
+          duration: Date.now() - startTime,
+        }
+      }
+
+      const results = (data.results || []).map(
+        (r: { path: string; url: string; textMatches?: Array<{ fragment: string }> }) =>
+          `${r.path}\n  ${r.url}${r.textMatches?.[0]?.fragment ? `\n  ${r.textMatches[0].fragment.slice(0, 120)}...` : ''}`
+      ).join('\n\n')
+      const total = data.totalCount ?? 0
+      return {
+        id: crypto.randomUUID(),
+        name: 'search_code',
+        success: true,
+        output: results || `No matches for "${query}" (searched ${total} results)`,
+        duration: Date.now() - startTime,
+      }
+    } catch (error) {
+      return {
+        id: crypto.randomUUID(),
+        name: 'search_code',
+        success: false,
+        output: '',
+        error: error instanceof Error ? error.message : 'Search failed',
+        duration: Date.now() - startTime,
+      }
     }
   }
 
-  return executeRunCommand({
-    command: `grep -rn "${pattern}" ${path || '.'}`,
-  })
+  if (query) {
+    return executeRunCommand({
+      command: `grep -rn "${query.replace(/"/g, '\\"')}" ${path || '.'} 2>/dev/null | head -30`,
+    })
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    name: 'search_code',
+    success: false,
+    output: '',
+    error: 'search_code requires a query or pattern argument',
+    duration: Date.now() - startTime,
+  }
 }
 
 async function executeDeleteFile(
@@ -376,7 +450,9 @@ async function executeDeleteFile(
       ...(repository.branch ? { branch: repository.branch } : {}),
     })
 
-    const readResponse = await fetch(`/api/agent/files?${readParams}`)
+    const readResponse = await fetch(`/api/agent/files?${readParams}`, {
+      headers: getGitHubHeaders(),
+    })
     const readData = await readResponse.json()
 
     if (!readResponse.ok || !readData.file?.sha) {
@@ -395,7 +471,7 @@ async function executeDeleteFile(
     // Now delete the file
     const deleteResponse = await fetch('/api/agent/files', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getGitHubHeaders() },
       body: JSON.stringify({
         owner: repository.owner,
         repo: repository.repo,
