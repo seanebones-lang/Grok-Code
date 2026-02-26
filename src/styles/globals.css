@@ -78,49 +78,49 @@
 
 @layer base {
   :root {
-    /* Custom color palette - Dark theme */
-    --background: 10 10 10; /* #0a0a0a (bg-dark) */
-    --foreground: 255 255 255; /* #ffffff (text) */
-    --card: 26 26 26; /* #1a1a1a (bg-light) */
-    --card-foreground: 255 255 255;
-    --popover: 26 26 26;
-    --popover-foreground: 255 255 255;
-    --primary: 139 92 246; /* #8b5cf6 */
-    --primary-foreground: 255 255 255;
-    --secondary: 26 26 26;
-    --secondary-foreground: 255 255 255;
-    --muted: 26 26 26;
-    --muted-foreground: 156 163 175;
-    --accent: 139 92 246;
-    --accent-foreground: 255 255 255;
-    --destructive: 239 68 68;
-    --destructive-foreground: 255 255 255;
-    --border: 38 38 38;
-    --input: 38 38 38;
-    --ring: 139 92 246;
+    /* Custom color palette - Dark theme (HSL format for Tailwind/shadcn) */
+    --background: 0 0% 4%; /* #0a0a0a */
+    --foreground: 0 0% 100%; /* #ffffff */
+    --card: 0 0% 10%; /* #1a1a1a */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 263 91% 66%; /* #8b5cf6 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 220 13% 65%; /* #9ca3af */
+    --accent: 263 91% 66%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%; /* #ef4444 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%; /* #262626 */
+    --input: 0 0% 15%;
+    --ring: 263 91% 66%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 10 10 10; /* #0a0a0a (bg-dark) */
-    --foreground: 255 255 255; /* #ffffff (text) */
-    --card: 26 26 26; /* #1a1a1a (bg-light) */
-    --card-foreground: 255 255 255;
-    --popover: 26 26 26;
-    --popover-foreground: 255 255 255;
-    --primary: 139 92 246; /* #8b5cf6 */
-    --primary-foreground: 255 255 255;
-    --secondary: 26 26 26;
-    --secondary-foreground: 255 255 255;
-    --muted: 26 26 26;
-    --muted-foreground: 156 163 175;
-    --accent: 139 92 246;
-    --accent-foreground: 255 255 255;
-    --destructive: 239 68 68;
-    --destructive-foreground: 255 255 255;
-    --border: 38 38 38;
-    --input: 38 38 38;
-    --ring: 139 92 246;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 263 91% 66%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 220 13% 65%;
+    --accent: 263 91% 66%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 263 91% 66%;
   }
 }
 
@@ -130,11 +130,10 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: rgb(38, 38, 38);
   }
   
   html {
-    @apply dark;
     background: #0a0a0a; /* bg-dark */
     color: #ffffff; /* text */
     scroll-behavior: smooth;

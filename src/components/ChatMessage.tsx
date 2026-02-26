@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback, memo, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, memo, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Copy, RefreshCw, Check, AlertTriangle, User, Bot, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,9 +11,15 @@ import type { Message } from '@/types'
 import { cn } from '@/lib/utils'
 import { useAgentOrchestrator } from '@/hooks/useAgentOrchestrator'
 
-// Lazy load heavy orchestration components - only load when needed
-const AgentPanel = lazy(() => import('@/components/AgentPanel').then(module => ({ default: module.AgentPanel })))
-const RefactorPlan = lazy(() => import('@/components/RefactorPlan').then(module => ({ default: module.RefactorPlan })))
+// Dynamic load heavy orchestration components - next/dynamic handles chunks better than React.lazy
+const AgentPanel = dynamic(
+  () => import('@/components/AgentPanel').then((m) => m.AgentPanel),
+  { ssr: false, loading: () => <div className="p-4 text-sm text-[#9ca3af]">Loading...</div> }
+)
+const RefactorPlan = dynamic(
+  () => import('@/components/RefactorPlan').then((m) => m.RefactorPlan),
+  { ssr: false, loading: () => <div className="p-4 text-sm text-[#9ca3af]">Loading...</div> }
+)
 
 interface ChatMessageProps {
   /** Message object to display */
@@ -292,18 +299,14 @@ export const ChatMessage = memo(function ChatMessage({ message, onRetry }: ChatM
               </div>
             )}
 
-            {/* Refactor Plan - Lazy loaded */}
+            {/* Refactor Plan - Dynamically loaded */}
             {parsedContent.refactorPlan && (
-              <Suspense fallback={<div className="p-4 text-sm text-[#9ca3af]">Loading refactor plan...</div>}>
-                <RefactorPlan plan={parsedContent.refactorPlan} />
-              </Suspense>
+              <RefactorPlan plan={parsedContent.refactorPlan} />
             )}
 
-            {/* Agent Outputs - Lazy loaded */}
+            {/* Agent Outputs - Dynamically loaded */}
             {parsedContent.agents.length > 0 && (
-              <Suspense fallback={<div className="p-4 text-sm text-[#9ca3af]">Loading agent panel...</div>}>
-                <AgentPanel agents={parsedContent.agents} />
-              </Suspense>
+              <AgentPanel agents={parsedContent.agents} />
             )}
 
             {/* Tool Requests */}

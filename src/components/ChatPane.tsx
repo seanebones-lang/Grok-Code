@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import FocusTrap from 'focus-trap-react'
 import { WifiOff, ArrowLeft, X, Loader2 } from 'lucide-react'
@@ -21,8 +22,11 @@ import { InputBar } from '@/components/InputBar'
 import { getStorageItem } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/lib/storage-keys'
 
-// Lazy load AgentRunner - heavy component with agent orchestration logic
-const AgentRunner = lazy(() => import('@/components/AgentRunner').then(module => ({ default: module.AgentRunner })))
+// Dynamic load AgentRunner - next/dynamic handles chunks better than React.lazy in Next.js
+const AgentRunner = dynamic(
+  () => import('@/components/AgentRunner').then((m) => m.AgentRunner),
+  { ssr: false, loading: () => <div className="flex items-center justify-center p-8"><span className="text-[#9ca3af]">Loading agent...</span></div> }
+)
 
 // Constants
 const MAX_HISTORY_MESSAGES = 20
