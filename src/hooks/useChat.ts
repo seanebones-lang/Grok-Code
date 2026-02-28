@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import type { Message, GrokStreamChunk } from '@/types'
 import type { ChatMode } from '@/components/InputBar'
+import { getStorageItem } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/lib/storage-keys'
 
 interface UseChatOptions {
   onError?: (error: Error) => void
@@ -89,11 +91,15 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     abortControllerRef.current = new AbortController()
     
     try {
+      const githubToken = typeof window !== 'undefined' ? getStorageItem<string>(STORAGE_KEYS.githubToken, '') || '' : ''
+      const grokToken = typeof window !== 'undefined' ? getStorageItem<string>(STORAGE_KEYS.grokApiKey, '') || '' : ''
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (githubToken) headers['X-Github-Token'] = githubToken
+      if (grokToken) headers['X-Grok-Token'] = grokToken
+
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ 
           message: content,
           mode: mode !== 'default' ? mode : undefined,

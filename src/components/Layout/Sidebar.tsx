@@ -34,6 +34,7 @@ import {
   Gauge,
   Zap,
   Play,
+  Key,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FileTree } from '@/components/FileTree'
@@ -98,6 +99,8 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
   const [healthExpanded, setHealthExpanded] = useState(false)
   const [githubTokenInput, setGithubTokenInput] = useState('')
   const [showTokenInput, setShowTokenInput] = useState(false)
+  const [grokApiKeyInput, setGrokApiKeyInput] = useState('')
+  const [showApiKeysSection, setShowApiKeysSection] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -114,6 +117,8 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
     if (Array.isArray(pinned)) setPinnedAgents(new Set(pinned))
     setOrchestratorModeState(isOrchestratorModeEnabled())
     setHealthReport(healthDashboard.load())
+    const grokKey = getStorageItem<string>(STORAGE_KEYS.grokApiKey, '')
+    if (grokKey) setGrokApiKeyInput(grokKey)
   }, [onRepoConnect])
 
   // Toggle orchestrator mode
@@ -701,7 +706,67 @@ function Sidebar({ onFileSelect, selectedPath, onRepoConnect, onNewSession }: Si
               <p className="text-[10px] text-[#9ca3af] truncate">Grok Code</p>
             </div>
           </div>
-          
+
+          {/* API Keys - GitHub + xAI (single place for local use) */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (!showApiKeysSection) {
+                  setGithubTokenInput(getStorageItem<string>(STORAGE_KEYS.githubToken, '') || '')
+                  setGrokApiKeyInput(getStorageItem<string>(STORAGE_KEYS.grokApiKey, '') || '')
+                }
+                setShowApiKeysSection(!showApiKeysSection)
+              }}
+              className="w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg bg-[#2a2a3e] border border-[#404050] hover:bg-[#2a2a3e]/80 transition-colors text-left"
+            >
+              <span className="text-xs font-medium text-white flex items-center gap-1.5">
+                <Key className="h-3.5 w-3 text-[#9ca3af]" />
+                API Keys
+              </span>
+              {showApiKeysSection ? (
+                <ChevronDown className="h-3 w-3 text-[#606070]" />
+              ) : (
+                <ChevronRight className="h-3 w-3 text-[#606070]" />
+              )}
+            </button>
+            {showApiKeysSection && (
+              <div className="mt-2 p-3 rounded-lg bg-[#2a2a3e] border border-[#404050] space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-[#9ca3af]">GitHub token</label>
+                  <input
+                    type="password"
+                    placeholder="ghp_xxx (github.com/settings/tokens)"
+                    value={githubTokenInput}
+                    onChange={(e) => setGithubTokenInput(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-[#1a1a2e] border border-[#404050] rounded text-white text-xs placeholder-[#6b7280] focus:outline-none focus:border-[#6841e7]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-[#9ca3af]">xAI (Grok) API key</label>
+                  <input
+                    type="password"
+                    placeholder="xai-xxx (console.x.ai)"
+                    value={grokApiKeyInput}
+                    onChange={(e) => setGrokApiKeyInput(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-[#1a1a2e] border border-[#404050] rounded text-white text-xs placeholder-[#6b7280] focus:outline-none focus:border-[#6841e7]"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    if (githubTokenInput.trim()) setStorageItem(STORAGE_KEYS.githubToken, githubTokenInput.trim())
+                    if (grokApiKeyInput.trim()) setStorageItem(STORAGE_KEYS.grokApiKey, grokApiKeyInput.trim())
+                    setError(null)
+                  }}
+                >
+                  Save keys
+                </Button>
+              </div>
+            )}
+          </div>
+
           {/* New Session Input Box - Taller with icons */}
           <form onSubmit={handleNewSessionSubmit} className="mb-4">
             <div className="relative">

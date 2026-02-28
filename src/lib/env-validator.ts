@@ -11,9 +11,10 @@ interface EnvConfig {
 
 const ENV_CONFIG: EnvConfig = {
   required: [
-    'GROK_API_KEY', // Required for AI features
+    // GROK_API_KEY can be set in env or provided via X-Grok-Token header from UI (local single-user)
   ],
   optional: [
+    { name: 'GROK_API_KEY', description: 'xAI/Grok API key (or set in sidebar API Keys)' },
     { name: 'NEXTELEVEN_API_KEY', description: 'API key for authenticating requests to /api routes (optional - if not set, routes are public with warning)' },
     { name: 'GITHUB_TOKEN', description: 'GitHub Personal Access Token for repository operations' },
     { name: 'VERCEL_TOKEN', description: 'Vercel API token for deployments' },

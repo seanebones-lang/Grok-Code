@@ -328,12 +328,16 @@ export function ChatPane({ repository, newSessionMessage, onNewSessionHandled }:
 
     // Get GitHub token from localStorage
     const githubToken = getStorageItem<string>(STORAGE_KEYS.githubToken, '') || ''
+    const grokToken = getStorageItem<string>(STORAGE_KEYS.grokApiKey, '') || ''
+    const headers: Record<string, string> = {}
+    if (githubToken) headers['X-Github-Token'] = githubToken
+    if (grokToken) headers['X-Grok-Token'] = grokToken
     
     // Start streaming
     await startStream(
       '/api/chat',
       buildRequestPayload(processedContent, mode, history, memoryContext),
-      githubToken ? { 'X-Github-Token': githubToken } : {}
+      headers
     )
   }, [isOnline, messages, prepareMessage, buildRequestPayload, addMessage, startStream, getHistorySlice])
 

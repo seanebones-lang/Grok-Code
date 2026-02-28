@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   agentMemory: 'agent_memory',
   recentRepos: 'recent_repos',
   githubToken: 'github_token',
+  grokApiKey: 'grok_api_key',
   connectedRepo: 'connectedRepo',
   fileTree: 'fileTree',
   selectedModel: 'selectedModel',

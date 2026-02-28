@@ -616,23 +616,15 @@ The tool will be executed automatically and the results will be provided to you.
     //            'anonymous'
     // const rateLimitResult = await checkRateLimit(ip)
 
-    // Get API key from header or env
-    // Get Grok API key from header or env
+    // Get Grok API key from header (sidebar API Keys) or env
     const grokApiKey = request.headers.get('X-Grok-Token') || process.env.GROK_API_KEY
     if (!grokApiKey) {
       return NextResponse.json(
-        { 
-          error: 'GROK_API_KEY is required', 
-          message: 'Please configure GROK_API_KEY environment variable',
+        {
+          error: 'Grok API key required',
+          message: 'Set your xAI API key in the sidebar under API Keys, or set GROK_API_KEY in .env',
           requestId,
         },
-        { status: 500 }
-      )
-    }
-    if (!grokApiKey) {
-      console.error(`[${requestId}] GROK_API_KEY not provided`)
-      return NextResponse.json(
-        { error: 'Grok API token required. Please configure it in the setup screen.', requestId },
         { status: 401 }
       )
     }

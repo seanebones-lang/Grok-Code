@@ -28,6 +28,15 @@ function getGitHubHeaders(): Record<string, string> {
   return token ? { 'X-Github-Token': token } : {}
 }
 
+function getChatHeaders(): Record<string, string> {
+  const gh = getGitHubHeaders()
+  const grok = typeof window !== 'undefined'
+    ? (getStorageItem<string>(STORAGE_KEYS.grokApiKey, '') || '')
+    : ''
+  if (grok) gh['X-Grok-Token'] = grok
+  return gh
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -610,7 +619,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
   ): Promise<string> => {
     const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getChatHeaders() },
       body: JSON.stringify({
         message: messages[messages.length - 1].content,
         history: messages.slice(0, -1),
