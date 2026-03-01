@@ -1,0 +1,1 @@
+import { createTamagui } from 'tamagui'; import { shorthands } from '@tamagui/shorthands'; import { themes, tokens } from '@tamagui/themes'; const config = createTamagui({ themes, tokens, shorthands, }); export default config; type Conf = typeof config; declare module 'tamagui' { interface TamaguiCustomConfig extends Conf {} } export default config;
