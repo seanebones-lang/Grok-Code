@@ -1,0 +1,1 @@
+import { trpc } from '../providers'; import { Button } from '@/libs/shared-ui'; export default function Home() { const { data } = trpc.hello.useQuery({ name: 'Enterprise User' }); return ( <div className="p-8"> <h1>Grok-Code Enterprise Factory</h1> <Button>Launch Mobile App</Button> <p>{data}</p> </div> ); }
