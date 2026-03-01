@@ -494,6 +494,8 @@ export async function POST(request: NextRequest) {
 You are working with the GitHub repository: **${owner}/${repo}**${branch ? ` (branch: ${branch})` : ''}
 - When the user asks about "this repo" or "the codebase", they are referring to ${owner}/${repo}
 
+- **run_command**: Never use the Grok Code app directory as cwd. File tools (read_file, write_file) operate on ${owner}/${repo} via API. For run_command use the user's local clone path if they have one, or omit cwd to use a safe sandbox—never the app's own folder.
+
 ## Available Tools (AUTO-EXECUTE - NO USER CONFIRMATION NEEDED!)
 
 You have direct access to tools. **CRITICAL: Tools execute AUTOMATICALLY without ANY user confirmation. Just output the JSON and it runs immediately.**

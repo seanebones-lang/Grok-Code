@@ -11,6 +11,7 @@ import { isToolCall, validateToolCallArguments } from '@/types/tools'
 import { formatError } from '@/types/errors'
 import { fetchWithErrorHandling } from '@/lib/utils/fetch-helpers'
 import { createErrorResponse } from '@/lib/utils/error-handling'
+import { resolveSafeCwd } from '@/lib/workspace-guard'
 
 // Lazy load Octokit - only needed for GitHub operations
 let Octokit: typeof import('@octokit/rest').Octokit | null = null
@@ -710,9 +711,10 @@ export async function executeTool(
       }
 
       case 'run_command': {
-        // Execute command directly using spawn
+        // Execute command in a safe cwd (never the Grok Code app directory)
         const command = toolCall.arguments.command as string
-        const cwd = toolCall.arguments.cwd as string | undefined
+        const cwdRaw = toolCall.arguments.cwd as string | undefined
+        const cwd = resolveSafeCwd(cwdRaw)
 
         return new Promise((resolve) => {
           // Parse command
@@ -724,9 +726,9 @@ export async function executeTool(
           }
           const args = parts.slice(1).map(arg => arg.replace(/^["']|["']$/g, ''))
 
-          // Execute command with timeout
+          // Execute command with timeout (cwd is never app root)
           const child = spawn(cmd, args, {
-            cwd: cwd || process.cwd(),
+            cwd,
             env: process.env,
             shell: false,
           })

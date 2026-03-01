@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import * as path from 'path'
+import { resolveSafeCwd, isInsideAppRoot, APP_ROOT_BLOCKED_MESSAGE } from '@/lib/workspace-guard'
 
 /**
  * Terminal API for Agentic Operations
  * Executes shell commands server-side for local tool execution (run_command, search_code)
  *
  * SECURITY: Full shell access. Only enable for trusted/single-user deployments.
+ * WORKSPACE: Never runs in the Grok Code app directory; uses sandbox or provided workspace.
  */
-
-const DEFAULT_CWD = process.cwd()
 const MAX_OUTPUT_SIZE = 128 * 1024 // 128KB
 const TIMEOUT_MS = 30000 // 30s
 
@@ -20,11 +20,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const command = typeof body.command === 'string' ? body.command.trim() : ''
     const cwdRaw = body.cwd as string | undefined
-    const cwd = cwdRaw
+    const requestedCwd = cwdRaw
       ? path.isAbsolute(cwdRaw)
         ? cwdRaw
-        : path.resolve(DEFAULT_CWD, cwdRaw)
-      : DEFAULT_CWD
+        : path.resolve(process.cwd(), cwdRaw)
+      : undefined
+
+    if (requestedCwd !== undefined && isInsideAppRoot(requestedCwd)) {
+      return NextResponse.json(
+        { error: APP_ROOT_BLOCKED_MESSAGE, requestId },
+        { status: 400 }
+      )
+    }
+
+    const cwd = resolveSafeCwd(cwdRaw)
 
     if (!command) {
       return NextResponse.json(
