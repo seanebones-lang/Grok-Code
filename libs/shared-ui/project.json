@@ -1,0 +1,1 @@
+{"name":"shared-ui","sourceRoot":"libs/shared-ui/src","projectType":"library","targets":{"build":{"executor":"@nx/js:tsc","outputs":["{options.outputPath}"]},"lint":{"executor":"@nx/eslint:lint"},"test":{"executor":"@nx/vitest:vitest"}},"tags":["scope:ui"]}}
