@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
+import { getAllAgents } from '@/lib/specialized-agents';
 
 export async function GET(request: NextRequest) {
   const authError = authenticateRequest(request);
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     status: 'ok',
     service: 'agent',
-    agentsAvailable: 31,
+    agentsAvailable: getAllAgents().length,
     degraded: false,
     timestamp: new Date().toISOString(),
     mcpVersion: '1.0',
