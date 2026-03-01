@@ -1,0 +1,1 @@
+import { initTRPC } from '@trpc/server'; export const t = initTRPC.context<{ userId: string }>().create(); export const publicProcedure = t.procedure; export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => { if (!ctx.userId) throw new Error('Unauthorized'); return next({ ctx: { userId: ctx.userId } }); });
