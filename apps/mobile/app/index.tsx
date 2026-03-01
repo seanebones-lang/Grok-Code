@@ -1,0 +1,1 @@
+import { View, Text } from 'react-native'; import { trpc } from '../utils/trpc'; export default function Home() { const { data } = trpc.hello.useQuery(); return ( <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}> <Text>Dashboard: {data || 'Loading...'}</Text> </View> ); }
