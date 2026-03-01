@@ -1,0 +1,1 @@
+{"name":"mobile","sourceRoot":"apps/mobile","projectType":"application","targets":{"build":{"executor":"@nx/expo:build","options":{"platform":"ios"}},"serve":{"executor":"@nx/expo:start"},"lint":{"executor":"@nx/eslint:lint"},"test":{"executor":"@nx/vitest:vitest"},"e2e":{"executor":"@nx/detox:detox"}}}
