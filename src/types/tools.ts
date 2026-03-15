@@ -4,7 +4,7 @@
  */
 
 /**
- * Supported tool names
+ * Supported tool names (must match tool-executor.ts and mcp-bridge IMPLEMENTED_TOOL_NAMES)
  */
 export type ToolName =
   | 'read_file'
@@ -20,11 +20,8 @@ export type ToolName =
   | 'get_commit_history'
   | 'web_search'
   | 'web_browse'
-  | 'browser_automation'
-  | 'deploy'
-  | 'transcribe_audio'
-  | 'github_pr_manage'
-  | 'nx_affected'
+  | 'think'
+  | 'complete'
 
 /**
  * Tool call arguments structure
@@ -107,11 +104,8 @@ export function isToolName(value: string): value is ToolName {
     'get_commit_history',
     'web_search',
     'web_browse',
-    'browser_automation',
-    'deploy',
-    'transcribe_audio',
-    'github_pr_manage',
-    'nx_affected',
+    'think',
+    'complete',
   ]
   return validToolNames.includes(value as ToolName)
 }
@@ -222,7 +216,6 @@ export function validateToolCallArguments(
       if (!args.url || typeof args.url !== 'string') {
         return { valid: false, error: `Tool '${toolName}' requires a 'url' argument` }
       }
-      // Validate URL format
       try {
         new URL(args.url)
       } catch {
@@ -230,38 +223,14 @@ export function validateToolCallArguments(
       }
       break
 
-    case 'browser_automation':
-      if (!args.url || typeof args.url !== 'string') {
-        return { valid: false, error: `Tool '${toolName}' requires a 'url' argument` }
-      }
-      // Validate URL format
-      try {
-        new URL(args.url)
-      } catch {
-        return { valid: false, error: `Tool '${toolName}' requires a valid URL` }
-      }
+    case 'think':
+      // Optional thought text
       break
 
-    case 'deploy':
-      if (!args.platform || typeof args.platform !== 'string') {
-        return { valid: false, error: `Tool '${toolName}' requires a 'platform' argument (vercel/netlify)` }
+    case 'complete':
+      if (!args.summary || typeof args.summary !== 'string') {
+        return { valid: false, error: `Tool '${toolName}' requires a 'summary' argument` }
       }
-      break
-
-    case 'transcribe_audio':
-      if (!args.audio_file || typeof args.audio_file !== 'string') {
-        return { valid: false, error: `Tool '${toolName}' requires an 'audio_file' argument` }
-      }
-      break
-
-    case 'github_pr_manage':
-      if (!args.action || typeof args.action !== 'string') {
-        return { valid: false, error: `Tool '${toolName}' requires an 'action' argument (create/list/review/merge)` }
-      }
-      break
-
-    case 'nx_affected':
-      // Optional arguments - can run without any
       break
 
     default:

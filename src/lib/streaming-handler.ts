@@ -150,10 +150,14 @@ export function extractToolCalls(responseText: string): ToolCall[] {
   return toolCalls
 }
 
+/** Max tool calls per request to avoid runaway loops (rollback-safe) */
+const MAX_TOOL_CALLS_PER_REQUEST = 20
+
 /**
  * Execute tool calls and format results
  * Returns formatted string for follow-up message
- * 
+ * Capped at MAX_TOOL_CALLS_PER_REQUEST for rollback safety.
+ *
  * @param toolCalls - Array of tool calls to execute
  * @param options - Streaming options including repository and token
  * @returns Promise resolving to formatted tool execution results
@@ -166,9 +170,14 @@ export async function executeToolCalls(
     return ''
   }
 
+  const capped = toolCalls.slice(0, MAX_TOOL_CALLS_PER_REQUEST)
+  if (toolCalls.length > MAX_TOOL_CALLS_PER_REQUEST) {
+    console.warn(`[streaming-handler] Capped tool calls from ${toolCalls.length} to ${MAX_TOOL_CALLS_PER_REQUEST}`)
+  }
+
   const toolResults: string[] = []
 
-  for (const toolCall of toolCalls) {
+  for (const toolCall of capped) {
     try {
       const { executeTool } = await import('./tool-executor')
       const result = await executeTool(

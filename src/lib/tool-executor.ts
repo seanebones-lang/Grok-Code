@@ -137,12 +137,20 @@ export async function executeLocalTool(
     }
 
     case 'delete_file': {
+      const deletePath = (toolCall.arguments.path as string)?.trim() || ''
+      if (!deletePath || deletePath === '.' || deletePath === '/' || deletePath.endsWith('/')) {
+        return {
+          success: false,
+          output: '',
+          error: 'delete_file requires a specific file path (not a directory or root)',
+        }
+      }
       try {
         const response = await fetch(`${baseUrl}/api/agent/local`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            path: toolCall.arguments.path as string,
+            path: deletePath,
           }),
         })
         const data = await response.json()
@@ -278,6 +286,21 @@ export async function executeLocalTool(
       }
     }
 
+    case 'think': {
+      const thought = (toolCall.arguments.thought as string) || ''
+      return { success: true, output: thought || '(no thought content)' }
+    }
+
+    case 'complete': {
+      const summary = (toolCall.arguments.summary as string) || 'Task complete'
+      const filesChanged = toolCall.arguments.files_changed as string[] | undefined
+      let output = `✅ Task complete.\n\n${summary}`
+      if (Array.isArray(filesChanged) && filesChanged.length > 0) {
+        output += `\n\nFiles changed:\n${filesChanged.map((f) => `- ${f}`).join('\n')}`
+      }
+      return { success: true, output }
+    }
+
     case 'web_browse': {
       const url = toolCall.arguments.url as string
       try {
@@ -401,6 +424,21 @@ export async function executeTool(
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
     switch (toolCall.name) {
+      case 'think': {
+        const thought = (toolCall.arguments.thought as string) || ''
+        return { success: true, output: thought || '(no thought content)' }
+      }
+
+      case 'complete': {
+        const summary = (toolCall.arguments.summary as string) || 'Task complete'
+        const filesChanged = toolCall.arguments.files_changed as string[] | undefined
+        let output = `✅ Task complete.\n\n${summary}`
+        if (Array.isArray(filesChanged) && filesChanged.length > 0) {
+          output += `\n\nFiles changed:\n${filesChanged.map((f) => `- ${f}`).join('\n')}`
+        }
+        return { success: true, output }
+      }
+
       case 'read_file': {
         try {
           const { data } = await octokit.repos.getContent({
@@ -543,7 +581,14 @@ export async function executeTool(
       }
 
       case 'delete_file': {
-        const path = toolCall.arguments.path as string
+        const path = ((toolCall.arguments.path as string) || '').trim()
+        if (!path || path === '.' || path === '/' || path.endsWith('/')) {
+          return {
+            success: false,
+            output: '',
+            error: 'delete_file requires a specific file path (not a directory or root)',
+          }
+        }
 
         try {
           // Get file SHA

@@ -1,22 +1,13 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type {
-  AgentTask,
-  AgentStep,
-  AgentConfig,
-  ToolCall,
-  ToolResult,
-  ToolName,
-} from '@/lib/agent-loop'
+import type { AgentTask, AgentStep, AgentConfig, ToolCall } from '@/lib/agent-loop'
 import {
   buildAgentSystemPrompt,
   parseToolCall,
   parseThought,
   createStep,
-  analyzeError,
   isTaskComplete,
-  TOOL_DEFINITIONS,
 } from '@/lib/agent-loop'
 import { getStorageItem } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/lib/storage-keys'
@@ -68,529 +59,7 @@ const DEFAULT_CONFIG: AgentConfig = {
 }
 
 // ============================================================================
-// Tool Executors
-// ============================================================================
-
-async function executeReadFile(
-  args: Record<string, unknown>,
-  repository?: { owner: string; repo: string; branch?: string }
-): Promise<ToolResult> {
-  const path = args.path as string
-  const startTime = Date.now()
-
-  try {
-    if (repository) {
-      // Read from GitHub
-      const params = new URLSearchParams({
-        owner: repository.owner,
-        repo: repository.repo,
-        path,
-        ...(repository.branch ? { branch: repository.branch } : {}),
-      })
-
-      const response = await fetch(`/api/agent/files?${params}`, {
-        headers: getGitHubHeaders(),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        return {
-          id: crypto.randomUUID(),
-          name: 'read_file',
-          success: false,
-          output: '',
-          error: data.error || 'Failed to read file',
-          duration: Date.now() - startTime,
-        }
-      }
-
-      return {
-        id: crypto.randomUUID(),
-        name: 'read_file',
-        success: true,
-        output: data.file.content,
-        duration: Date.now() - startTime,
-      }
-    } else {
-      // Local file reading not supported in browser
-      return {
-        id: crypto.randomUUID(),
-        name: 'read_file',
-        success: false,
-        output: '',
-        error: 'Local file reading requires a connected repository',
-        duration: Date.now() - startTime,
-      }
-    }
-  } catch (error) {
-    return {
-      id: crypto.randomUUID(),
-      name: 'read_file',
-      success: false,
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: Date.now() - startTime,
-    }
-  }
-}
-
-async function executeWriteFile(
-  args: Record<string, unknown>,
-  repository?: { owner: string; repo: string; branch?: string }
-): Promise<ToolResult> {
-  const path = args.path as string
-  const content = args.content as string
-  const startTime = Date.now()
-
-  try {
-    if (repository) {
-      const response = await fetch('/api/agent/files', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getGitHubHeaders() },
-        body: JSON.stringify({
-          owner: repository.owner,
-          repo: repository.repo,
-          path,
-          content,
-          message: `Agent: Update ${path}`,
-          branch: repository.branch,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        return {
-          id: crypto.randomUUID(),
-          name: 'write_file',
-          success: false,
-          output: '',
-          error: data.error || 'Failed to write file',
-          duration: Date.now() - startTime,
-        }
-      }
-
-      return {
-        id: crypto.randomUUID(),
-        name: 'write_file',
-        success: true,
-        output: `File written successfully: ${path}\nCommit: ${data.commit?.sha?.slice(0, 7)}`,
-        duration: Date.now() - startTime,
-      }
-    } else {
-      return {
-        id: crypto.randomUUID(),
-        name: 'write_file',
-        success: false,
-        output: '',
-        error: 'Local file writing requires a connected repository',
-        duration: Date.now() - startTime,
-      }
-    }
-  } catch (error) {
-    return {
-      id: crypto.randomUUID(),
-      name: 'write_file',
-      success: false,
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: Date.now() - startTime,
-    }
-  }
-}
-
-async function executeListFiles(
-  args: Record<string, unknown>,
-  repository?: { owner: string; repo: string; branch?: string }
-): Promise<ToolResult> {
-  const pathArg = (args.path as string) || ''
-  const path = pathArg === '.' ? '' : pathArg
-  const startTime = Date.now()
-
-  try {
-    if (repository) {
-      const params = new URLSearchParams({
-        action: 'list',
-        owner: repository.owner,
-        repo: repository.repo,
-        path,
-        ...(repository.branch ? { branch: repository.branch } : {}),
-      })
-
-      const response = await fetch(`/api/agent/files?${params}`, {
-        headers: getGitHubHeaders(),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        return {
-          id: crypto.randomUUID(),
-          name: 'list_files',
-          success: false,
-          output: '',
-          error: data.error || 'Failed to list files',
-          duration: Date.now() - startTime,
-        }
-      }
-
-      const fileList = data.files
-        .map((f: { type: string; name: string; size?: number }) => 
-          `${f.type === 'dir' ? '📁' : '📄'} ${f.name}${f.size ? ` (${f.size} bytes)` : ''}`
-        )
-        .join('\n')
-
-      return {
-        id: crypto.randomUUID(),
-        name: 'list_files',
-        success: true,
-        output: fileList || 'Empty directory',
-        duration: Date.now() - startTime,
-      }
-    } else {
-      return {
-        id: crypto.randomUUID(),
-        name: 'list_files',
-        success: false,
-        output: '',
-        error: 'Local file listing requires a connected repository',
-        duration: Date.now() - startTime,
-      }
-    }
-  } catch (error) {
-    return {
-      id: crypto.randomUUID(),
-      name: 'list_files',
-      success: false,
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: Date.now() - startTime,
-    }
-  }
-}
-
-async function executeRunCommand(
-  args: Record<string, unknown>,
-  environment: 'cloud' | 'other' = 'cloud'
-): Promise<ToolResult> {
-  const command = args.command as string
-  const cwd = args.cwd as string | undefined
-  const startTime = Date.now()
-
-  // Get environment from localStorage if not provided
-  let env: 'cloud' | 'other' = environment
-  if (typeof window !== 'undefined') {
-    const savedEnv = localStorage.getItem('nexteleven_environment')
-    if (savedEnv === 'other' || savedEnv === 'cloud') {
-      env = savedEnv
-    }
-  }
-
-  try {
-    if (env === 'other') {
-      // Other execution using WebContainers (to be implemented)
-      // For now, fall back to cloud
-      return {
-        id: crypto.randomUUID(),
-        name: 'run_command',
-        success: false,
-        output: '',
-        error: 'Other execution (WebContainers) is not yet implemented. Please use Cloud environment.',
-        duration: Date.now() - startTime,
-      }
-    }
-
-    // Cloud execution - use server-side API
-    const response = await fetch('/api/agent/terminal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command, cwd }),
-    })
-
-    const text = await response.text()
-    let data: Record<string, unknown>
-    try {
-      data = JSON.parse(text) as Record<string, unknown>
-    } catch {
-      return {
-        id: crypto.randomUUID(),
-        name: 'run_command',
-        success: false,
-        output: '',
-        error: `Command API returned invalid response${!response.ok ? ` (${response.status})` : ''}. Is /api/agent/terminal available?`,
-        duration: Date.now() - startTime,
-      }
-    }
-
-    if (!response.ok) {
-      return {
-        id: crypto.randomUUID(),
-        name: 'run_command',
-        success: false,
-        output: '',
-        error: data.error || 'Failed to execute command',
-        duration: Date.now() - startTime,
-      }
-    }
-
-    const output = [
-      data.stdout,
-      data.stderr ? `\nStderr:\n${data.stderr}` : '',
-      `\nExit code: ${data.exitCode}`,
-      data.killed ? '\n(Process was killed due to timeout)' : '',
-    ].filter(Boolean).join('')
-
-    return {
-      id: crypto.randomUUID(),
-      name: 'run_command',
-      success: data.success,
-      output,
-      error: data.success ? undefined : data.stderr || 'Command failed',
-      duration: data.duration || Date.now() - startTime,
-    }
-  } catch (error) {
-    return {
-      id: crypto.randomUUID(),
-      name: 'run_command',
-      success: false,
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: Date.now() - startTime,
-    }
-  }
-}
-
-async function executeSearchCode(
-  args: Record<string, unknown>,
-  repository?: { owner: string; repo: string; branch?: string }
-): Promise<ToolResult> {
-  const query = (args.query as string) || (args.pattern as string) || ''
-  const path = (args.path as string) || ''
-  const startTime = Date.now()
-
-  if (repository && query) {
-    try {
-      const params = new URLSearchParams({
-        owner: repository.owner,
-        repo: repository.repo,
-        query,
-        ...(path ? { path } : {}),
-        limit: '20',
-      })
-      const response = await fetch(`/api/agent/search?${params}`, {
-        headers: getGitHubHeaders(),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        return {
-          id: crypto.randomUUID(),
-          name: 'search_code',
-          success: false,
-          output: '',
-          error: data.error || data.details || 'Search failed',
-          duration: Date.now() - startTime,
-        }
-      }
-
-      const results = (data.results || []).map(
-        (r: { path: string; url: string; textMatches?: Array<{ fragment: string }> }) =>
-          `${r.path}\n  ${r.url}${r.textMatches?.[0]?.fragment ? `\n  ${r.textMatches[0].fragment.slice(0, 120)}...` : ''}`
-      ).join('\n\n')
-      const total = data.totalCount ?? 0
-      return {
-        id: crypto.randomUUID(),
-        name: 'search_code',
-        success: true,
-        output: results || `No matches for "${query}" (searched ${total} results)`,
-        duration: Date.now() - startTime,
-      }
-    } catch (error) {
-      return {
-        id: crypto.randomUUID(),
-        name: 'search_code',
-        success: false,
-        output: '',
-        error: error instanceof Error ? error.message : 'Search failed',
-        duration: Date.now() - startTime,
-      }
-    }
-  }
-
-  if (query) {
-    return executeRunCommand({
-      command: `grep -rn "${query.replace(/"/g, '\\"')}" ${path || '.'} 2>/dev/null | head -30`,
-    })
-  }
-
-  return {
-    id: crypto.randomUUID(),
-    name: 'search_code',
-    success: false,
-    output: '',
-    error: 'search_code requires a query or pattern argument',
-    duration: Date.now() - startTime,
-  }
-}
-
-async function executeDeleteFile(
-  args: Record<string, unknown>,
-  repository?: { owner: string; repo: string; branch?: string }
-): Promise<ToolResult> {
-  const path = args.path as string
-  const startTime = Date.now()
-
-  try {
-    if (!repository) {
-      return {
-        id: crypto.randomUUID(),
-        name: 'delete_file',
-        success: false,
-        output: '',
-        error: 'File deletion requires a connected repository',
-        duration: Date.now() - startTime,
-      }
-    }
-
-    // First, read the file to get its SHA (required by GitHub API)
-    const readParams = new URLSearchParams({
-      owner: repository.owner,
-      repo: repository.repo,
-      path,
-      ...(repository.branch ? { branch: repository.branch } : {}),
-    })
-
-    const readResponse = await fetch(`/api/agent/files?${readParams}`, {
-      headers: getGitHubHeaders(),
-    })
-    const readData = await readResponse.json()
-
-    if (!readResponse.ok || !readData.file?.sha) {
-      return {
-        id: crypto.randomUUID(),
-        name: 'delete_file',
-        success: false,
-        output: '',
-        error: readData.error || 'File not found or cannot be read',
-        duration: Date.now() - startTime,
-      }
-    }
-
-    const fileSha = readData.file.sha
-
-    // Now delete the file
-    const deleteResponse = await fetch('/api/agent/files', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', ...getGitHubHeaders() },
-      body: JSON.stringify({
-        owner: repository.owner,
-        repo: repository.repo,
-        path,
-        sha: fileSha,
-        message: `Agent: Delete ${path}`,
-        branch: repository.branch,
-      }),
-    })
-
-    const deleteData = await deleteResponse.json()
-
-    if (!deleteResponse.ok) {
-      return {
-        id: crypto.randomUUID(),
-        name: 'delete_file',
-        success: false,
-        output: '',
-        error: deleteData.error || 'Failed to delete file',
-        duration: Date.now() - startTime,
-      }
-    }
-
-    return {
-      id: crypto.randomUUID(),
-      name: 'delete_file',
-      success: true,
-      output: `File deleted successfully: ${path}\nCommit: ${deleteData.commit?.sha?.slice(0, 7)}`,
-      duration: Date.now() - startTime,
-    }
-  } catch (error) {
-    return {
-      id: crypto.randomUUID(),
-      name: 'delete_file',
-      success: false,
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: Date.now() - startTime,
-    }
-  }
-}
-
-function executeThink(args: Record<string, unknown>): ToolResult {
-  const thought = args.thought as string
-  return {
-    id: crypto.randomUUID(),
-    name: 'think',
-    success: true,
-    output: thought,
-    duration: 0,
-  }
-}
-
-function executeComplete(args: Record<string, unknown>): ToolResult {
-  const summary = args.summary as string
-  const filesChanged = args.files_changed as string[] | undefined
-  
-  let output = `✅ Task Complete\n\n${summary}`
-  if (filesChanged && filesChanged.length > 0) {
-    output += `\n\nFiles changed:\n${filesChanged.map(f => `- ${f}`).join('\n')}`
-  }
-
-  return {
-    id: crypto.randomUUID(),
-    name: 'complete',
-    success: true,
-    output,
-    duration: 0,
-  }
-}
-
-// ============================================================================
-// Tool Executor Router
-// ============================================================================
-
-async function executeTool(
-  toolCall: ToolCall,
-  repository?: { owner: string; repo: string; branch?: string },
-  environment: 'cloud' | 'other' = 'cloud'
-): Promise<ToolResult> {
-  switch (toolCall.name) {
-    case 'read_file':
-      return executeReadFile(toolCall.arguments, repository)
-    case 'write_file':
-      return executeWriteFile(toolCall.arguments, repository)
-    case 'list_files':
-      return executeListFiles(toolCall.arguments, repository)
-    case 'delete_file':
-      return executeDeleteFile(toolCall.arguments, repository)
-    case 'run_command':
-      return executeRunCommand(toolCall.arguments, environment)
-    case 'search_code':
-      return executeSearchCode(toolCall.arguments, repository)
-    case 'think':
-      return executeThink(toolCall.arguments)
-    case 'complete':
-      return executeComplete(toolCall.arguments)
-    default:
-      return {
-        id: crypto.randomUUID(),
-        name: toolCall.name,
-        success: false,
-        output: '',
-        error: `Unknown tool: ${toolCall.name}`,
-      }
-  }
-}
-
-// ============================================================================
-// Hook Implementation
+// Hook Implementation (tool execution is server-side in /api/chat)
 // ============================================================================
 
 export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopReturn {
@@ -611,11 +80,13 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
   }, [])
 
   /**
-   * Call Eleven API for next step
+   * Call Eleven API for next step.
+   * Tool execution is handled server-side by /api/chat; we only consume the stream.
    */
   const callGrok = useCallback(async (
     messages: Array<{ role: string; content: string }>,
-    signal: AbortSignal
+    signal: AbortSignal,
+    repository?: { owner: string; repo: string; branch?: string }
   ): Promise<string> => {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -624,6 +95,7 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
         message: messages[messages.length - 1].content,
         history: messages.slice(0, -1),
         mode: 'orchestrate',
+        repository: repository ?? configRef.current?.repository,
       }),
       signal,
     })
@@ -694,10 +166,10 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
       iteration++
 
       try {
-        // Get Eleven's response
-        const response = await callGrok(messages, abortController.signal)
+        // Get Eleven's response (server may run tools and stream follow-up; we only consume)
+        const response = await callGrok(messages, abortController.signal, config.repository)
 
-        // Parse thought
+        // Parse thought for UI step
         const thought = parseThought(response)
         if (thought) {
           const thoughtStep = createStep('thought', thought)
@@ -706,70 +178,30 @@ export function useAgentLoop(options: UseAgentLoopOptions = {}): UseAgentLoopRet
           onStepComplete?.(thoughtStep)
         }
 
-        // Parse tool call
+        // Check for completion (server already executed tools; look for complete tool or markers in streamed text)
         const toolCall = parseToolCall(response)
-        if (!toolCall) {
-          // No tool call found, might be a completion or error
-          if (response.toLowerCase().includes('complete') || response.toLowerCase().includes('finished')) {
-            currentTask.status = 'completed'
-            currentTask.result = response
-            break
-          }
-          
-          // Ask Eleven to provide a tool call
-          messages.push({ role: 'assistant', content: response })
-          messages.push({ role: 'user', content: 'Please provide a tool call in JSON format to continue, or call the "complete" tool if the task is finished.' })
-          continue
-        }
-
-        // Create action step
-        const actionStep = createStep('action', `Calling ${toolCall.name}`, toolCall)
-        currentTask.steps.push(actionStep)
-        setCurrentStep(actionStep)
-        onStepComplete?.(actionStep)
-
-        // Get environment setting
-        let environment: 'cloud' | 'other' = 'cloud'
-        if (typeof window !== 'undefined') {
-          const savedEnv = localStorage.getItem('nexteleven_environment')
-          if (savedEnv === 'other' || savedEnv === 'cloud') {
-            environment = savedEnv
-          }
-        }
-
-        // Execute tool
-        const result = await executeTool(toolCall, config.repository, environment)
-
-        // Create observation step
-        const observationStep = createStep(
-          result.success ? 'observation' : 'error',
-          result.output || result.error || 'No output',
-          undefined,
-          result
-        )
-        currentTask.steps.push(observationStep)
-        setCurrentStep(observationStep)
-        onStepComplete?.(observationStep)
-
-        // Check if task is complete
-        if (toolCall.name === 'complete') {
+        if (toolCall?.name === 'complete') {
           currentTask.status = 'completed'
-          currentTask.result = result.output
+          currentTask.result = typeof toolCall.arguments?.summary === 'string' ? toolCall.arguments.summary : response
+          break
+        }
+        if (response.toLowerCase().includes('complete') || response.toLowerCase().includes('finished') || response.toLowerCase().includes('task complete')) {
+          currentTask.status = 'completed'
+          currentTask.result = response
           break
         }
 
-        // Add to conversation
-        messages.push({ role: 'assistant', content: response })
-        messages.push({
-          role: 'user',
-          content: `**Observation**:\n${result.success ? result.output : `Error: ${result.error}`}\n\nContinue with the next step.`,
-        })
-
-        // Auto-fix errors if enabled
-        if (!result.success && config.autoFix) {
-          const errorAnalysis = analyzeError(result.error || '')
-          messages[messages.length - 1].content += `\n\nError analysis: ${errorAnalysis.suggestion}`
+        // Optional: show action step for display when we detect a tool call in the response
+        if (toolCall) {
+          const actionStep = createStep('action', `Called ${toolCall.name}`, toolCall)
+          currentTask.steps.push(actionStep)
+          setCurrentStep(actionStep)
+          onStepComplete?.(actionStep)
         }
+
+        // Add assistant message and continue loop (server already ran tools and may have streamed follow-up)
+        messages.push({ role: 'assistant', content: response })
+        messages.push({ role: 'user', content: 'Continue with the next step, or call the "complete" tool if the task is finished.' })
 
         // Update task state
         setTask({ ...currentTask })

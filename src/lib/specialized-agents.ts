@@ -2113,7 +2113,7 @@ You are the ultimate gatekeeper. Test until perfection, miss nothing.`,
 \`\`\`
 
 Use browser_automation tool for all browser interactions.`,
-    tools: ['browser_automation', 'web_browse', 'read_file', 'write_file'],
+    tools: ['web_browse', 'read_file', 'write_file'],
     triggerKeywords: ['browser', 'automation', 'playwright', 'puppeteer', 'scrape', 'e2e', 'end-to-end', 'screenshot', 'dynamic', 'javascript', 'selenium'],
   },
 
@@ -2165,7 +2165,7 @@ Use browser_automation tool for all browser interactions.`,
 \`\`\`
 
 Use deploy tool for all deployment operations.`,
-    tools: ['deploy', 'run_command', 'read_file', 'web_browse'],
+    tools: ['run_command', 'read_file', 'web_browse'],
     triggerKeywords: ['deploy', 'deployment', 'vercel', 'netlify', 'preview', 'production', 'publish', 'release', 'ci/cd', 'pipeline'],
   },
 
@@ -2215,7 +2215,7 @@ Use deploy tool for all deployment operations.`,
 \`\`\`
 
 Use transcribe_audio tool for all audio transcription.`,
-    tools: ['transcribe_audio', 'read_file', 'write_file'],
+    tools: ['read_file', 'write_file'],
     triggerKeywords: ['stt', 'speech-to-text', 'transcribe', 'whisper', 'audio', 'voice', 'voice input', 'dictation', 'subtitle', 'caption'],
   },
 
@@ -2265,7 +2265,7 @@ Use transcribe_audio tool for all audio transcription.`,
 \`\`\`
 
 Use github_pr_manage tool for all GitHub operations.`,
-    tools: ['github_pr_manage', 'create_pull_request', 'create_branch', 'get_diff', 'run_command'],
+    tools: ['create_pull_request', 'create_branch', 'get_diff', 'run_command'],
     triggerKeywords: ['github', 'pr', 'pull request', 'workflow', 'actions', 'ci/cd', 'merge', 'review', 'branch', 'gh cli'],
   },
 
@@ -2317,7 +2317,7 @@ Use github_pr_manage tool for all GitHub operations.`,
 \`\`\`
 
 Use nx_affected tool for all Nx operations. Only use if project uses Nx monorepo.`,
-    tools: ['nx_affected', 'run_command', 'get_diff', 'read_file'],
+    tools: ['run_command', 'get_diff', 'read_file'],
     triggerKeywords: ['nx', 'nx cloud', 'monorepo', 'affected', 'workspace', 'build', 'parallel', 'cache', 'dependency graph'],
   },
 
