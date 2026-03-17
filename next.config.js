@@ -7,7 +7,16 @@ const nextConfig = {
   trailingSlash: false,
   env: { GROK_API_KEY: process.env.GROK_API_KEY ?? 'build-dummy' },
   webpack: (config, { isServer }) => {
-    if (!isServer) config.optimization.runtimeChunk = false;
+    if (!isServer) {
+      config.optimization.runtimeChunk = false;
+      // Prevent Node.js modules from being bundled in client code.
+      // persistence.ts uses 'fs' and 'path' but is only called server-side.
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
     return config;
   },
 };
