@@ -12,6 +12,8 @@
  * Last Updated: January 14, 2026
  */
 
+import { persistence, COLLECTIONS } from './persistence'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -119,11 +121,60 @@ export class KnowledgeGraph {
   private relationships: Map<string, Relationship> = new Map()
   private entityIndex: Map<EntityType, Set<string>> = new Map()
   private relationshipIndex: Map<string, Set<string>> = new Map() // entityId -> relationship IDs
+  private initialized = false
+
+  /**
+   * Load persisted graph data from disk
+   */
+  private ensureInitialized(): void {
+    if (this.initialized) return
+    this.initialized = true
+    try {
+      const entities = persistence.load<Entity>(COLLECTIONS.KNOWLEDGE_ENTITIES)
+      for (const entity of entities) {
+        entity.createdAt = new Date(entity.createdAt)
+        entity.updatedAt = new Date(entity.updatedAt)
+        this.entities.set(entity.id, entity)
+        if (!this.entityIndex.has(entity.type)) {
+          this.entityIndex.set(entity.type, new Set())
+        }
+        this.entityIndex.get(entity.type)!.add(entity.id)
+      }
+
+      const relationships = persistence.load<Relationship>(COLLECTIONS.KNOWLEDGE_RELATIONSHIPS)
+      for (const rel of relationships) {
+        rel.createdAt = new Date(rel.createdAt)
+        rel.updatedAt = new Date(rel.updatedAt)
+        if (this.entities.has(rel.from) && this.entities.has(rel.to)) {
+          this.relationships.set(rel.id, rel)
+          if (!this.relationshipIndex.has(rel.from)) this.relationshipIndex.set(rel.from, new Set())
+          this.relationshipIndex.get(rel.from)!.add(rel.id)
+          if (!this.relationshipIndex.has(rel.to)) this.relationshipIndex.set(rel.to, new Set())
+          this.relationshipIndex.get(rel.to)!.add(rel.id)
+        }
+      }
+    } catch (error) {
+      console.warn('[KnowledgeGraph] Failed to load persisted data:', error)
+    }
+  }
+
+  /**
+   * Persist graph data to disk
+   */
+  private persist(): void {
+    try {
+      persistence.save(COLLECTIONS.KNOWLEDGE_ENTITIES, Array.from(this.entities.values()))
+      persistence.save(COLLECTIONS.KNOWLEDGE_RELATIONSHIPS, Array.from(this.relationships.values()))
+    } catch (error) {
+      console.warn('[KnowledgeGraph] Failed to persist:', error)
+    }
+  }
 
   /**
    * Add entity to graph
    */
   addEntity(entity: Entity): void {
+    this.ensureInitialized()
     this.entities.set(entity.id, entity)
 
     // Index by type
@@ -137,6 +188,7 @@ export class KnowledgeGraph {
    * Get entity by ID
    */
   getEntity(id: string): Entity | undefined {
+    this.ensureInitialized()
     return this.entities.get(id)
   }
 
@@ -144,6 +196,7 @@ export class KnowledgeGraph {
    * Find entities by query
    */
   findEntities(query: GraphQuery): Entity[] {
+    this.ensureInitialized()
     let results = Array.from(this.entities.values())
 
     // Filter by type
@@ -420,6 +473,9 @@ export class KnowledgeGraph {
         console.warn('[KnowledgeGraph] Failed to add relationship:', error)
       }
     })
+
+    // Persist after learning
+    this.persist()
 
     return { entities, relationships }
   }

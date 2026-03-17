@@ -57,6 +57,31 @@
         "enabled": true,
         "auto_trigger": true,
         "prefix": "CTO Eleven MCP Beta Tester"
+      },
+      "refactoring": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Refactoring"
+      },
+      "architecture": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Architecture"
+      },
+      "debugging": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Debugging"
+      },
+      "observability": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP Observability"
+      },
+      "cicd": {
+        "enabled": true,
+        "auto_trigger": true,
+        "prefix": "CTO Eleven MCP CI/CD"
       }
     },
     "orchestrator": {

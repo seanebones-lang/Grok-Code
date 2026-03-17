@@ -14,18 +14,21 @@
 // Types
 // ============================================================================
 
-export type ToolName = 
+export type ToolName =
   | 'read_file'
   | 'write_file'
   | 'list_files'
   | 'delete_file'
   | 'move_file'
+  | 'patch_file'
   | 'run_command'
   | 'search_code'
   | 'create_branch'
   | 'create_pull_request'
   | 'get_diff'
   | 'get_commit_history'
+  | 'web_search'
+  | 'web_browse'
   | 'think'
   | 'complete'
 
@@ -154,17 +157,18 @@ Create a new GitHub repository. **Enables full project spawning from description
 Returns: Repository object with owner, name, fullName, url, defaultBranch.
 
 ### 6. run_command
-Execute a terminal command.
+Execute a terminal command. Supports piped commands, redirects, and shell expressions.
 \`\`\`json
 {
   "name": "run_command",
   "arguments": {
-    "command": "string (required) - Command to execute",
-    "cwd": "string (optional) - Working directory"
+    "command": "string (required) - Command to execute (supports pipes, &&, ||)",
+    "cwd": "string (optional) - Working directory",
+    "timeout": "number (optional) - Timeout in ms (default: 30000, max: 300000)"
   }
 }
 \`\`\`
-Allowed commands: npm, npx, yarn, node, git, tsc, eslint, prettier, jest, python, pip, cargo, go
+Allowed commands: npm, npx, yarn, node, git, tsc, eslint, prettier, jest, vitest, python, pip, cargo, go, make, docker, curl
 
 **Python Libraries Available** (import directly in code_execution):
 - Data: pandas, numpy, json, csv, PyMuPDF (fitz), Pillow, PyYAML
@@ -174,7 +178,7 @@ Allowed commands: npm, npx, yarn, node, git, tsc, eslint, prettier, jest, python
 - Utility: asyncio, concurrent.futures, pathlib, logging, hashlib, secrets
 - See full catalog: src/lib/agent-tools-catalog.ts
 
-### 6. move_file
+### 7. move_file
 Move or rename a file. **Automatically commits to GitHub** when a repository is connected.
 \`\`\`json
 {
@@ -186,20 +190,35 @@ Move or rename a file. **Automatically commits to GitHub** when a repository is 
 }
 \`\`\`
 
-### 7. search_code
-Advanced code search using GitHub Code Search API (more powerful than regex).
+### 8. patch_file
+Apply surgical edits to a file without rewriting the entire content. More token-efficient than write_file for small changes.
+\`\`\`json
+{
+  "name": "patch_file",
+  "arguments": {
+    "path": "string (required) - Path to the file to patch",
+    "patches": "array (required) - Array of patch objects: [{ \"find\": \"old text\", \"replace\": \"new text\" }]"
+  }
+}
+\`\`\`
+Each patch replaces the first occurrence of \`find\` with \`replace\`. Patches are applied sequentially.
+
+### 9. search_code
+Advanced code search. Uses GitHub Code Search API for repos, or local ripgrep-style search.
 \`\`\`json
 {
   "name": "search_code",
   "arguments": {
-    "query": "string (required) - Search query (supports GitHub search syntax)",
+    "query": "string (required) - Search query (supports regex patterns)",
     "language": "string (optional) - Filter by language (e.g., 'typescript', 'javascript')",
-    "path": "string (optional) - Filter by path"
+    "path": "string (optional) - Filter by path",
+    "context_lines": "number (optional) - Lines of context around matches (default: 0)",
+    "exclude": "string (optional) - Glob pattern to exclude (default: node_modules)"
   }
 }
 \`\`\`
 
-### 8. create_branch
+### 10. create_branch
 Create a new Git branch.
 \`\`\`json
 {
@@ -211,7 +230,7 @@ Create a new Git branch.
 }
 \`\`\`
 
-### 9. create_pull_request
+### 11. create_pull_request
 Create a pull request.
 \`\`\`json
 {
@@ -225,7 +244,7 @@ Create a pull request.
 }
 \`\`\`
 
-### 10. get_diff
+### 12. get_diff
 Get differences between commits or branches.
 \`\`\`json
 {
@@ -238,7 +257,7 @@ Get differences between commits or branches.
 }
 \`\`\`
 
-### 11. get_commit_history
+### 13. get_commit_history
 Get commit history for a branch or specific file.
 \`\`\`json
 {
@@ -251,7 +270,7 @@ Get commit history for a branch or specific file.
 }
 \`\`\`
 
-### 12. web_search
+### 14. web_search
 Search the web for information using DuckDuckGo (free, no API key required).
 \`\`\`json
 {
@@ -264,7 +283,7 @@ Search the web for information using DuckDuckGo (free, no API key required).
 \`\`\`
 Returns: Formatted search results with titles, URLs, and snippets.
 
-### 13. web_browse
+### 15. web_browse
 Fetch and extract readable content from a web page.
 \`\`\`json
 {
@@ -276,7 +295,7 @@ Fetch and extract readable content from a web page.
 \`\`\`
 Returns: Extracted text content from the web page (up to 10KB).
 
-### 14. think
+### 16. think
 Record your reasoning process (doesn't execute anything).
 \`\`\`json
 {
@@ -287,7 +306,7 @@ Record your reasoning process (doesn't execute anything).
 }
 \`\`\`
 
-### 15. complete
+### 17. complete
 Mark the task as complete.
 \`\`\`json
 {
@@ -301,9 +320,21 @@ Mark the task as complete.
 
 ## Response Format
 
-For each step, respond with:
+For each step, you can respond with one or more tool calls.
+
+**Single tool call:**
 1. **Thought**: Your reasoning about what to do next
 2. **Action**: A tool call in JSON format
+
+**Parallel tool calls** (for independent operations like reading multiple files):
+1. **Thought**: Your reasoning about what to do next
+2. **Actions**: Multiple tool calls in a JSON array format
+\`\`\`json
+[
+  { "name": "read_file", "arguments": { "path": "file1.ts" } },
+  { "name": "read_file", "arguments": { "path": "file2.ts" } }
+]
+\`\`\`
 
 Example:
 \`\`\`
@@ -322,12 +353,13 @@ Example:
 
 ## Important Rules
 
-1. **One action at a time**: Only call one tool per response
-2. **Wait for results**: After each action, wait for the observation before proceeding
-3. **Handle errors**: If a command fails, analyze the error and try to fix it
+1. **Parallel when possible**: You may call multiple tools in a single response when they are independent (e.g., reading multiple files). Use a JSON array of tool calls.
+2. **Sequential when dependent**: If one tool's output feeds into another, wait for results before proceeding.
+3. **Handle errors**: If a command fails, analyze the error and try to fix it. Transient failures will be retried automatically.
 4. **Be thorough**: Read relevant files before making changes
-5. **Test your work**: Run tests or build commands to verify changes
-6. **Complete the task**: Always call 'complete' when finished
+5. **Use patch_file for small edits**: Prefer patch_file over write_file when making targeted changes to existing files.
+6. **Test your work**: Run tests or build commands to verify changes
+7. **Complete the task**: Always call 'complete' when finished
 `
 
 // ============================================================================
@@ -365,39 +397,75 @@ Remember: You are autonomous. Take initiative, make decisions, and complete the 
 }
 
 // ============================================================================
-// Tool Call Parser
+// Tool Call Parser (supports single and parallel tool calls)
 // ============================================================================
 
-export function parseToolCall(response: string): ToolCall | null {
-  // Look for JSON in the response
-  const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/)
-  if (!jsonMatch) {
-    // Try to find raw JSON
-    const rawJsonMatch = response.match(/\{[\s\S]*?"name"[\s\S]*?"arguments"[\s\S]*?\}/)
-    if (!rawJsonMatch) return null
-    
+/**
+ * Parse a single tool call from a parsed JSON object
+ */
+function toolCallFromParsed(parsed: Record<string, unknown>): ToolCall | null {
+  if (parsed && typeof parsed.name === 'string' && parsed.arguments && typeof parsed.arguments === 'object') {
+    return {
+      id: crypto.randomUUID(),
+      name: parsed.name as ToolName,
+      arguments: parsed.arguments as Record<string, unknown>,
+    }
+  }
+  return null
+}
+
+/**
+ * Parse one or more tool calls from agent response text.
+ * Supports:
+ * - Single tool call: { "name": "...", "arguments": {...} }
+ * - Parallel tool calls: [{ "name": "..." }, { "name": "..." }]
+ */
+export function parseToolCalls(response: string): ToolCall[] {
+  const results: ToolCall[] = []
+
+  // Try all JSON code blocks
+  const codeBlocks = [...response.matchAll(/```(?:json)?\s*([\s\S]*?)\s*```/g)]
+  for (const match of codeBlocks) {
     try {
-      const parsed = JSON.parse(rawJsonMatch[0])
-      return {
-        id: crypto.randomUUID(),
-        name: parsed.name,
-        arguments: parsed.arguments || {},
+      const parsed = JSON.parse(match[1].trim())
+      // Array of tool calls (parallel)
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const tc = toolCallFromParsed(item)
+          if (tc) results.push(tc)
+        }
+        if (results.length > 0) return results
       }
+      // Single tool call
+      const tc = toolCallFromParsed(parsed)
+      if (tc) results.push(tc)
+      if (results.length > 0) return results
     } catch {
-      return null
+      // not valid JSON, try next block
     }
   }
 
-  try {
-    const parsed = JSON.parse(jsonMatch[1])
-    return {
-      id: crypto.randomUUID(),
-      name: parsed.name,
-      arguments: parsed.arguments || {},
+  // Fallback: try to find raw JSON (single tool call)
+  const rawJsonMatch = response.match(/\{[\s\S]*?"name"[\s\S]*?"arguments"[\s\S]*?\}/)
+  if (rawJsonMatch) {
+    try {
+      const parsed = JSON.parse(rawJsonMatch[0])
+      const tc = toolCallFromParsed(parsed)
+      if (tc) results.push(tc)
+    } catch {
+      // ignore
     }
-  } catch {
-    return null
   }
+
+  return results
+}
+
+/**
+ * @deprecated Use parseToolCalls() instead for parallel support. Kept for backward compatibility.
+ */
+export function parseToolCall(response: string): ToolCall | null {
+  const calls = parseToolCalls(response)
+  return calls.length > 0 ? calls[0] : null
 }
 
 // ============================================================================

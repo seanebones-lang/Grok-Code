@@ -15,6 +15,7 @@
 import type { SpecializedAgent } from './specialized-agents'
 import { ragSystem } from './rag-system'
 import { knowledgeGraph } from './knowledge-graph'
+import { persistence, COLLECTIONS } from './persistence'
 
 // ============================================================================
 // Types
@@ -89,11 +90,59 @@ export class MLLearningSystem {
   private agentPerformance: Map<string, AgentPerformance> = new Map()
   private learningPatterns: Map<string, LearningPattern> = new Map()
   private models: Map<string, MLModel> = new Map()
+  private initialized = false
+
+  /**
+   * Load persisted learning data from disk
+   */
+  private ensureInitialized(): void {
+    if (this.initialized) return
+    this.initialized = true
+    try {
+      // Load interactions (keep only recent ones)
+      const interactions = persistence.load<Interaction>(COLLECTIONS.ML_INTERACTIONS)
+      for (const i of interactions.slice(-500)) {
+        i.timestamp = new Date(i.timestamp)
+        this.interactions.set(i.id, i)
+      }
+
+      // Load patterns
+      const patterns = persistence.load<LearningPattern>(COLLECTIONS.ML_PATTERNS)
+      for (const p of patterns) {
+        p.createdAt = new Date(p.createdAt)
+        p.lastSeen = new Date(p.lastSeen)
+        this.learningPatterns.set(p.id, p)
+      }
+
+      // Load agent performance
+      const perfs = persistence.load<AgentPerformance>(COLLECTIONS.ML_AGENT_PERFORMANCE)
+      for (const p of perfs) {
+        p.lastUpdated = new Date(p.lastUpdated)
+        this.agentPerformance.set(p.agentId, p)
+      }
+    } catch (error) {
+      console.warn('[MLLearning] Failed to load persisted data:', error)
+    }
+  }
+
+  /**
+   * Persist learning data to disk
+   */
+  private persist(): void {
+    try {
+      persistence.save(COLLECTIONS.ML_INTERACTIONS, Array.from(this.interactions.values()).slice(-500))
+      persistence.save(COLLECTIONS.ML_PATTERNS, Array.from(this.learningPatterns.values()))
+      persistence.save(COLLECTIONS.ML_AGENT_PERFORMANCE, Array.from(this.agentPerformance.values()))
+    } catch (error) {
+      console.warn('[MLLearning] Failed to persist:', error)
+    }
+  }
 
   /**
    * Record interaction for learning
    */
   async recordInteraction(interaction: Omit<Interaction, 'id' | 'timestamp'>): Promise<Interaction> {
+    this.ensureInitialized()
     const fullInteraction: Interaction = {
       ...interaction,
       id: `interaction_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -131,6 +180,9 @@ export class MLLearningSystem {
       sessionId: fullInteraction.sessionId,
       success: fullInteraction.success,
     })
+
+    // Persist learning data
+    this.persist()
 
     return fullInteraction
   }
@@ -450,6 +502,7 @@ export class MLLearningSystem {
    * Get agent performance
    */
   getAgentPerformance(agentId: string): AgentPerformance | undefined {
+    this.ensureInitialized()
     return this.agentPerformance.get(agentId)
   }
 
@@ -464,6 +517,7 @@ export class MLLearningSystem {
    * Get learning patterns
    */
   getLearningPatterns(agentId?: string): LearningPattern[] {
+    this.ensureInitialized()
     const patterns = Array.from(this.learningPatterns.values())
     return agentId ? patterns.filter(p => p.agentId === agentId) : patterns
   }

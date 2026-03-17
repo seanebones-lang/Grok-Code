@@ -16,6 +16,7 @@ import type { SpecializedAgent } from './specialized-agents'
 import { mlLearningSystem } from './ml-learning-system'
 import { ragSystem } from './rag-system'
 import { knowledgeGraph } from './knowledge-graph'
+import { persistence, COLLECTIONS } from './persistence'
 
 // ============================================================================
 // Types
@@ -59,24 +60,69 @@ export class AgentPrecisionSystem {
   private precisionMetrics: Map<string, AgentPrecisionMetrics> = new Map()
   private enhancements: Map<string, AgentEnhancement[]> = new Map()
   private agentPrompts: Map<string, string> = new Map()
+  private persistedInit = false
+
+  /**
+   * Load persisted precision data
+   */
+  private loadPersisted(): void {
+    if (this.persistedInit) return
+    this.persistedInit = true
+    try {
+      const metrics = persistence.load<AgentPrecisionMetrics>(COLLECTIONS.PRECISION_METRICS)
+      for (const m of metrics) {
+        m.lastUpdated = new Date(m.lastUpdated)
+        this.precisionMetrics.set(m.agentId, m)
+      }
+
+      const enhancements = persistence.load<AgentEnhancement & { agentId: string }>(COLLECTIONS.PRECISION_ENHANCEMENTS)
+      for (const e of enhancements) {
+        e.appliedAt = new Date(e.appliedAt)
+        if (!this.enhancements.has(e.agentId)) {
+          this.enhancements.set(e.agentId, [])
+        }
+        this.enhancements.get(e.agentId)!.push(e)
+      }
+    } catch (error) {
+      console.warn('[Precision] Failed to load persisted data:', error)
+    }
+  }
+
+  /**
+   * Persist precision data
+   */
+  private persistData(): void {
+    try {
+      persistence.save(COLLECTIONS.PRECISION_METRICS, Array.from(this.precisionMetrics.values()))
+      const allEnhancements = Array.from(this.enhancements.entries()).flatMap(
+        ([agentId, enhancements]) => enhancements.map(e => ({ ...e, agentId }))
+      )
+      persistence.save(COLLECTIONS.PRECISION_ENHANCEMENTS, allEnhancements)
+    } catch (error) {
+      console.warn('[Precision] Failed to persist:', error)
+    }
+  }
 
   /**
    * Initialize with agent definitions
    */
   initialize(agents: Record<string, SpecializedAgent>): void {
+    this.loadPersisted()
     Object.values(agents).forEach(agent => {
       this.agentPrompts.set(agent.id, agent.systemPrompt)
-      
-      // Initialize metrics
-      this.precisionMetrics.set(agent.id, {
-        agentId: agent.id,
-        precision: 0.7, // Start with moderate precision
-        recall: 0.7,
-        f1Score: 0.7,
-        accuracy: 0.7,
-        confidence: 0.5, // Low confidence initially
-        lastUpdated: new Date(),
-      })
+
+      // Only initialize metrics if not already loaded from persistence
+      if (!this.precisionMetrics.has(agent.id)) {
+        this.precisionMetrics.set(agent.id, {
+          agentId: agent.id,
+          precision: 0.7,
+          recall: 0.7,
+          f1Score: 0.7,
+          accuracy: 0.7,
+          confidence: 0.5,
+          lastUpdated: new Date(),
+        })
+      }
     })
   }
 
@@ -116,6 +162,7 @@ export class AgentPrecisionSystem {
 
     metrics.lastUpdated = new Date()
     this.precisionMetrics.set(agentId, metrics)
+    this.persistData()
 
     // Check if enhancement is needed
     if (metrics.precision < 0.6 || metrics.f1Score < 0.6) {
