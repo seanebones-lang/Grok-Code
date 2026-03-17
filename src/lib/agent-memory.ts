@@ -2,7 +2,11 @@
  * Agent Memory System
  * Stores decisions, preferences, and learnings across sessions
  * Agents can recall past context to provide better assistance
+ *
+ * Enhanced: Works both client-side (localStorage) and server-side (file persistence)
  */
+
+import { persistence, COLLECTIONS } from './persistence'
 
 // ============================================================================
 // Types
@@ -49,12 +53,25 @@ function generateId(): string {
 // ============================================================================
 
 export function loadMemories(): MemoryEntry[] {
-  if (typeof window === 'undefined') return []
-  
+  // Server-side: use file persistence
+  if (typeof window === 'undefined') {
+    try {
+      const memories = persistence.load<MemoryEntry>(COLLECTIONS.AGENT_MEMORY)
+      return memories.map(m => ({
+        ...m,
+        createdAt: new Date(m.createdAt),
+        lastAccessed: new Date(m.lastAccessed),
+      }))
+    } catch {
+      return []
+    }
+  }
+
+  // Client-side: use localStorage
   try {
     const stored = localStorage.getItem(MEMORY_STORAGE_KEY)
     if (!stored) return []
-    
+
     const parsed = JSON.parse(stored)
     return parsed.map((m: MemoryEntry) => ({
       ...m,
@@ -67,26 +84,36 @@ export function loadMemories(): MemoryEntry[] {
 }
 
 export function saveMemories(memories: MemoryEntry[]): void {
-  if (typeof window === 'undefined') return
-  
   // Sort by importance and recency, keep top MAX_MEMORIES
   const sorted = memories
     .sort((a, b) => {
-      // Critical always first
       const importanceOrder = { critical: 4, high: 3, medium: 2, low: 1 }
       const impDiff = importanceOrder[b.importance] - importanceOrder[a.importance]
       if (impDiff !== 0) return impDiff
-      
-      // Then by access count
+
       const accessDiff = b.accessCount - a.accessCount
       if (accessDiff !== 0) return accessDiff
-      
-      // Then by recency
+
       return b.lastAccessed.getTime() - a.lastAccessed.getTime()
     })
     .slice(0, MAX_MEMORIES)
-  
-  localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(sorted))
+
+  // Server-side: use file persistence
+  if (typeof window === 'undefined') {
+    try {
+      persistence.save(COLLECTIONS.AGENT_MEMORY, sorted)
+    } catch {
+      // ignore
+    }
+    return
+  }
+
+  // Client-side: use localStorage
+  try {
+    localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(sorted))
+  } catch {
+    // ignore
+  }
 }
 
 // ============================================================================

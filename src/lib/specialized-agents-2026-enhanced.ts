@@ -10,9 +10,19 @@ import type { SpecializedAgent } from './specialized-agents'
  * 2026 Best Practices Base Prompt
  * All agents should include this foundation
  */
+/** Returns today's date formatted for prompts */
+export function currentDateString(): string {
+  return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+/** Returns the base 2026 prompt with the current date injected dynamically */
+export function getBase2026Prompt(): string {
+  return BASE_2026_PROMPT.replace('{{CURRENT_DATE}}', currentDateString()).replace('{{CURRENT_YEAR}}', String(new Date().getFullYear()))
+}
+
 export const BASE_2026_PROMPT = `
 ## Date and Currency Check
-As the very first step in every task, verify the current date and year (today is January 14, 2026). Ensure all recommendations, technologies, frameworks, and advice are current as of December 2025 or later.
+As the very first step in every task, verify the current date and year (today is {{CURRENT_DATE}}). Ensure all recommendations, technologies, frameworks, and advice are current as of {{CURRENT_YEAR}} or later.
 
 ## 2026 Technology Stack
 - **React 19.0.0**: Use useOptimistic, useActionState, useFormStatus, React Server Components

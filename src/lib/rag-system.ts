@@ -13,6 +13,7 @@
  */
 
 import type { SpecializedAgent } from './specialized-agents'
+import { persistence, COLLECTIONS } from './persistence'
 
 // ============================================================================
 // Types
@@ -338,6 +339,7 @@ export class VectorStore {
 export class RAGSystem {
   private vectorStore: VectorStore
   private embeddingService: EmbeddingService
+  private initialized = false
 
   constructor() {
     this.embeddingService = new EmbeddingService()
@@ -345,9 +347,41 @@ export class RAGSystem {
   }
 
   /**
+   * Load persisted documents from disk on first use
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return
+    this.initialized = true
+    try {
+      const docs = persistence.load<Document>(COLLECTIONS.RAG_DOCUMENTS)
+      for (const doc of docs) {
+        // Restore dates
+        doc.createdAt = new Date(doc.createdAt)
+        doc.updatedAt = new Date(doc.updatedAt)
+        await this.vectorStore.addDocument(doc)
+      }
+    } catch (error) {
+      console.warn('[RAG] Failed to load persisted documents:', error)
+    }
+  }
+
+  /**
+   * Persist current documents to disk
+   */
+  private persistDocuments(): void {
+    try {
+      const docs = this.vectorStore.getAllDocuments()
+      persistence.save(COLLECTIONS.RAG_DOCUMENTS, docs)
+    } catch (error) {
+      console.warn('[RAG] Failed to persist documents:', error)
+    }
+  }
+
+  /**
    * Query RAG system for relevant documents
    */
   async query(query: RAGQuery): Promise<RAGResult> {
+    await this.ensureInitialized()
     const startTime = performance.now()
 
     // Generate query embedding
@@ -407,6 +441,7 @@ export class RAGSystem {
     }
 
     await this.vectorStore.addDocument(document)
+    this.persistDocuments()
     return document
   }
 
@@ -438,6 +473,7 @@ export class RAGSystem {
     }
 
     await this.vectorStore.addDocument(document)
+    this.persistDocuments()
     return document
   }
 
@@ -469,6 +505,7 @@ export class RAGSystem {
     }
 
     await this.vectorStore.addDocument(document)
+    this.persistDocuments()
     return document
   }
 

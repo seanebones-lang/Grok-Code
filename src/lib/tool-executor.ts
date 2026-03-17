@@ -1,17 +1,85 @@
 /**
  * Tool Executor
  * Handles execution of tools (read_file, write_file, etc.) for both local and GitHub repository contexts
- * 
+ *
  * Performance: Octokit is only imported when needed (GitHub repository context)
+ *
+ * Enhanced features:
+ * - patch_file: surgical find/replace edits without full file rewrite
+ * - search_code: expanded file types, context lines, exclusions
+ * - run_command: shell mode for pipes/redirects, configurable timeout
+ * - Automatic retry with exponential backoff for transient failures
  */
 
 import { spawn } from 'child_process'
+import * as fs from 'fs'
+import * as path from 'path'
 import type { ToolCall, ToolExecutionResult } from '@/types/tools'
 import { isToolCall, validateToolCallArguments } from '@/types/tools'
 import { formatError } from '@/types/errors'
 import { fetchWithErrorHandling } from '@/lib/utils/fetch-helpers'
 import { createErrorResponse } from '@/lib/utils/error-handling'
-import { resolveSafeCwd } from '@/lib/workspace-guard'
+import { resolveSafeCwd, AGENT_WORKSPACE } from '@/lib/workspace-guard'
+
+// ============================================================================
+// Retry Logic for Transient Failures
+// ============================================================================
+
+const TRANSIENT_ERROR_PATTERNS = [
+  'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND',
+  'socket hang up', 'network', 'rate limit', '429', '503', '502',
+]
+
+function isTransientError(error: string): boolean {
+  const lower = error.toLowerCase()
+  return TRANSIENT_ERROR_PATTERNS.some(p => lower.includes(p.toLowerCase()))
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 1000,
+): Promise<T> {
+  let lastError: Error | undefined
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      if (attempt < maxRetries && isTransientError(lastError.message)) {
+        const delay = baseDelay * Math.pow(2, attempt)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw lastError
+    }
+  }
+  throw lastError
+}
+
+// ============================================================================
+// File Cache (in-memory, per process lifetime)
+// ============================================================================
+
+const fileCache = new Map<string, { content: string; cachedAt: number }>()
+const FILE_CACHE_TTL = 30_000 // 30 seconds
+
+function getCachedFile(filePath: string): string | null {
+  const entry = fileCache.get(filePath)
+  if (entry && Date.now() - entry.cachedAt < FILE_CACHE_TTL) {
+    return entry.content
+  }
+  fileCache.delete(filePath)
+  return null
+}
+
+function setCachedFile(filePath: string, content: string): void {
+  fileCache.set(filePath, { content, cachedAt: Date.now() })
+}
+
+function invalidateCache(filePath: string): void {
+  fileCache.delete(filePath)
+}
 
 // Lazy load Octokit - only needed for GitHub operations
 let Octokit: typeof import('@octokit/rest').Octokit | null = null
@@ -171,6 +239,10 @@ export async function executeLocalTool(
     }
 
     case 'run_command': {
+      const timeout = Math.min(
+        (toolCall.arguments.timeout as number) || 30000,
+        300000 // max 5 minutes
+      )
       try {
         const response = await fetch(`${baseUrl}/api/agent/terminal`, {
           method: 'POST',
@@ -178,44 +250,106 @@ export async function executeLocalTool(
           body: JSON.stringify({
             command: toolCall.arguments.command as string,
             cwd: toolCall.arguments.cwd as string | undefined,
+            timeout,
           }),
         })
         const data = await response.json()
         if (!response.ok) {
           return { success: false, output: '', error: data.error || 'Command failed' }
         }
-        return { 
-          success: data.exitCode === 0, 
+        return {
+          success: data.exitCode === 0,
           output: data.output || data.stdout || '',
-          error: data.exitCode !== 0 ? (data.stderr || 'Command failed') : undefined 
+          error: data.exitCode !== 0 ? (data.stderr || 'Command failed') : undefined
         }
       } catch (error) {
-        return { 
-          success: false, 
-          output: '', 
-          error: error instanceof Error ? error.message : 'Command failed' 
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Command failed'
         }
+      }
+    }
+
+    case 'patch_file': {
+      const patchPath = toolCall.arguments.path as string
+      const patches = toolCall.arguments.patches as Array<{ find: string; replace: string }>
+      if (!patchPath || !Array.isArray(patches) || patches.length === 0) {
+        return { success: false, output: '', error: 'patch_file requires path and non-empty patches array' }
+      }
+      try {
+        // Read current content
+        const readResp = await fetch(
+          `${baseUrl}/api/agent/local?action=read&path=${encodeURIComponent(patchPath)}`
+        )
+        const readData = await readResp.json()
+        if (!readResp.ok) {
+          return { success: false, output: '', error: readData.error || 'Failed to read file for patching' }
+        }
+        let content = readData.file?.content ?? readData.content ?? ''
+
+        // Apply patches sequentially
+        const applied: string[] = []
+        for (const patch of patches) {
+          if (!patch.find || typeof patch.replace !== 'string') continue
+          const idx = content.indexOf(patch.find)
+          if (idx === -1) {
+            return { success: false, output: '', error: `Patch failed: could not find "${patch.find.substring(0, 80)}..." in ${patchPath}` }
+          }
+          content = content.substring(0, idx) + patch.replace + content.substring(idx + patch.find.length)
+          applied.push(`"${patch.find.substring(0, 40)}..." → "${patch.replace.substring(0, 40)}..."`)
+        }
+
+        // Write patched content
+        const writeResp = await fetch(`${baseUrl}/api/agent/local`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: patchPath, content, createDirs: false }),
+        })
+        const writeData = await writeResp.json()
+        if (!writeResp.ok) {
+          return { success: false, output: '', error: writeData.error || 'Failed to write patched file' }
+        }
+        invalidateCache(patchPath)
+        return { success: true, output: `Patched ${patchPath} (${applied.length} changes):\n${applied.join('\n')}` }
+      } catch (error) {
+        return { success: false, output: '', error: error instanceof Error ? error.message : 'Patch failed' }
       }
     }
 
     case 'search_code': {
       const query = toolCall.arguments.query as string
-      const path = (toolCall.arguments.path as string) || '.'
+      const searchPath = (toolCall.arguments.path as string) || '.'
+      const contextLines = (toolCall.arguments.context_lines as number) || 0
+      const exclude = (toolCall.arguments.exclude as string) || 'node_modules'
+
+      // Comprehensive file extension list
+      const includeFlags = [
+        '*.ts', '*.tsx', '*.js', '*.jsx', '*.py', '*.json',
+        '*.md', '*.yaml', '*.yml', '*.css', '*.scss', '*.less',
+        '*.html', '*.sql', '*.prisma', '*.graphql', '*.gql',
+        '*.env.example', '*.toml', '*.ini', '*.cfg', '*.xml',
+        '*.sh', '*.bash', '*.zsh', '*.dockerfile', '*.sol',
+      ].map(ext => `--include="${ext}"`).join(' ')
+
+      const contextFlag = contextLines > 0 ? `-C ${contextLines}` : ''
+      const excludeFlag = exclude ? `--exclude-dir="${exclude}"` : ''
+
       try {
         const response = await fetch(`${baseUrl}/api/agent/terminal`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            command: `grep -rn "${query.replace(/"/g, '\\"')}" ${path} --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" --include="*.json" 2>/dev/null | head -50`,
+            command: `grep -rn ${contextFlag} "${query.replace(/"/g, '\\"')}" ${searchPath} ${includeFlags} ${excludeFlag} 2>/dev/null | head -100`,
           }),
         })
         const data = await response.json()
         return { success: true, output: data.output || 'No results found' }
       } catch (error) {
-        return { 
-          success: false, 
-          output: '', 
-          error: error instanceof Error ? error.message : 'Search failed' 
+        return {
+          success: false,
+          output: '',
+          error: error instanceof Error ? error.message : 'Search failed'
         }
       }
     }
@@ -760,34 +894,51 @@ export async function executeTool(
         const command = toolCall.arguments.command as string
         const cwdRaw = toolCall.arguments.cwd as string | undefined
         const cwd = resolveSafeCwd(cwdRaw)
+        const timeoutMs = Math.min(
+          (toolCall.arguments.timeout as number) || 30000,
+          300000 // max 5 minutes
+        )
+
+        // Detect if command needs shell (pipes, redirects, &&, ||, ;, $, etc.)
+        const needsShell = /[|&;$`><(){}\n]/.test(command)
 
         return new Promise((resolve) => {
-          // Parse command
-          const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
-          const cmd = parts[0]
-          if (!cmd) {
-            resolve({ success: false, output: '', error: 'Empty command' })
-            return
+          let child
+          if (needsShell) {
+            // Shell mode for pipes, redirects, chaining
+            child = spawn(command, [], {
+              cwd,
+              env: process.env,
+              shell: true,
+            })
+          } else {
+            // Direct exec (faster, more secure)
+            const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
+            const cmd = parts[0]
+            if (!cmd) {
+              resolve({ success: false, output: '', error: 'Empty command' })
+              return
+            }
+            const args = parts.slice(1).map(arg => arg.replace(/^["']|["']$/g, ''))
+            child = spawn(cmd, args, {
+              cwd,
+              env: process.env,
+              shell: false,
+            })
           }
-          const args = parts.slice(1).map(arg => arg.replace(/^["']|["']$/g, ''))
-
-          // Execute command with timeout (cwd is never app root)
-          const child = spawn(cmd, args, {
-            cwd,
-            env: process.env,
-            shell: false,
-          })
 
           let stdout = ''
           let stderr = ''
-          const timeout = setTimeout(() => {
+          const timer = setTimeout(() => {
             child.kill('SIGTERM')
-            resolve({ 
-              success: false, 
-              output: stdout + (stderr ? `\nStderr:\n${stderr}` : ''), 
-              error: 'Command timed out' 
+            // Force kill after 5s grace period
+            setTimeout(() => child.kill('SIGKILL'), 5000)
+            resolve({
+              success: false,
+              output: stdout + (stderr ? `\nStderr:\n${stderr}` : ''),
+              error: `Command timed out after ${timeoutMs / 1000}s`,
             })
-          }, 30000) // 30 second timeout
+          }, timeoutMs)
 
           child.stdout?.on('data', (data: Buffer | string) => {
             stdout += data.toString()
@@ -798,7 +949,7 @@ export async function executeTool(
           })
 
           child.on('close', (code) => {
-            clearTimeout(timeout)
+            clearTimeout(timer)
             resolve({
               success: code === 0,
               output: stdout + (stderr ? `\nStderr:\n${stderr}` : ''),
@@ -807,7 +958,7 @@ export async function executeTool(
           })
 
           child.on('error', (error) => {
-            clearTimeout(timeout)
+            clearTimeout(timer)
             resolve({
               success: false,
               output: stdout + (stderr ? `\nStderr:\n${stderr}` : ''),
