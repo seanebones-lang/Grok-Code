@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "cto-eleven": {
+      "command": "node",
+      "args": ["mcp-server/server.mjs"],
+      "env": {
+        "BASE_URL": "https://YOUR_APP_URL_HERE",
+        "GITHUB_TOKEN": "YOUR_GITHUB_TOKEN_HERE"
+      }
+    }
+  }
+}
