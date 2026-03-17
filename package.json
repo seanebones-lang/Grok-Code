@@ -69,6 +69,7 @@
     "react-resizable-panels": "^4.3.2",
     "react-window": "^2.2.5",
     "remark-gfm": "^4.0.0",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.5.0",
     "vaul": "^1.1.2",
     "zod": "^3.23.8",

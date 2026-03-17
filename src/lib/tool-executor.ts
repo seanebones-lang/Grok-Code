@@ -11,6 +11,7 @@
  * - Automatic retry with exponential backoff for transient failures
  */
 
+import 'server-only'
 import { spawn } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
