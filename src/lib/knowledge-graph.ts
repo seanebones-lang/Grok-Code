@@ -12,6 +12,7 @@
  * Last Updated: January 14, 2026
  */
 
+import 'server-only'
 import { persistence, COLLECTIONS } from './persistence'
 
 // ============================================================================

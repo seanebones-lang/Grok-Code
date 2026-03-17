@@ -12,6 +12,7 @@
  * Last Updated: January 14, 2026
  */
 
+import 'server-only'
 import type { SpecializedAgent } from './specialized-agents'
 import { mlLearningSystem } from './ml-learning-system'
 import { ragSystem } from './rag-system'

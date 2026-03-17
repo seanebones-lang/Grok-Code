@@ -7,9 +7,9 @@
  */
 
 // Lazy-load persistence to avoid bundling Node.js 'fs' module in client-side code.
-// persistence.ts uses 'fs' which is not available in the browser.
-// This is only used in server-side code paths (typeof window === 'undefined').
-function getServerPersistence(): { persistence: import('./persistence').PersistenceManager; COLLECTIONS: typeof import('./persistence').COLLECTIONS } | null {
+// Only used in server-side code paths (typeof window === 'undefined').
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getServerPersistence(): { persistence: any; COLLECTIONS: any } | null {
   if (typeof window !== 'undefined') return null
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
