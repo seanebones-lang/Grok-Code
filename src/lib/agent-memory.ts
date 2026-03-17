@@ -6,7 +6,18 @@
  * Enhanced: Works both client-side (localStorage) and server-side (file persistence)
  */
 
-import { persistence, COLLECTIONS } from './persistence'
+// Lazy-load persistence to avoid bundling Node.js 'fs' module in client-side code.
+// persistence.ts uses 'fs' which is not available in the browser.
+// This is only used in server-side code paths (typeof window === 'undefined').
+function getServerPersistence(): { persistence: import('./persistence').PersistenceManager; COLLECTIONS: typeof import('./persistence').COLLECTIONS } | null {
+  if (typeof window !== 'undefined') return null
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('./persistence')
+  } catch {
+    return null
+  }
+}
 
 // ============================================================================
 // Types
@@ -56,7 +67,9 @@ export function loadMemories(): MemoryEntry[] {
   // Server-side: use file persistence
   if (typeof window === 'undefined') {
     try {
-      const memories = persistence.load<MemoryEntry>(COLLECTIONS.AGENT_MEMORY)
+      const server = getServerPersistence()
+      if (!server) return []
+      const memories = server.persistence.load<MemoryEntry>(server.COLLECTIONS.AGENT_MEMORY)
       return memories.map(m => ({
         ...m,
         createdAt: new Date(m.createdAt),
@@ -101,7 +114,10 @@ export function saveMemories(memories: MemoryEntry[]): void {
   // Server-side: use file persistence
   if (typeof window === 'undefined') {
     try {
-      persistence.save(COLLECTIONS.AGENT_MEMORY, sorted)
+      const server = getServerPersistence()
+      if (server) {
+        server.persistence.save(server.COLLECTIONS.AGENT_MEMORY, sorted)
+      }
     } catch {
       // ignore
     }
